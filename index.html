@@ -47,6 +47,7 @@
             #label-print-area {
                 display: none !important;
             }
+            #invoice-print-area { display: none !important; }
             body.printing-label #label-print-area {
                 display: flex !important;
                 flex-direction: column; align-items: center; justify-content: center;
@@ -55,6 +56,17 @@
             body.printing-label .print-area,
             body.printing-label #app {
                 display: none !important;
+            }
+            body.printing-invoice #app > * {
+                display: none !important;
+            }
+            body.printing-invoice #app {
+                display: block !important;
+            }
+            body.printing-invoice #invoice-print-area {
+                display: block !important;
+                width: 100% !important;
+                margin: 0 auto;
             }
             /* Tampilan Tabel Cetak bergaya Excel */
             table, .excel-print-table {
@@ -93,6 +105,26 @@
     <div id="label-print-area">
         <h2 style="font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; text-align: center;">{{ activeItem.nama }}</h2>
         <svg id="barcode-sticker"></svg>
+    </div>
+    <!-- AREA CETAK INVOICE MONITORING ORDER -->
+    <div id="invoice-print-area" style="display:none; max-width:900px; margin:0 auto; padding:20px; font-family:Arial,sans-serif; color:#111827;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #111827; padding-bottom:12px; margin-bottom:18px;">
+            <div><div style="font-size:20px; font-weight:800; text-transform:uppercase;">Agrofarm Nusa Raya</div><div style="font-size:11px; margin-top:3px;">Sistem Inventory Spare Part</div></div>
+            <div style="text-align:right;"><div style="font-size:18px; font-weight:800;">INVOICE</div><div style="font-size:11px; margin-top:3px;">No. {{ invoiceData.number }}</div><div style="font-size:11px;">Tanggal: {{ invoiceData.date }}</div></div>
+        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:18px;">
+            <tr><td style="padding:5px 0; width:140px; font-weight:700;">Nama Barang</td><td style="padding:5px 0;">: {{ invoiceData.nama }}</td></tr>
+            <tr><td style="padding:5px 0; font-weight:700;">Kepentingan / Project</td><td style="padding:5px 0;">: {{ invoiceData.keperluan }}</td></tr>
+            <tr><td style="padding:5px 0; font-weight:700;">Total Order</td><td style="padding:5px 0;">: {{ invoiceData.qtyTotal }} {{ invoiceData.satuan }}</td></tr>
+            <tr><td style="padding:5px 0; font-weight:700;">Total Diterima</td><td style="padding:5px 0;">: {{ invoiceData.qtyReceived }} {{ invoiceData.satuan }}</td></tr>
+            <tr><td style="padding:5px 0; font-weight:700;">Sisa Order</td><td style="padding:5px 0;">: {{ invoiceData.qtyRemaining }} {{ invoiceData.satuan }}</td></tr>
+            <tr><td style="padding:5px 0; font-weight:700;">Status</td><td style="padding:5px 0;">: {{ invoiceData.status }}</td></tr>
+        </table>
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead><tr><th style="border:1px solid #111827; padding:8px; text-align:center;">No</th><th style="border:1px solid #111827; padding:8px; text-align:left;">Nama Barang</th><th style="border:1px solid #111827; padding:8px; text-align:center;">Qty Diterima</th><th style="border:1px solid #111827; padding:8px; text-align:center;">Satuan</th></tr></thead>
+            <tbody><tr><td style="border:1px solid #111827; padding:8px; text-align:center;">1</td><td style="border:1px solid #111827; padding:8px;">{{ invoiceData.nama }}</td><td style="border:1px solid #111827; padding:8px; text-align:center;">{{ invoiceData.qtyReceived }}</td><td style="border:1px solid #111827; padding:8px; text-align:center;">{{ invoiceData.satuan }}</td></tr></tbody>
+        </table>
+        <div style="margin-top:45px; display:flex; justify-content:space-between; font-size:11px;"><div style="text-align:center; width:180px;">Penerima<br><br><br>____________________</div><div style="text-align:center; width:180px;">Petugas Gudang<br><br><br>____________________</div></div>
     </div>
     <!-- SIDEBAR LEFT NAVIGATION -->
     <aside class="w-full md:w-72 bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white flex-shrink-0 border-r border-emerald-800/50 flex flex-col justify-between no-print sticky top-0 md:h-screen z-40">
@@ -464,7 +496,8 @@
                     <table class="w-full text-left text-xs excel-print-table">
                         <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200/60">
                             <tr>
-                                <th class="p-3.5 text-center">Pilih</th>
+                                <th class="p-3.5 text-center"><input type="checkbox" v-model="selectAllMaster" @change="toggleSelectAllMaster" class="w-4 h-4 accent-emerald-600 cursor-pointer"></th>
+                                <th class="p-3.5 text-center">No</th>
                                 <th class="p-3.5">Kode Barang</th>
                                 <th class="p-3.5">Nama Sparepart</th>
                                 <th class="p-3.5 text-center">Stock Awal</th>
@@ -473,7 +506,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            <tr v-for="item in paginatedMasterCatalog" :key="item.kode" v-memo="[item.kode, item.nama, item.currentStock, item.minStock, item.satuan]" class="hover:bg-slate-50">
+                            <tr v-for="(item, idx) in paginatedMasterCatalog" :key="item.kode" v-memo="[item.kode, item.nama, item.currentStock, item.minStock, item.satuan]" class="hover:bg-slate-50">
                                 <td class="p-3.5 text-center">
                                     <input
                                         type="checkbox"
@@ -483,6 +516,7 @@
                                         class="w-4 h-4 accent-emerald-600 cursor-pointer"
                                     >
                                 </td>
+                                <td class="p-3.5 text-center font-bold text-slate-500">{{ ((masterPage - 1) * masterPageSize) + idx + 1 }}</td>
                                 <td class="p-3.5 font-mono font-bold text-emerald-700">{{ item.kode }}</td>
                                 <td class="p-3.5 font-bold text-slate-800 uppercase">{{ item.nama }}</td>
                                 <td class="p-3.5 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">{{ item.currentStock ?? 0 }} {{ item.satuan || 'Pcs' }}</td>
@@ -495,7 +529,7 @@
                                 </td>
                             </tr>
                             <tr v-if="filteredMasterCatalog.length === 0">
-                                <td colspan="6" class="p-12 text-center text-slate-400 font-medium">Database Master masih kosong. Silakan import atau tambah manual.</td>
+                                <td colspan="7" class="p-12 text-center text-slate-400 font-medium">Database Master masih kosong. Silakan import atau tambah manual.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -613,6 +647,7 @@
                                         Terima
                                     </button>
                                     <span v-else class="text-slate-400 italic text-[10px]">-</span>
+                                    <button v-if="order.qtyReceived > 0" @click="printInvoice(order)" class="ml-1 bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-[10px] uppercase shadow-sm">Invoice</button>
                                 </td>
                                 <td class="p-3 text-center no-print">
                                     <button v-if="order.status !== 'Cancel'" @click="cancelOrder(order)" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1.5 rounded-lg font-bold text-[10px] uppercase shadow-sm">
@@ -1220,6 +1255,7 @@
             return {
                 activeTab: 'dashboard',
                 activeItem: {},
+                invoiceData: { number: '', date: '', nama: '', keperluan: '-', qtyTotal: 0, qtyReceived: 0, qtyRemaining: 0, satuan: 'PCS', status: '' },
                 dashFilterDateStart: '',
                 dashFilterDateEnd: '',
                 searchMaster: '',
@@ -1601,7 +1637,7 @@
                         const aliases = {
                             nama: [
                                 'nama', 'namabarang', 'namapart', 'namasparepart',
-                                'barang', 'barangnama', 'item', 'itemname',
+                                'barangnama', 'item', 'itemname',
                                 'itemdescription', 'description', 'deskripsi', 'desc',
                                 'part', 'partname', 'product', 'productname',
                                 'produk', 'namaproduk', 'material', 'namamaterial',
@@ -1639,19 +1675,22 @@
                                 if (index !== -1) return index;
                             }
 
-                            // Prioritas 2: header mengandung alias.
+                            // Prioritas 2: header mengandung alias yang cukup spesifik.
+                            // Hindari alias umum agar "Kode Barang" tidak terbaca sebagai Nama Barang.
+                            let bestIndex = -1;
+                            let bestScore = 0;
                             for (let i = 0; i < normalizedHeaders.length; i++) {
                                 const header = normalizedHeaders[i];
                                 if (!header) continue;
-
                                 for (const alias of aliasList) {
-                                    if (header.includes(alias) || alias.includes(header)) {
-                                        return i;
+                                    if (alias.length < 4) continue;
+                                    if (header.includes(alias)) {
+                                        const score = alias.length;
+                                        if (score > bestScore) { bestScore = score; bestIndex = i; }
                                     }
                                 }
                             }
-
-                            return -1;
+                            return bestIndex;
                         };
 
                         // Cari header sampai 50 baris pertama. Jadi tidak harus berada di baris pertama.
@@ -1763,11 +1802,8 @@
                             if (kodeCol !== -1) {
                                 kode = String(row[kodeCol] ?? '').trim();
                             }
-
                             if (!kode) {
-                                kode = 'SKU-' + String(
-                                    this.masterCatalog.length + importedItems.length + 1
-                                ).padStart(3, '0');
+                                throw new Error(`SKU/Kode Barang kosong pada baris Excel ${i + 1}. Import dibatalkan.`);
                             }
 
                             let minStock;
@@ -1778,6 +1814,21 @@
                                     : this.calculateMinimumStock(currentStock);
                             } else {
                                 minStock = this.calculateMinimumStock(currentStock);
+                            }
+
+                            // Jika ada satu SKU atau nama barang yang duplikat, seluruh import dibatalkan.
+                            const normalizedKode = kode.trim().toLowerCase();
+                            const normalizedNama = nama.trim().toLowerCase();
+                            const duplicateInExisting = this.masterCatalog.some(item =>
+                                String(item.kode || '').trim().toLowerCase() === normalizedKode ||
+                                String(item.nama || '').trim().toLowerCase() === normalizedNama
+                            );
+                            const duplicateInImport = importedItems.some(item =>
+                                String(item.kode || '').trim().toLowerCase() === normalizedKode ||
+                                String(item.nama || '').trim().toLowerCase() === normalizedNama
+                            );
+                            if (duplicateInExisting || duplicateInImport) {
+                                throw new Error(`Duplikasi data ditemukan pada baris Excel ${i + 1}: SKU "${kode}" / Nama Barang "${nama}". Import dibatalkan.`);
                             }
 
                             importedItems.push({
@@ -1815,10 +1866,10 @@
                         event.target.value = '';
                     } catch (error) {
                         console.error('ERROR IMPORT EXCEL:', error);
-                        alert(
+                        alert(error?.message || (
                             'Gagal membaca file Excel!\n\n' +
                             'Pastikan file berformat .xlsx atau .xls dan tidak rusak.'
-                        );
+                        ));
                         event.target.value = '';
                     }
                 };
@@ -1832,6 +1883,10 @@
             },
             tambahMasterManual() {
                 if (!this.formMasterManual.nama) return alert('Nama Barang wajib diisi!');
+                const namaManual = this.formMasterManual.nama.trim().toUpperCase();
+                if (this.masterCatalog.some(item => String(item.nama || '').trim().toUpperCase() === namaManual)) {
+                    return alert(`Data Master untuk barang "${namaManual}" sudah ada. Penambahan dibatalkan.`);
+                }
                 this.masterCatalog.push({
                     kode: 'SKU-' + String(this.masterCatalog.length + 1).padStart(3, '0'),
                     nama: this.formMasterManual.nama.toUpperCase(),
@@ -1995,6 +2050,28 @@
                     keperluan: `Penerimaan Monitoring (${order.keperluan || order.project || '-'})`
                 });
                 alert(`Penerimaan order dicatat! Stok ${order.nama} bertambah.`);
+            },
+            printInvoice(order) {
+                if (!order || Number(order.qtyReceived) <= 0) {
+                    return alert('Invoice hanya dapat dibuat untuk order yang sudah diterima.');
+                }
+                this.invoiceData = {
+                    number: `INV-MON-${String(order.id).replace(/\D/g, '').slice(-10) || Date.now()}`,
+                    date: this.getFormattedDateOnly(),
+                    nama: order.nama || '-',
+                    keperluan: order.keperluan || order.project || '-',
+                    qtyTotal: Number(order.qtyTotal) || 0,
+                    qtyReceived: Number(order.qtyReceived) || 0,
+                    qtyRemaining: Number(order.qtyRemaining) || 0,
+                    satuan: order.satuan || 'PCS',
+                    status: order.status || '-'
+                };
+                document.body.classList.remove('printing-label');
+                document.body.classList.add('printing-invoice');
+                this.$nextTick(() => {
+                    window.print();
+                    document.body.classList.remove('printing-invoice');
+                });
             },
             openSparepartMultiOutModal() {
                 this.formSparepartMultiOut = {
