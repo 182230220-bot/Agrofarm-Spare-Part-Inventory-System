@@ -1,0 +1,2318 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Inventory Spare Part Agrofarm Nusa Raya</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JsBarcode -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS (XLSX) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        * {
+            transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #10b981; border-radius: 999px; }
+        .portal-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+        }
+        .portal-card:hover {
+            box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* REVISI 3: STYLE PRINT DIBUAT SEPERTI TABEL EXCEL */
+        @media print {
+            .no-print { display: none !important; }
+            .print-area { display: block !important; width: 100% !important; }
+            /* Barcode hanya tampil saat fungsi printLabel() dipanggil.
+               Saat mencetak tabel/laporan Excel-style, barcode TIDAK ikut tercetak. */
+            #label-print-area {
+                display: none !important;
+            }
+            body.printing-label #label-print-area {
+                display: flex !important;
+                flex-direction: column; align-items: center; justify-content: center;
+                width: 50mm; height: 30mm; margin: 0 auto; padding: 5px; border: 1px solid #000;
+            }
+            body.printing-label .print-area,
+            body.printing-label #app {
+                display: none !important;
+            }
+            /* Tampilan Tabel Cetak bergaya Excel */
+            table, .excel-print-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 9pt !important;
+                margin-bottom: 15px !important;
+            }
+            th, td {
+                border: 1px solid #000000 !important;
+                padding: 4px 6px !important;
+                color: #000000 !important;
+                background-color: transparent !important;
+            }
+            th {
+                background-color: #e2e8f0 !important;
+                font-weight: bold !important;
+                text-align: center !important;
+                text-transform: uppercase !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            @page { size: auto; margin: 10mm; }
+        }
+        #label-print-area { display: none; }
+    </style>
+</head>
+<body class="min-h-screen antialiased bg-slate-50">
+<div id="app" class="min-h-screen flex flex-col md:flex-row">
+    <!-- DATALIST AUTOCOMPLETE: DIBATASI AGAR 10.000+ MASTER TIDAK MEMBEBANI DOM -->
+    <datalist id="master-catalog-list">
+        <option v-for="m in masterAutocompleteOptions" :key="m.kode" :value="m.nama">{{ m.satuan }} (SKU: {{ m.kode }})</option>
+    </datalist>
+    <!-- AREA CETAK LABEL BARCODE -->
+    <div id="label-print-area">
+        <h2 style="font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; text-align: center;">{{ activeItem.nama }}</h2>
+        <svg id="barcode-sticker"></svg>
+    </div>
+    <!-- SIDEBAR LEFT NAVIGATION -->
+    <aside class="w-full md:w-72 bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white flex-shrink-0 border-r border-emerald-800/50 flex flex-col justify-between no-print sticky top-0 md:h-screen z-40">
+        <div>
+            <!-- BRAND HEADER -->
+            <div class="p-5 border-b border-emerald-800/60 flex items-center gap-3">
+                <div class="w-10 h-10 bg-emerald-500/10 border border-emerald-400/30 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner flex-shrink-0">
+                    <i data-lucide="sprout" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-extrabold text-sm tracking-wide text-white uppercase">Agrofarm</span>
+                        <span class="bg-emerald-500/20 text-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/30">spare part</span>
+                    </div>
+                    <p class="text-[10px] text-emerald-200/70 font-medium leading-tight">Sistem Inventory</p>
+                </div>
+            </div>
+            <!-- NAVIGATION MENU -->
+            <nav class="p-4 space-y-1.5">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/60 px-3 mb-2">Menu Utama</p>
+                <button @click="activeTab = 'dashboard'" :class="activeTab === 'dashboard' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs transition-all">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4 text-emerald-400"></i> Dashboard Utama
+                </button>
+                <button @click="activeTab = 'master_db'" :class="activeTab === 'master_db' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Data Master</span>
+                    </div>
+                    <span class="bg-emerald-900/80 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700 font-mono">{{ masterCatalog.length }}</span>
+                </button>
+                <button @click="activeTab = 'monitoring'" :class="activeTab === 'monitoring' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="clipboard-list" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Monitoring Order</span>
+                    </div>
+                    <span class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30 font-mono">{{ monitoringItems.length }}</span>
+                </button>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/60 px-3 mt-6 mb-2">Manajemen Gudang</p>
+                <button @click="activeTab = 'sparepart'" :class="activeTab === 'sparepart' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="wrench" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Gudang Spare Part</span>
+                    </div>
+                    <span class="bg-emerald-900/80 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700 font-mono">{{ spareparts.length }}</span>
+                </button>
+                <button @click="activeTab = 'sisa_project'" :class="activeTab === 'sisa_project' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="boxes" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Gudang Sisa Project</span>
+                    </div>
+                    <span class="bg-emerald-900/80 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700 font-mono">{{ sisaProjects.length }}</span>
+                </button>
+            </nav>
+        </div>
+        <!-- QUICK ACTIONS -->
+        <div class="p-4 border-t border-emerald-800/60 space-y-2">
+            <button @click="exportToExcel" class="w-full bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 px-3 py-2.5 rounded-xl font-medium text-xs flex items-center justify-center gap-2 border border-emerald-700/50 transition-all">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+                <span>Export Laporan Excel</span>
+            </button>
+        </div>
+    </aside>
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto min-w-0">
+        <!-- TAB 1: DASHBOARD UTAMA -->
+        <div v-if="activeTab === 'dashboard'" class="space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 no-print">
+                <div class="portal-card p-5 rounded-xl flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data Master</p>
+                        <h3 class="text-2xl font-black text-slate-800 mt-1">{{ masterCatalog.length }} <span class="text-xs font-normal text-slate-400">Item</span></h3>
+                    </div>
+                    <div class="p-3 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100">
+                        <i data-lucide="layers" class="w-6 h-6"></i>
+                    </div>
+                </div>
+                <div class="portal-card p-5 rounded-xl flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Stok Sparepart</p>
+                        <h3 class="text-2xl font-black text-slate-800 mt-1">{{ spareparts.length }} <span class="text-xs font-normal text-slate-400">SKU</span></h3>
+                    </div>
+                    <div class="p-3 bg-blue-50 text-blue-700 rounded-xl border border-blue-100">
+                        <i data-lucide="wrench" class="w-6 h-6"></i>
+                    </div>
+                </div>
+                <div class="portal-card p-5 rounded-xl flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Stok Sisa Project</p>
+                        <h3 class="text-2xl font-black text-slate-800 mt-1">{{ sisaProjects.length }} <span class="text-xs font-normal text-slate-400">Item</span></h3>
+                    </div>
+                    <div class="p-3 bg-teal-50 text-teal-700 rounded-xl border border-teal-100">
+                        <i data-lucide="package-check" class="w-6 h-6"></i>
+                    </div>
+                </div>
+                <div class="portal-card p-5 rounded-xl flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Monitoring Pending</p>
+                        <h3 class="text-2xl font-black text-amber-600 mt-1">{{ monitoringItems.length }} <span class="text-xs font-normal text-amber-600/70">Antrean</span></h3>
+                    </div>
+                    <div class="p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100">
+                        <i data-lucide="clock" class="w-6 h-6"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- FILTER DASHBOARD -->
+            <div class="portal-card p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 no-print">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="calendar-range" class="w-4 h-4 text-emerald-600"></i>
+                    <span class="text-xs font-bold text-slate-700 uppercase">Filter Tanggal Inbound & Outbound:</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input v-model="dashFilterDateStart" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500">
+                    <span class="text-xs text-slate-400">s/d</span>
+                    <input v-model="dashFilterDateEnd" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500">
+                    <button @click="resetDashFilter" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold">Reset</button>
+                    <button @click="exportDashboardByDate" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Per Tanggal
+                    </button>
+                </div>
+            </div>
+            <!-- SECTION 1: GUDANG SPAREPART (IN & OUT DASHBOARD) -->
+            <div class="space-y-3">
+                <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <i data-lucide="wrench" class="w-5 h-5 text-emerald-700"></i>
+                    <h2 class="font-extrabold text-slate-800 uppercase text-xs tracking-wider">Pergerakan Stok: Gudang Spare Part (Inbound & Outbound)</h2>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-emerald-600">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span class="font-bold text-xs uppercase text-emerald-900 flex items-center gap-1.5">
+                                <i data-lucide="arrow-down-left" class="w-4 h-4 text-emerald-600"></i> Sparepart Masuk (Inbound)
+                            </span>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">{{ filteredSparepartLogsIn.length }} Records</span>
+                        </div>
+                        <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                            <table class="w-full text-left text-xs excel-print-table">
+                                <thead class="bg-emerald-50/70 font-bold text-emerald-900 uppercase text-[9px] sticky top-0 border-b border-emerald-200">
+                                    <tr>
+                                        <th class="p-2">Tgl</th>
+                                        <th class="p-2">Nama Barang</th>
+                                        <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2">Supplier / Kepentingan</th>
+                                        <th class="p-2 text-center no-print">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr v-for="log in filteredSparepartLogsIn" :key="log.id" class="hover:bg-emerald-50/30">
+                                        <td class="p-2 text-slate-500 text-[10px] font-mono">
+                                            {{ log.tgl }}
+                                            <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
+                                        </td>
+                                        <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
+                                        <td class="p-2 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">+{{ log.qty }}</td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
+                                        <td class="p-2 text-center no-print">
+                                            <button @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="filteredSparepartLogsIn.length === 0">
+                                        <td colspan="5" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang masuk sparepart pada periode ini.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-amber-600">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span class="font-bold text-xs uppercase text-amber-900 flex items-center gap-1.5">
+                                <i data-lucide="arrow-up-right" class="w-4 h-4 text-amber-600"></i> Sparepart Keluar (Outbound)
+                            </span>
+                            <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">{{ filteredSparepartLogsOut.length }} Records</span>
+                        </div>
+                        <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                            <table class="w-full text-left text-xs excel-print-table">
+                                <thead class="bg-amber-50/70 font-bold text-amber-900 uppercase text-[9px] sticky top-0 border-b border-amber-200">
+                                    <tr>
+                                        <th class="p-2">Tgl</th>
+                                        <th class="p-2">Nama Barang</th>
+                                        <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2">Penerima / Kepentingan</th>
+                                        <th class="p-2 text-center no-print">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr v-for="log in filteredSparepartLogsOut" :key="log.id" class="hover:bg-amber-50/30">
+                                        <td class="p-2 text-slate-500 text-[10px] font-mono">
+                                            {{ log.tgl }}
+                                            <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
+                                        </td>
+                                        <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
+                                        <td class="p-2 text-center font-bold text-amber-700 bg-amber-50/50 rounded">-{{ log.qty }}</td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.user || '-' }} ({{ log.keperluan || '-' }})</td>
+                                        <td class="p-2 text-center no-print">
+                                            <button @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="filteredSparepartLogsOut.length === 0">
+                                        <td colspan="5" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang keluar sparepart pada periode ini.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- SECTION 2: GUDANG SISA PROJECT (IN & OUT DASHBOARD) -->
+            <div class="space-y-3 pt-4">
+                <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <i data-lucide="boxes" class="w-5 h-5 text-teal-700"></i>
+                    <h2 class="font-extrabold text-slate-800 uppercase text-xs tracking-wider">Pergerakan Stok: Gudang Sisa Project (Inbound & Outbound)</h2>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-emerald-600">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span class="font-bold text-xs uppercase text-emerald-900 flex items-center gap-1.5">
+                                <i data-lucide="arrow-down-left" class="w-4 h-4 text-emerald-600"></i> Sisa Project Masuk (Inbound)
+                            </span>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">{{ filteredProjectLogsIn.length }} Records</span>
+                        </div>
+                        <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                            <table class="w-full text-left text-xs excel-print-table">
+                                <thead class="bg-emerald-50/70 font-bold text-emerald-900 uppercase text-[9px] sticky top-0 border-b border-emerald-200">
+                                    <tr>
+                                        <th class="p-2">Tgl</th>
+                                        <th class="p-2">Nama Barang</th>
+                                        <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2">Asal / Kepentingan</th>
+                                        <th class="p-2 text-center no-print">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr v-for="log in filteredProjectLogsIn" :key="log.id" class="hover:bg-emerald-50/30">
+                                        <td class="p-2 text-slate-500 text-[10px] font-mono">
+                                            {{ log.tgl }}
+                                            <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
+                                        </td>
+                                        <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
+                                        <td class="p-2 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">+{{ log.qty }}</td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
+                                        <td class="p-2 text-center no-print">
+                                            <button @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="filteredProjectLogsIn.length === 0">
+                                        <td colspan="5" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang masuk sisa project pada periode ini.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-amber-600">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span class="font-bold text-xs uppercase text-amber-900 flex items-center gap-1.5">
+                                <i data-lucide="arrow-up-right" class="w-4 h-4 text-amber-600"></i> Sisa Project Keluar (Outbound)
+                            </span>
+                            <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">{{ filteredProjectLogsOut.length }} Records</span>
+                        </div>
+                        <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                            <table class="w-full text-left text-xs excel-print-table">
+                                <thead class="bg-amber-50/70 font-bold text-amber-900 uppercase text-[9px] sticky top-0 border-b border-amber-200">
+                                    <tr>
+                                        <th class="p-2">Tgl</th>
+                                        <th class="p-2">Nama Barang</th>
+                                        <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2">Penerima / Kepentingan</th>
+                                        <th class="p-2 text-center no-print">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr v-for="log in filteredProjectLogsOut" :key="log.id" class="hover:bg-amber-50/30">
+                                        <td class="p-2 text-slate-500 text-[10px] font-mono">
+                                            {{ log.tgl }}
+                                            <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
+                                        </td>
+                                        <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
+                                        <td class="p-2 text-center font-bold text-amber-700 bg-amber-50/50 rounded">-{{ log.qty }}</td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.user || '-' }} ({{ log.keperluan || '-' }})</td>
+                                        <td class="p-2 text-center no-print">
+                                            <button @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="filteredProjectLogsOut.length === 0">
+                                        <td colspan="5" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang keluar sisa project pada periode ini.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- TAB 2: DATABASE MASTER PUSAT -->
+        <div v-if="activeTab === 'master_db'" class="space-y-6 no-print">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-7 portal-card p-6 rounded-xl space-y-4">
+                    <div class="flex items-center gap-2 text-emerald-900 font-bold text-xs uppercase tracking-wider border-b border-slate-100 pb-3">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-600"></i>
+                        <span>Input Data Master Manual</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Barang *</label>
+                            <input v-model="formMasterManual.nama" type="text" placeholder="Masukkan Nama Barang / Sparepart" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none uppercase">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Stock Awal</label>
+                                <input v-model.number="formMasterManual.currentStock" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Minimal Stock (Otomatis)</label>
+                                <div class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg font-bold text-xs text-center text-slate-500">20% dari stok awal</div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Satuan</label>
+                                <input v-model="formMasterManual.satuan" type="text" placeholder="Pcs/Unit" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none uppercase">
+                            </div>
+                        </div>
+                    </div>
+                    <button @click="tambahMasterManual" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 rounded-lg text-xs uppercase tracking-wider shadow-sm">
+                        Simpan Ke Database Master
+                    </button>
+                </div>
+                <div class="lg:col-span-5 bg-gradient-to-br from-emerald-900 to-teal-950 text-white p-6 rounded-xl shadow-sm flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-emerald-300 font-bold text-xs uppercase tracking-wider mb-1">
+                            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                            <span>Import Master via Excel</span>
+                        </div>
+                        <p class="text-xs text-emerald-100/70 leading-relaxed">
+                            Mendukung berbagai format kolom Excel (misal: <strong>Nama Barang / Nama / Item / Deskripsi</strong>, <strong>Stock Awal / Qty / Stok</strong>, <strong>Min Stock</strong>, <strong>Satuan / Unit</strong>).
+                        </p>
+                    </div>
+                    <label class="bg-emerald-800/80 hover:bg-emerald-700 text-emerald-50 p-3 rounded-lg font-medium text-xs text-center cursor-pointer border border-emerald-600/50 block transition-all">
+                        📂 Choose File (.xlsx / .xls)
+                        <input type="file" @change="importMasterCatalog" accept=".xlsx, .xls" class="hidden"/>
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-between items-center gap-3">
+                <div class="relative flex-1">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+                    <input v-model="searchMaster" type="text" placeholder="Cari Nama Barang di Master..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 shadow-sm">
+                </div>
+                <span class="text-xs text-slate-500 font-semibold bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 flex items-center gap-1.5">
+                    <i data-lucide="arrow-down-a-z" class="w-4 h-4 text-emerald-600"></i> Sorted A-Z
+                </span>
+            </div>
+            <div class="portal-card rounded-xl overflow-hidden">
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="book-open" class="w-4 h-4 text-emerald-600"></i>
+                        <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Data Master</h3>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button
+                            v-if="selectedMasterItems.length > 0"
+                            @click="deleteSelectedMaster"
+                            class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-sm"
+                        >
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            Hapus Terpilih ({{ selectedMasterItems.length }})
+                        </button>
+                        <span class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-200/60">{{ filteredMasterCatalog.length }} Item Master</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <!-- Hanya 100 row yang dipasang ke DOM per halaman; data Supabase tetap lengkap. -->
+                    <table class="w-full text-left text-xs excel-print-table">
+                        <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200/60">
+                            <tr>
+                                <th class="p-3.5 text-center">Pilih</th>
+                                <th class="p-3.5">Kode Barang</th>
+                                <th class="p-3.5">Nama Sparepart</th>
+                                <th class="p-3.5 text-center">Stock Awal</th>
+                                <th class="p-3.5 text-center">Minimal Stock</th>
+                                <th class="p-3.5 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="item in paginatedMasterCatalog" :key="item.kode" v-memo="[item.kode, item.nama, item.currentStock, item.minStock, item.satuan]" class="hover:bg-slate-50">
+                                <td class="p-3.5 text-center">
+                                    <input
+                                        type="checkbox"
+                                        :value="item.kode"
+                                        v-model="selectedMasterItems"
+                                        @click.stop
+                                        class="w-4 h-4 accent-emerald-600 cursor-pointer"
+                                    >
+                                </td>
+                                <td class="p-3.5 font-mono font-bold text-emerald-700">{{ item.kode }}</td>
+                                <td class="p-3.5 font-bold text-slate-800 uppercase">{{ item.nama }}</td>
+                                <td class="p-3.5 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">{{ item.currentStock ?? 0 }} {{ item.satuan || 'Pcs' }}</td>
+                                <td class="p-3.5 text-center font-bold text-slate-700">{{ item.minStock }} {{ item.satuan || 'Pcs' }}</td>
+                                <td class="p-3.5 text-center">
+                                    <button @click="deleteMaster(item.kode)" class="bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white px-3 py-1.5 rounded-lg border border-rose-300 transition-all font-bold text-[11px] inline-flex items-center gap-1.5 shadow-sm">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        <span>Hapus</span>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="filteredMasterCatalog.length === 0">
+                                <td colspan="6" class="p-12 text-center text-slate-400 font-medium">Database Master masih kosong. Silakan import atau tambah manual.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div v-if="masterPageCount > 1" class="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-2">
+                    <span class="text-[10px] font-semibold text-slate-500">
+                        Menampilkan {{ masterPageStart }}–{{ masterPageEnd }} dari {{ filteredMasterCatalog.length }} item
+                    </span>
+                    <div class="flex items-center gap-1.5">
+                        <button @click="masterPage = Math.max(1, masterPage - 1)" :disabled="masterPage <= 1" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">‹</button>
+                        <span class="px-2 text-[10px] font-bold text-emerald-700">Halaman {{ Math.min(masterPage, masterPageCount) }} / {{ masterPageCount }}</span>
+                        <button @click="masterPage = Math.min(masterPageCount, masterPage + 1)" :disabled="masterPage >= masterPageCount" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">›</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- TAB 3: MONITORING ORDER -->
+        <div v-if="activeTab === 'monitoring'" class="space-y-6">
+            <div class="flex flex-wrap justify-between items-center gap-3 no-print">
+                <button @click="openMonitoringInputModal" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl font-extrabold text-xs uppercase flex items-center gap-2 shadow-md transition-all">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> + Input Order Monitoring Baru
+                </button>
+                <button @click="printLogSection('monitoring-print-area')" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Cetak Tabel Monitoring (Tabel Excel)
+                </button>
+            </div>
+            <div class="portal-card p-4 rounded-xl space-y-3 no-print">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase">
+                    <i data-lucide="filter" class="w-4 h-4 text-emerald-600"></i> Filter Monitoring Order:
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Dari Tanggal</label>
+                        <input v-model="monFilterDateStart" type="date" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Sampai Tanggal</label>
+                        <input v-model="monFilterDateEnd" type="date" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Filter Status</label>
+                        <select v-model="monFilterStatus" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold uppercase">
+                            <option value="">-- SEMUA STATUS --</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Diterima Sebagian">Diterima Sebagian</option>
+                            <option value="Diterima Semua">Diterima Semua</option>
+                            <option value="Cancel">Cancel Order</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Cari Nama Barang</label>
+                        <input v-model="monFilterBarang" type="text" placeholder="Nama barang..." class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium uppercase">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Cari Kepentingan / Project</label>
+                        <input v-model="monFilterProject" type="text" placeholder="Kepentingan / project..." class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium uppercase">
+                    </div>
+                </div>
+            </div>
+            <!-- TABEL MONITORING (PRINTABLE AREA - EXCEL STYLE) -->
+            <div id="monitoring-print-area" class="portal-card rounded-xl overflow-hidden print-area">
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center no-print">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="list-checks" class="w-4 h-4 text-emerald-600"></i>
+                        <h3 class="font-bold text-slate-800 uppercase text-xs tracking-wider">Tabel Data Monitoring Order</h3>
+                    </div>
+                    <span class="text-[11px] font-semibold bg-amber-50 text-amber-700 px-2.5 py-1 rounded-md border border-amber-200/60">{{ filteredMonitoringItems.length }} Record Order</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs excel-print-table">
+                        <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200/60">
+                            <tr>
+                                <th class="p-3 text-center">No</th>
+                                <th class="p-3 text-center">Tgl Order</th>
+                                <th class="p-3">Nama Barang</th>
+                                <th class="p-3 text-center">Total Order</th>
+                                <th class="p-3 text-center">Diterima</th>
+                                <th class="p-3 text-center">Sisa Order</th>
+                                <!-- REVISI 2: Kepentingan Spesifik per Barang -->
+                                <th class="p-3 text-left">Kepentingan / Project</th>
+                                <th class="p-3 text-center">Status</th>
+                                <th class="p-3 text-center no-print">Aksi Terima</th>
+                                <th class="p-3 text-center no-print">Cancel Order</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="(order, idx) in filteredMonitoringItems" :key="order.id" class="hover:bg-slate-50">
+                                <td class="p-3 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                <!-- REVISI 1 (MONITORING): Jam dihilangkan, hanya menampilkan tanggal -->
+                                <td class="p-3 text-center font-mono text-slate-600 font-bold">{{ order.tgl }}</td>
+                                <td class="p-3 font-bold text-slate-800 uppercase">
+                                    {{ order.nama }}
+                                </td>
+                                <td class="p-3 text-center font-bold text-slate-700 uppercase">
+                                    {{ order.qtyTotal }} {{ order.satuan }}
+                                </td>
+                                <td class="p-3 text-center font-bold text-emerald-600 uppercase">
+                                    {{ order.qtyReceived }} {{ order.satuan }}
+                                </td>
+                                <td class="p-3 text-center font-bold text-amber-600 uppercase">
+                                    {{ order.qtyRemaining }} {{ order.satuan }}
+                                </td>
+                                <!-- REVISI 2: Menampilkan Kepentingan spesifik per barang -->
+                                <td class="p-3 font-extrabold text-xs text-emerald-900 uppercase bg-emerald-50/40 rounded-lg">
+                                    {{ order.keperluan || order.project || '-' }}
+                                </td>
+                                <td class="p-3 text-center">
+                                    <span v-if="order.status === 'Diterima Semua'" class="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-200 uppercase">Diterima Semua</span>
+                                    <span v-else-if="order.status === 'Diterima Sebagian'" class="bg-blue-100 text-blue-800 text-[9px] font-bold px-2 py-0.5 rounded border border-blue-200 uppercase">Diterima Sebagian</span>
+                                    <span v-else-if="order.status === 'Cancel'" class="bg-rose-100 text-rose-800 text-[9px] font-bold px-2 py-0.5 rounded border border-rose-200 uppercase">Canceled</span>
+                                    <span v-else class="bg-amber-100 text-amber-800 text-[9px] font-bold px-2 py-0.5 rounded border border-amber-200 uppercase">Pending</span>
+                                </td>
+                                <td class="p-3 text-center no-print">
+                                    <button v-if="order.status !== 'Cancel' && order.status !== 'Diterima Semua'" @click="terimaBarang(order)" class="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1.5 rounded-lg font-bold text-[10px] uppercase shadow-sm">
+                                        Terima
+                                    </button>
+                                    <span v-else class="text-slate-400 italic text-[10px]">-</span>
+                                </td>
+                                <td class="p-3 text-center no-print">
+                                    <button v-if="order.status !== 'Cancel'" @click="cancelOrder(order)" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1.5 rounded-lg font-bold text-[10px] uppercase shadow-sm">
+                                        Cancel
+                                    </button>
+                                    <span v-else class="text-rose-500 font-bold text-[10px]">DI CANCEL</span>
+                                </td>
+                            </tr>
+                            <tr v-if="filteredMonitoringItems.length === 0"><td colspan="10" class="p-8 text-center text-slate-400 font-medium">Tidak ada data order monitoring yang sesuai filter.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="space-y-4 pt-4 border-t border-slate-200 no-print">
+                <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-emerald-600">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <span class="font-extrabold text-xs uppercase text-emerald-900 flex items-center gap-2">
+                            <i data-lucide="history" class="w-5 h-5 text-emerald-600"></i> History Penerimaan Order Monitoring
+                        </span>
+                        <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full border border-emerald-200">{{ monitoringHistoryIn.length }} Transaksi</span>
+                    </div>
+                    <div class="overflow-x-auto custom-scroll max-h-[350px]">
+                        <table class="w-full text-left text-xs excel-print-table">
+                            <thead class="bg-emerald-50/70 font-bold text-emerald-900 uppercase text-[9px] border-b border-emerald-200 sticky top-0">
+                                <tr>
+                                    <th class="p-2.5 text-center">Tgl Penerimaan</th>
+                                    <th class="p-2.5">Kepentingan / Project</th>
+                                    <th class="p-2.5">Nama Barang</th>
+                                    <th class="p-2.5 text-center">Qty Diterima</th>
+                                    <th class="p-2.5 text-center">Status Akhir</th>
+                                    <th class="p-2.5 text-center no-print">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="h in monitoringHistoryIn" :key="h.id" class="hover:bg-emerald-50/30">
+                                    <td class="p-2.5 text-center font-mono text-slate-600 font-bold text-[10px]">
+                                        {{ h.tgl }}
+                                        <span v-if="h.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ h.editedAt }}</span>
+                                    </td>
+                                    <td class="p-2.5 font-extrabold text-slate-800 text-xs uppercase">{{ h.keperluan || h.project || '-' }}</td>
+                                    <td class="p-2.5 font-bold text-slate-800 uppercase">{{ h.nama }}</td>
+                                    <td class="p-2.5 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">+{{ h.qty }} {{ h.satuan }}</td>
+                                    <td class="p-2.5 text-center">
+                                        <span :class="h.status === 'Diterima Semua' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-blue-100 text-blue-800 border-blue-200'" class="px-2 py-0.5 text-[9px] font-bold rounded border uppercase">
+                                            {{ h.status }}
+                                        </span>
+                                    </td>
+                                    <td class="p-2.5 text-center no-print">
+                                        <button @click="editLog(h)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="monitoringHistoryIn.length === 0"><td colspan="6" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada riwayat penerimaan order.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- TAB 4: GUDANG SPAREPART -->
+        <div v-if="activeTab === 'sparepart'" class="space-y-6">
+            <div class="flex flex-wrap justify-between items-center gap-3 no-print">
+                <div class="flex items-center gap-2">
+                    <button @click="openSparepartMultiOutModal" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
+                        <i data-lucide="minus-square" class="w-4 h-4"></i> Pengeluaran Multiple Sparepart
+                    </button>
+                </div>
+                <button @click="printLogSection('sparepart-log-print')" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Cetak  Sparepart (Tabel Excel)
+                </button>
+            </div>
+            <div class="portal-card p-4 rounded-xl space-y-2 no-print">
+                <span class="text-xs font-bold text-slate-700 uppercase">Filter Log Sparepart:</span>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <input v-model="spLogDateStart" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <input v-model="spLogDateEnd" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <input v-model="spLogBarang" type="text" placeholder="Cari Barang..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
+                    <input v-model="spLogKeperluan" type="text" placeholder="Cari Kepentingan / Supplier..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
+                </div>
+            </div>
+            <div id="sparepart-log-print" class="grid grid-cols-1 lg:grid-cols-2 gap-6 print-area">
+                <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-emerald-600">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span class="font-bold text-xs uppercase text-emerald-900 flex items-center gap-1.5">
+                            <i data-lucide="arrow-down-left" class="w-4 h-4 text-emerald-600"></i> Log Barang Masuk Sparepart (Inbound)
+                        </span>
+                        <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">{{ filteredSparepartLogsIn.length }} Masuk</span>
+                    </div>
+                    <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                        <table class="w-full text-left text-xs excel-print-table">
+                            <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[9px] border-b border-slate-200 sticky top-0">
+                                <tr>
+                                    <th class="p-2 text-center">No</th>
+                                    <th class="p-2">Nama Barang</th>
+                                    <th class="p-2 text-center">Qty Masuk</th>
+                                    <th class="p-2 text-center">Qty Awal</th>
+                                    <th class="p-2 text-center">Qty Akhir</th>
+                                    <th class="p-2">Supplier / Kepentingan</th>
+                                    <th class="p-2 text-center no-print">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="(log, idx) in filteredSparepartLogsIn" :key="log.id">
+                                    <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                    <td class="p-2 font-bold text-slate-800 uppercase">
+                                        {{ log.nama }}
+                                        <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
+                                    </td>
+                                    <td class="p-2 text-center font-bold text-emerald-600">+{{ log.qty }}</td>
+                                    <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
+                                    <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
+                                    <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
+                                    <td class="p-2 text-center no-print">
+                                        <button @click="editLog(log)" class="text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="filteredSparepartLogsIn.length === 0"><td colspan="7" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang masuk.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-amber-600">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span class="font-bold text-xs uppercase text-amber-900 flex items-center gap-1.5">
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-amber-600"></i> Log Barang Keluar Sparepart (Outbound)
+                        </span>
+                        <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">{{ filteredSparepartLogsOut.length }} Keluar</span>
+                    </div>
+                    <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                        <table class="w-full text-left text-xs excel-print-table">
+                            <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[9px] border-b border-slate-200 sticky top-0">
+                                <tr>
+                                    <th class="p-2 text-center">No</th>
+                                    <th class="p-2">Nama Barang</th>
+                                    <th class="p-2 text-center">Qty Out</th>
+                                    <th class="p-2 text-center">Qty Awal</th>
+                                    <th class="p-2 text-center">Qty Akhir</th>
+                                    <th class="p-2">Kepentingan</th>
+                                    <th class="p-2">Pengambil</th>
+                                    <th class="p-2 text-center no-print">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="(log, idx) in filteredSparepartLogsOut" :key="log.id">
+                                    <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                    <td class="p-2 font-bold text-slate-800 uppercase">
+                                        {{ log.nama }}
+                                        <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
+                                    </td>
+                                    <td class="p-2 text-center font-bold text-amber-600">-{{ log.qty }}</td>
+                                    <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
+                                    <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
+                                    <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.user }} ({{ log.keperluan || '-' }})</td>
+                                    <td class="p-2 text-center no-print">
+                                        <button @click="editLog(log)" class="text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="filteredSparepartLogsOut.length === 0"><td colspan="7" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang keluar.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="portal-card rounded-xl overflow-hidden no-print">
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="wrench" class="w-4 h-4 text-emerald-600"></i>
+                        <h3 class="font-bold text-slate-800 uppercase text-xs tracking-wider">Daftar Stok Gudang Spare Part</h3>
+                    </div>
+                    <span class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">{{ filteredSpareparts.length }} Item Available</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs excel-print-table">
+                        <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200/60">
+                            <tr>
+                                <th class="p-3.5">Nama Barang</th>
+                                <th class="p-3.5 text-center">Stok Available</th>
+                                <th class="p-3.5 text-center">Lokasi Rak</th>
+                                <th class="p-3.5 text-center">Aksi Pengeluaran</th>
+                                <th class="p-3.5 text-center">Label Barcode</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="item in filteredSpareparts" :key="item.barcode" class="hover:bg-slate-50 transition-colors">
+                                <td class="p-3.5 font-bold text-slate-800 uppercase flex items-center gap-2">
+                                    <i data-lucide="info" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                    <span>{{ item.nama }}</span>
+                                </td>
+                                <td class="p-3.5 text-center">
+                                    <span :class="item.qty <= item.minStock ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-slate-800 bg-slate-100 border-slate-200'" class="px-2.5 py-1 rounded-lg font-black text-xs border inline-block">
+                                        {{ item.qty }} {{ item.satuan || 'Pcs' }}
+                                    </span>
+                                </td>
+                                <td class="p-3.5 text-center font-bold text-slate-600 uppercase">{{ item.lokasi || '-' }}</td>
+                                <td class="p-3.5 text-center">
+                                    <button @click="openSingleOutModal(item)" :disabled="item.qty <= 0" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase shadow-sm border border-amber-500">
+                                        Keluar
+                                    </button>
+                                </td>
+                                <td class="p-3.5 text-center">
+                                    <button @click="printLabel(item)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-semibold text-[10px] uppercase border border-slate-300 flex items-center gap-1 mx-auto">
+                                        <i data-lucide="printer" class="w-3 h-3"></i> Cetak Label
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="filteredSpareparts.length === 0"><td colspan="5" class="p-10 text-center text-slate-400 font-medium">Stok Sparepart kosong.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- TAB 5: GUDANG SISA PROJECT -->
+        <div v-if="activeTab === 'sisa_project'" class="space-y-6">
+            <div class="flex flex-wrap justify-between items-center gap-3 no-print">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button @click="openSisaProjectMultiInModal" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
+                        <i data-lucide="plus-square" class="w-4 h-4"></i> Input Multiple Sisa Project
+                    </button>
+                    <button @click="openSisaProjectMultiOutModal" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
+                        <i data-lucide="minus-square" class="w-4 h-4"></i> Pengeluaran Multiple Sisa Project
+                    </button>
+                </div>
+                <button @click="printLogSection('sisa-log-print')" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Cetak Log Sisa Project (Tabel Excel)
+                </button>
+            </div>
+            <div class="portal-card p-4 rounded-xl space-y-2 no-print">
+                <span class="text-xs font-bold text-slate-700 uppercase">Filter Log Sisa Project:</span>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <input v-model="spjLogDateStart" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <input v-model="spjLogDateEnd" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <input v-model="spjLogBarang" type="text" placeholder="Cari Barang..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
+                    <input v-model="spjLogKeperluan" type="text" placeholder="Cari Kepentingan / Supplier..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
+                </div>
+            </div>
+            <div id="sisa-log-print" class="grid grid-cols-1 lg:grid-cols-2 gap-6 print-area">
+                <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-emerald-600">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span class="font-bold text-xs uppercase text-emerald-900 flex items-center gap-1.5">
+                            <i data-lucide="arrow-down-left" class="w-4 h-4 text-emerald-600"></i> Log Barang Masuk Sisa Project (Inbound)
+                        </span>
+                        <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">{{ filteredProjectLogsIn.length }} Masuk</span>
+                    </div>
+                    <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                        <table class="w-full text-left text-xs excel-print-table">
+                            <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[9px] border-b border-slate-200 sticky top-0">
+                                <tr>
+                                    <th class="p-2 text-center">No</th>
+                                    <th class="p-2">Nama Barang</th>
+                                    <th class="p-2 text-center">Qty Masuk</th>
+                                    <th class="p-2 text-center">Qty Awal</th>
+                                    <th class="p-2 text-center">Qty Akhir</th>
+                                    <th class="p-2">Asal / Kepentingan</th>
+                                    <th class="p-2 text-center no-print">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="(log, idx) in filteredProjectLogsIn" :key="log.id">
+                                    <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                    <td class="p-2 font-bold text-slate-800 uppercase">
+                                        {{ log.nama }}
+                                        <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
+                                    </td>
+                                    <td class="p-2 text-center font-bold text-emerald-600">+{{ log.qty }}</td>
+                                    <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
+                                    <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
+                                    <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
+                                    <td class="p-2 text-center no-print">
+                                        <button @click="editLog(log)" class="text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="filteredProjectLogsIn.length === 0"><td colspan="7" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang masuk.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-amber-600">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span class="font-bold text-xs uppercase text-amber-900 flex items-center gap-1.5">
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-amber-600"></i> Log Barang Keluar Sisa Project (Outbound)
+                        </span>
+                        <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">{{ filteredProjectLogsOut.length }} Keluar</span>
+                    </div>
+                    <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                        <table class="w-full text-left text-xs excel-print-table">
+                            <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[9px] border-b border-slate-200 sticky top-0">
+                                <tr>
+                                    <th class="p-2 text-center">No</th>
+                                    <th class="p-2">Nama Barang</th>
+                                    <th class="p-2 text-center">Qty Out</th>
+                                    <th class="p-2 text-center">Qty Awal</th>
+                                    <th class="p-2 text-center">Qty Akhir</th>
+                                    <th class="p-2">Pengambil / Kepentingan</th>
+                                    <th class="p-2 text-center no-print">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="(log, idx) in filteredProjectLogsOut" :key="log.id">
+                                    <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                    <td class="p-2 font-bold text-slate-800 uppercase">
+                                        {{ log.nama }}
+                                        <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
+                                    </td>
+                                    <td class="p-2 text-center font-bold text-amber-600">-{{ log.qty }}</td>
+                                    <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
+                                    <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
+                                    <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.user }} ({{ log.keperluan || '-' }})</td>
+                                    <td class="p-2 text-center no-print">
+                                        <button @click="editLog(log)" class="text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="filteredProjectLogsOut.length === 0"><td colspan="7" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang keluar.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="portal-card rounded-xl overflow-hidden no-print">
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="boxes" class="w-4 h-4 text-teal-600"></i>
+                        <h3 class="font-bold text-slate-800 uppercase text-xs tracking-wider">Daftar Stok Gudang Sisa Project</h3>
+                    </div>
+                    <span class="text-[11px] font-semibold bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200">{{ filteredSisaProjects.length }} Item Available</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs excel-print-table">
+                        <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200/60">
+                            <tr>
+                                <th class="p-3.5">Nama Barang</th>
+                                <th class="p-3.5 text-center">Stok Available</th>
+                                <th class="p-3.5 text-center">Lokasi Rak</th>
+                                <th class="p-3.5 text-center">Aksi Pengeluaran</th>
+                                <th class="p-3.5 text-center">Label Barcode</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="item in filteredSisaProjects" :key="item.barcode" class="hover:bg-slate-50 transition-colors">
+                                <td class="p-3.5 font-bold text-slate-800 uppercase flex items-center gap-2">
+                                    <i data-lucide="info" class="w-3.5 h-3.5 text-teal-600"></i>
+                                    <span>{{ item.nama }}</span>
+                                </td>
+                                <td class="p-3.5 text-center">
+                                    <span class="px-2.5 py-1 rounded-lg font-black text-xs border border-slate-200 bg-slate-100 text-slate-800 inline-block">
+                                        {{ item.qty }} {{ item.satuan || 'Pcs' }}
+                                    </span>
+                                </td>
+                                <td class="p-3.5 text-center font-bold text-slate-600 uppercase">{{ item.lokasi || '-' }}</td>
+                                <td class="p-3.5 text-center">
+                                    <button @click="openSingleOutModal(item)" :disabled="item.qty <= 0" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase shadow-sm border border-amber-500">
+                                        Keluar
+                                    </button>
+                                </td>
+                                <td class="p-3.5 text-center">
+                                    <button @click="printLabel(item)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-semibold text-[10px] uppercase border border-slate-300 flex items-center gap-1 mx-auto">
+                                        <i data-lucide="printer" class="w-3 h-3"></i> Cetak Label
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="filteredSisaProjects.length === 0"><td colspan="5" class="p-10 text-center text-slate-400 font-medium">Stok Sisa Project kosong.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- MODAL 1: INPUT MONITORING ORDER -->
+    <!-- REVISI 1 & 2: Ketik Manual Dulu Baru Ada Pilihan Data Master + Kepentingan Spesifik Per Barang -->
+    <div v-if="showMonitoringInputModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-sm uppercase flex items-center gap-2">
+                    <i data-lucide="plus-square" class="w-5 h-5 text-emerald-600"></i>
+                    Input Order Monitoring Baru
+                </h3>
+                <button @click="showMonitoringInputModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+            </div>
+            <div class="space-y-4 overflow-y-auto custom-scroll pr-1 flex-1">
+                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span class="text-xs font-bold text-slate-700 uppercase">Daftar Barang Order:</span>
+                    <button @click="addManualItemToMonitoring" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg uppercase shadow-sm flex items-center gap-1">
+                        + Tambah Item Order
+                    </button>
+                </div>
+                <div class="space-y-3">
+                    <div v-for="(item, idx) in formOrderMulti.itemsToProcess" :key="idx" class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                            <span class="text-xs font-black text-emerald-800 uppercase">Item #{{ idx + 1 }}</span>
+                            <button @click="removeMonitoringItemToProcess(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs flex items-center gap-1">
+                                &times; Hapus Item
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
+                            <!-- Input Nama Barang Manual dengan Saran Datalist dari Master -->
+                            <div class="md:col-span-5">
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Nama Barang (Ketik / Pilih Master)</label>
+                                <input v-model="item.nama" @focus="masterAutocompleteQuery = item.nama || ''" @input="onMonitoringItemInput(item)" list="master-catalog-list" type="text" placeholder="Ketik nama barang..." class="w-full p-2 bg-white font-bold text-xs uppercase border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+                            </div>
+                            <!-- Qty Order -->
+                            <div class="md:col-span-2">
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Qty</label>
+                                <input v-model.number="item.orderQty" type="number" min="1" placeholder="Qty" class="w-full p-2 bg-white font-bold text-xs text-center border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+                            </div>
+                            <!-- Satuan -->
+                            <div class="md:col-span-2">
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Satuan</label>
+                                <input v-model="item.orderSatuan" type="text" placeholder="Pcs/Unit" class="w-full p-2 bg-white font-semibold text-xs text-center border border-slate-300 rounded-lg uppercase outline-none focus:border-emerald-500">
+                            </div>
+                            <!-- Kepentingan Spesifik Per Barang -->
+                            <div class="md:col-span-3">
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Kepentingan Spesifik *</label>
+                                <input v-model="item.keperluan" type="text" placeholder="Contoh: GH-A / Maintenance" class="w-full p-2 bg-white font-semibold text-xs border border-slate-300 rounded-lg uppercase outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button @click="showMonitoringInputModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold uppercase">Batal</button>
+                <button @click="simpanOrderMulti" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold uppercase shadow-sm">Masukkan Ke Monitoring</button>
+            </div>
+        </div>
+    </div>
+    <!-- MODAL 2: PENGELUARAN MULTIPLE SPAREPART -->
+    <div v-if="showSparepartMultiOutModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-sm uppercase flex items-center gap-2">
+                    <i data-lucide="minus-square" class="w-5 h-5 text-amber-600"></i>
+                    Pengeluaran Multiple Item - Gudang Spare Part
+                </h3>
+                <button @click="showSparepartMultiOutModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+            </div>
+
+            <div class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Pengambil / Penerima *</label>
+                    <input v-model="formSparepartMultiOut.user" type="text" placeholder="Contoh: Budi (Teknisi)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[11px] text-slate-500 font-semibold">Daftar Barang Spare Part:</span>
+                    <button @click="addCustomItemToSparepartMultiOut" class="text-xs text-amber-700 font-bold hover:underline flex items-center gap-1">
+                        + Tambah Item Manual
+                    </button>
+                </div>
+
+                <div class="space-y-2 border-t border-slate-100 pt-3">
+                    <div v-for="(item, idx) in formSparepartMultiOut.selectedItems" :key="idx" class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <input v-model="item.nama" @focus="masterAutocompleteQuery = item.nama || ''" @input="onSparepartMultiOutItemInput(item)" list="master-catalog-list" type="text" placeholder="Nama Barang (Ketik / Pilih Master)" class="font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md flex-1 mr-2">
+                            <button @click="removeSparepartOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Stok Saat Ini</label>
+                                <input :value="item.qty" type="number" readonly class="w-full p-1.5 bg-slate-100 font-bold text-xs text-center border border-amber-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Qty Keluar</label>
+                                <input v-model.number="item.outQty" type="number" min="1" :max="item.qty" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-amber-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Satuan</label>
+                                <input v-model="item.satuan" type="text" readonly class="w-full p-1.5 bg-slate-100 font-semibold text-xs text-center border border-amber-300 rounded-md uppercase">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Kepentingan Spesifik *</label>
+                                <input v-model="item.keperluan" type="text" placeholder="Maintenance / Produksi" class="w-full p-1.5 bg-white font-semibold text-xs border border-amber-300 rounded-md uppercase">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button @click="showSparepartMultiOutModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold uppercase">Batal</button>
+                <button @click="submitSparepartMultiOut" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold uppercase shadow-sm">Proses Pengeluaran</button>
+            </div>
+        </div>
+    </div>
+    <!-- MODAL 3: INPUT MULTIPLE SISA PROJECT -->
+    <div v-if="showSisaProjectMultiInModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-sm uppercase flex items-center gap-2">
+                    <i data-lucide="plus-square" class="w-5 h-5 text-emerald-600"></i>
+                    Input Multiple Item Masuk - Gudang Sisa Project
+                </h3>
+                <button @click="showSisaProjectMultiInModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+            </div>
+            <div class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Asal Vendor / Supplier Utama *</label>
+                    <input v-model="formSisaProjectMultiIn.supplier" type="text" placeholder="Contoh: Vendor PT XYZ / Sisa Proyek" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-emerald-500">
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[11px] text-slate-500 font-semibold">Daftar Barang Sisa Project:</span>
+                    <button @click="addCustomItemToSisaProjectMultiIn" class="text-xs text-emerald-700 font-bold hover:underline flex items-center gap-1">
+                        + Tambah Item Manual
+                    </button>
+                </div>
+                <div class="space-y-2 border-t border-slate-100 pt-3">
+                    <div v-for="(item, idx) in formSisaProjectMultiIn.itemsToProcess" :key="idx" class="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <input v-model="item.nama" @focus="masterAutocompleteQuery = item.nama || ''" @input="masterAutocompleteQuery = item.nama || ''" list="master-catalog-list" type="text" placeholder="Nama Barang (Ketik / Pilih Master)" class="font-bold text-xs uppercase bg-white p-1.5 border border-emerald-300 rounded-md flex-1 mr-2">
+                            <button @click="removeSisaProjectMultiInItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Qty Masuk</label>
+                                <input v-model.number="item.qty" type="number" min="1" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-emerald-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Satuan</label>
+                                <input v-model="item.satuan" type="text" placeholder="Pcs/Meter" class="w-full p-1.5 bg-white font-semibold text-xs text-center border border-emerald-300 rounded-md uppercase">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Lokasi Rak</label>
+                                <input v-model="item.lokasi" type="text" placeholder="RAK SISA" class="w-full p-1.5 bg-white font-semibold text-xs text-center border border-emerald-300 rounded-md uppercase">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Kepentingan Spesifik</label>
+                                <input v-model="item.keperluan" type="text" placeholder="Sisa Blok C" class="w-full p-1.5 bg-white font-semibold text-xs border border-emerald-300 rounded-md uppercase">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button @click="showSisaProjectMultiInModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold uppercase">Batal</button>
+                <button @click="submitSisaProjectMultiIn" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold uppercase shadow-sm">Simpan Barang Masuk</button>
+            </div>
+        </div>
+    </div>
+    <!-- MODAL 4: PENGELUARAN MULTIPLE SISA PROJECT -->
+    <div v-if="showSisaProjectMultiOutModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-sm uppercase flex items-center gap-2">
+                    <i data-lucide="minus-square" class="w-5 h-5 text-amber-600"></i>
+                    Pengeluaran Multiple Item - Gudang Sisa Project
+                </h3>
+                <button @click="showSisaProjectMultiOutModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+            </div>
+
+            <div class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Pengambil / Penerima *</label>
+                    <input v-model="formSisaProjectMultiOut.user" type="text" placeholder="Contoh: Ahmad (Vendor)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[11px] text-slate-500 font-semibold">Daftar Barang Sisa Project:</span>
+                    <button @click="addCustomItemToSisaProjectMultiOut" class="text-xs text-amber-700 font-bold hover:underline flex items-center gap-1">
+                        + Tambah Item Manual
+                    </button>
+                </div>
+
+                <div class="space-y-2 border-t border-slate-100 pt-3">
+                    <div v-for="(item, idx) in formSisaProjectMultiOut.selectedItems" :key="idx" class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <input v-model="item.nama" @focus="masterAutocompleteQuery = item.nama || ''" @input="onSisaProjectMultiOutItemInput(item)" list="master-catalog-list" type="text" placeholder="Nama Barang (Ketik / Pilih Master)" class="font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md flex-1 mr-2">
+                            <button @click="removeSisaProjectOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Stok Saat Ini</label>
+                                <input :value="item.qty" type="number" readonly class="w-full p-1.5 bg-slate-100 font-bold text-xs text-center border border-amber-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Qty Keluar</label>
+                                <input v-model.number="item.outQty" type="number" min="1" :max="item.qty" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-amber-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Satuan</label>
+                                <input v-model="item.satuan" type="text" readonly class="w-full p-1.5 bg-slate-100 font-semibold text-xs text-center border border-amber-300 rounded-md uppercase">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Kepentingan Spesifik *</label>
+                                <input v-model="item.keperluan" type="text" placeholder="Pagar / Project" class="w-full p-1.5 bg-white font-semibold text-xs border border-amber-300 rounded-md uppercase">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button @click="showSisaProjectMultiOutModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold uppercase">Batal</button>
+                <button @click="submitSisaProjectMultiOut" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold uppercase shadow-sm">Proses Pengeluaran</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- VUE LOGIC INITIALIZATION -->
+<script>
+    // ================= SUPABASE CONFIG =================
+    // Ganti dua nilai ini dengan Project URL dan Publishable Key dari Supabase.
+    // JANGAN masukkan service_role/secret key ke browser.
+    window.SUPABASE_URL = 'https://fyfdseodlzrkkgwzuqzk.supabase.co';
+    window.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_gwBLtNwQtTh6XRrI0jtxog_V3N5m4CZ';
+
+    const { createApp } = Vue;
+    createApp({
+        data() {
+            return {
+                activeTab: 'dashboard',
+                activeItem: {},
+                dashFilterDateStart: '',
+                dashFilterDateEnd: '',
+                searchMaster: '',
+                masterAutocompleteQuery: '',
+                masterPage: 1,
+                masterPageSize: 100,
+                formMasterManual: { nama: '', minStock: 5, currentStock: 0, satuan: 'Pcs' },
+                showMonitoringInputModal: false,
+                monFilterDateStart: '',
+                monFilterDateEnd: '',
+                monFilterStatus: '',
+                monFilterBarang: '',
+                monFilterProject: '',
+                formOrderMulti: { itemsToProcess: [] },
+                showSparepartMultiOutModal: false,
+                sparepartOutSearchQuery: '',
+                spLogDateStart: '',
+                spLogDateEnd: '',
+                spLogBarang: '',
+                spLogKeperluan: '',
+                formSparepartMultiOut: { user: '', selectedItems: [] },
+                showSisaProjectMultiInModal: false,
+                showSisaProjectMultiOutModal: false,
+                sisaProjectOutSearchQuery: '',
+                spjLogDateStart: '',
+                spjLogDateEnd: '',
+                spjLogBarang: '',
+                spjLogKeperluan: '',
+                formSisaProjectMultiIn: { supplier: '', itemsToProcess: [] },
+                formSisaProjectMultiOut: { user: '', selectedItems: [] },
+                masterCatalog: [],
+                selectedMasterItems: [],
+                selectAllMaster: false,
+                monitoringItems: [],
+                monitoringHistory: [],
+                spareparts: [],
+                sisaProjects: [],
+                logs: [],
+                supabaseConnected: false,
+                isHydratingFromSupabase: true,
+                supabaseSaveTimer: null,
+                supabaseSaveInProgress: false,
+                supabaseSaveQueued: false
+            }
+        },
+        watch: {
+            masterCatalog: { handler() { this.scheduleSupabaseSave(); }, deep: true },
+            monitoringItems: { handler() { this.scheduleSupabaseSave(); }, deep: true },
+            monitoringHistory: { handler() { this.scheduleSupabaseSave(); }, deep: true },
+            spareparts: { handler() { this.scheduleSupabaseSave(); }, deep: true },
+            sisaProjects: { handler() { this.scheduleSupabaseSave(); }, deep: true },
+            logs: { handler() { this.scheduleSupabaseSave(); }, deep: true },
+            searchMaster() {
+                this.masterPage = 1;
+            },
+            activeTab() {
+                this.refreshIcons();
+            }
+        },
+        computed: {
+            filteredMasterCatalog() {
+                const keyword = this.searchMaster.trim().toLowerCase();
+                if (!keyword) return this.masterCatalog;
+                return this.masterCatalog.filter(i =>
+                    String(i.nama || '').toLowerCase().includes(keyword)
+                );
+            },
+            masterPageCount() {
+                return Math.max(1, Math.ceil(this.filteredMasterCatalog.length / this.masterPageSize));
+            },
+            paginatedMasterCatalog() {
+                const pageCount = this.masterPageCount;
+                const page = Math.min(Math.max(1, this.masterPage), pageCount);
+                const start = (page - 1) * this.masterPageSize;
+                return this.filteredMasterCatalog.slice(start, start + this.masterPageSize);
+            },
+            masterPageStart() {
+                if (!this.filteredMasterCatalog.length) return 0;
+                return ((Math.min(this.masterPage, this.masterPageCount) - 1) * this.masterPageSize) + 1;
+            },
+            masterPageEnd() {
+                return Math.min(
+                    Math.min(this.masterPage, this.masterPageCount) * this.masterPageSize,
+                    this.filteredMasterCatalog.length
+                );
+            },
+            masterAutocompleteOptions() {
+                const keyword = this.masterAutocompleteQuery.trim().toLowerCase();
+                const source = keyword
+                    ? this.masterCatalog.filter(i => String(i.nama || '').toLowerCase().includes(keyword))
+                    : this.masterCatalog;
+                return source.slice(0, 100);
+            },
+            filteredMonitoringItems() {
+                return this.monitoringItems.filter(i => {
+                    const matchBarang = !this.monFilterBarang || i.nama.toLowerCase().includes(this.monFilterBarang.toLowerCase());
+                    const itemKepentingan = (i.keperluan || i.project || '').toLowerCase();
+                    const matchProject = !this.monFilterProject || itemKepentingan.includes(this.monFilterProject.toLowerCase());
+                    const matchStatus = !this.monFilterStatus || i.status === this.monFilterStatus;
+                    let matchDate = true;
+                    if (this.monFilterDateStart || this.monFilterDateEnd) {
+                        const itemDate = new Date(i.isoDate || i.id);
+                        if (this.monFilterDateStart && itemDate < new Date(this.monFilterDateStart)) matchDate = false;
+                        if (this.monFilterDateEnd) {
+                            const endDate = new Date(this.monFilterDateEnd);
+                            endDate.setHours(23, 59, 59);
+                            if (itemDate > endDate) matchDate = false;
+                        }
+                    }
+                    return matchBarang && matchProject && matchStatus && matchDate;
+                });
+            },
+            monitoringHistoryIn() {
+                return this.monitoringHistory.filter(h => h.type === 'IN');
+            },
+            filteredSpareparts() {
+                return this.spareparts;
+            },
+            filteredSisaProjects() {
+                return this.sisaProjects;
+            },
+            sparepartLogsIn() {
+                return this.filterLogs('Sparepart', 'IN', this.spLogDateStart, this.spLogDateEnd, this.spLogBarang, this.spLogKeperluan);
+            },
+            sparepartLogsOut() {
+                return this.filterLogs('Sparepart', 'OUT', this.spLogDateStart, this.spLogDateEnd, this.spLogBarang, this.spLogKeperluan);
+            },
+            projectLogsIn() {
+                return this.filterLogs('Sisa Project', 'IN', this.spjLogDateStart, this.spjLogDateEnd, this.spjLogBarang, this.spjLogKeperluan);
+            },
+            projectLogsOut() {
+                return this.filterLogs('Sisa Project', 'OUT', this.spjLogDateStart, this.spjLogDateEnd, this.spjLogBarang, this.spjLogKeperluan);
+            },
+            filteredSparepartLogsIn() {
+                return this.filterLogs('Sparepart', 'IN', this.dashFilterDateStart, this.dashFilterDateEnd, '', '');
+            },
+            filteredSparepartLogsOut() {
+                return this.filterLogs('Sparepart', 'OUT', this.dashFilterDateStart, this.dashFilterDateEnd, '', '');
+            },
+            filteredProjectLogsIn() {
+                return this.filterLogs('Sisa Project', 'IN', this.dashFilterDateStart, this.dashFilterDateEnd, '', '');
+            },
+            filteredProjectLogsOut() {
+                return this.filterLogs('Sisa Project', 'OUT', this.dashFilterDateStart, this.dashFilterDateEnd, '', '');
+            }
+        },
+        async mounted() {
+            this.refreshIcons();
+            await this.loadFromSupabase();
+        },
+        methods: {
+            refreshIcons() {
+                if (this._iconRefreshPending) return;
+                this._iconRefreshPending = true;
+                this.$nextTick(() => {
+                    requestAnimationFrame(() => {
+                        this._iconRefreshPending = false;
+                        if (window.lucide) lucide.createIcons();
+                    });
+                });
+            },
+            sortMasterCatalog() {
+                // Urutkan hanya saat data master berubah, bukan pada setiap render/search.
+                this.masterCatalog.sort((a, b) =>
+                    String(a.nama || '').localeCompare(String(b.nama || ''), 'id', { sensitivity: 'base' })
+                );
+            },
+            normalizeMasterPage() {
+                if (this.masterPage > this.masterPageCount) {
+                    this.masterPage = this.masterPageCount;
+                }
+            },
+            getSupabaseClient() {
+                if (!window.supabase) return null;
+                const url = window.SUPABASE_URL || '';
+                const key = window.SUPABASE_PUBLISHABLE_KEY || '';
+                if (!url || !key || url.includes('YOUR_PROJECT')) return null;
+                if (!window.__inventorySupabaseClient) {
+                    window.__inventorySupabaseClient = window.supabase.createClient(url, key);
+                }
+                return window.__inventorySupabaseClient;
+            },
+            getPersistedState() {
+                // Ambil raw object Vue agar serialisasi payload Supabase tidak perlu
+                // melewati proxy reactive satu per satu.
+                const raw = Vue.toRaw || (value => value);
+                return {
+                    masterCatalog: raw(this.masterCatalog),
+                    monitoringItems: raw(this.monitoringItems),
+                    monitoringHistory: raw(this.monitoringHistory),
+                    spareparts: raw(this.spareparts),
+                    sisaProjects: raw(this.sisaProjects),
+                    logs: raw(this.logs)
+                };
+            },
+            scheduleSupabaseSave(delay = 900) {
+                if (this.isHydratingFromSupabase) return;
+                clearTimeout(this.supabaseSaveTimer);
+                if (this.supabaseSaveInProgress) {
+                    this.supabaseSaveQueued = true;
+                    return;
+                }
+                this.supabaseSaveTimer = setTimeout(() => {
+                    this.supabaseSaveTimer = null;
+                    this.saveToSupabase();
+                }, delay);
+            },
+            async loadFromSupabase() {
+                const client = this.getSupabaseClient();
+                if (!client) {
+                    this.isHydratingFromSupabase = false;
+                    console.warn('Supabase belum dikonfigurasi. Isi SUPABASE_URL dan SUPABASE_PUBLISHABLE_KEY.');
+                    return;
+                }
+                try {
+                    const { data, error } = await client
+                        .from('inventory_state')
+                        .select('state')
+                        .eq('id', 'main')
+                        .maybeSingle();
+                    if (error) throw error;
+                    if (data && data.state) {
+                        const state = data.state;
+                        this.masterCatalog = Array.isArray(state.masterCatalog) ? state.masterCatalog : [];
+                        this.monitoringItems = Array.isArray(state.monitoringItems) ? state.monitoringItems : [];
+                        this.monitoringHistory = Array.isArray(state.monitoringHistory) ? state.monitoringHistory : [];
+                        this.spareparts = Array.isArray(state.spareparts) ? state.spareparts : [];
+                        this.sisaProjects = Array.isArray(state.sisaProjects) ? state.sisaProjects : [];
+                        this.logs = Array.isArray(state.logs) ? state.logs : [];
+                        this.sortMasterCatalog();
+                        this.masterPage = 1;
+                    }
+                    this.supabaseConnected = true;
+                } catch (err) {
+                    console.error('Gagal mengambil data dari Supabase:', err);
+                    alert('Data Supabase belum bisa dimuat. Cek koneksi, tabel inventory_state, dan RLS Supabase.');
+                } finally {
+                    this.isHydratingFromSupabase = false;
+                }
+            },
+            async saveToSupabase() {
+                if (this.isHydratingFromSupabase) return;
+                const client = this.getSupabaseClient();
+                if (!client) return;
+
+                // Jangan izinkan dua upsert state besar berjalan bersamaan.
+                if (this.supabaseSaveInProgress) {
+                    this.supabaseSaveQueued = true;
+                    return;
+                }
+
+                this.supabaseSaveInProgress = true;
+                this.supabaseSaveQueued = false;
+
+                try {
+                    const payload = {
+                        id: 'main',
+                        state: this.getPersistedState(),
+                        updated_at: new Date().toISOString()
+                    };
+
+                    const { error } = await client
+                        .from('inventory_state')
+                        .upsert(payload, { onConflict: 'id' });
+
+                    if (error) throw error;
+                    this.supabaseConnected = true;
+                } catch (err) {
+                    this.supabaseConnected = false;
+                    console.error('Gagal menyimpan data ke Supabase:', err);
+                } finally {
+                    this.supabaseSaveInProgress = false;
+
+                    // Jika ada perubahan saat request berjalan, simpan sekali lagi
+                    // setelah request sebelumnya selesai (bukan membuat request bertumpuk).
+                    if (this.supabaseSaveQueued) {
+                        this.scheduleSupabaseSave(300);
+                    }
+                }
+            },
+            // Helper Fungsi Format Tanggal Tanpa Jam (DD/MM/YYYY)
+            getFormattedDateOnly(dateObj = new Date()) {
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const year = dateObj.getFullYear();
+                return `${day}/${month}/${year}`;
+            },
+            filterLogs(gudang, type, dStart, dEnd, barang, ket) {
+                return this.logs.filter(l => {
+                    if (l.gudang !== gudang || l.type !== type) return false;
+                    if (barang && !l.nama.toLowerCase().includes(barang.toLowerCase())) return false;
+                    const logKet = (l.supplier || l.keperluan || l.user || '').toLowerCase();
+                    if (ket && !logKet.includes(ket.toLowerCase())) return false;
+                    if (dStart || dEnd) {
+                        const lDate = new Date(l.isoDate || l.id);
+                        if (dStart && lDate < new Date(dStart)) return false;
+                        if (dEnd) {
+                            const endDate = new Date(dEnd);
+                            endDate.setHours(23, 59, 59);
+                            if (lDate > endDate) return false;
+                        }
+                    }
+                    return true;
+                });
+            },
+            editLog(log) {
+                const newQty = prompt(`Adjust Qty untuk ${log.nama} (${log.type}):`, log.qty);
+                if (newQty !== null && !isNaN(newQty) && Number(newQty) > 0) {
+                    const diff = Number(newQty) - log.qty;
+                    log.qty = Number(newQty);
+                    const dateStr = this.getFormattedDateOnly();
+                    log.editedAt = `edited tanggal ${dateStr}`;
+                    const targetList = log.gudang === 'Sparepart' ? this.spareparts : this.sisaProjects;
+                    const stockItem = targetList.find(s => s.nama.toLowerCase() === log.nama.toLowerCase());
+                    if (stockItem) {
+                        if (log.type === 'IN') stockItem.qty += diff;
+                        else if (log.type === 'OUT') stockItem.qty -= diff;
+                        log.qtyAkhir = stockItem.qty;
+                    }
+                    alert('Log berhasil di-adjust!');
+                }
+            },
+            resetDashFilter() {
+                this.dashFilterDateStart = '';
+                this.dashFilterDateEnd = '';
+            },
+            // Rumus minimum stock: 20% dari stok saat ini, dibulatkan ke atas, minimal 1 unit.
+            // Karena dihitung per item, setiap barang otomatis dapat minimum stock yang berbeda.
+            calculateMinimumStock(stock) {
+                const qty = Number(stock) || 0;
+                return Math.max(1, Math.ceil(qty * 0.20));
+            },
+            importMasterCatalog(event) {
+                const file = event.target.files?.[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {
+                            type: 'array',
+                            cellDates: true
+                        });
+
+                        if (!workbook.SheetNames.length) {
+                            alert('File Excel tidak memiliki sheet.');
+                            event.target.value = '';
+                            return;
+                        }
+
+                        const sheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[sheetName];
+
+                        // Baca seluruh sheet sebagai array agar posisi kolom tidak bergantung pada urutan tertentu.
+                        const rows = XLSX.utils.sheet_to_json(sheet, {
+                            header: 1,
+                            defval: '',
+                            raw: false
+                        });
+
+                        if (!rows || rows.length === 0) {
+                            alert('File Excel kosong.');
+                            event.target.value = '';
+                            return;
+                        }
+
+
+                        // Normalisasi header: "Nama Barang", "NAMA_BARANG", "nama-barang" akan dianggap sama.
+                        const normalize = (value) => String(value ?? '')
+                            .trim()
+                            .toLowerCase()
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '')
+                            .replace(/[^a-z0-9]/g, '');
+
+                        // Alias kolom Excel dibuat luas agar nama barang tidak gagal terbaca hanya karena nama header berbeda.
+                        const aliases = {
+                            nama: [
+                                'nama', 'namabarang', 'namapart', 'namasparepart',
+                                'barang', 'barangnama', 'item', 'itemname',
+                                'itemdescription', 'description', 'deskripsi', 'desc',
+                                'part', 'partname', 'product', 'productname',
+                                'produk', 'namaproduk', 'material', 'namamaterial',
+                                'uraian', 'uraianbarang'
+                            ],
+                            stock: [
+                                'stock', 'stok', 'stockawal', 'stokawal',
+                                'stockakhir', 'stokakhir', 'stocktersedia', 'stoktersedia',
+                                'stocksekarang', 'stoksekarang', 'currentstock',
+                                'currentqty', 'qty', 'quantity', 'jumlah', 'saldo',
+                                'saldoawal', 'onhand', 'quantityonhand', 'qtyonhand',
+                                'available', 'stokavailable', 'stockavailable'
+                            ],
+                            satuan: [
+                                'satuan', 'unit', 'uom', 'sat', 'unitofmeasure',
+                                'measureunit', 'satuanbarang'
+                            ],
+                            kode: [
+                                'kode', 'kodesku', 'sku', 'kodebarang', 'kodepart',
+                                'partnumber', 'partno', 'itemcode', 'itemnumber',
+                                'materialcode'
+                            ],
+                            minStock: [
+                                'minstock', 'minimumstock', 'minimalstock',
+                                'stokminimum', 'stokminimal', 'minstok'
+                            ]
+                        };
+
+                        const findColumn = (headers, aliasList) => {
+                            const normalizedHeaders = headers.map(normalize);
+
+                            // Prioritas 1: header sama persis.
+                            for (const alias of aliasList) {
+                                const index = normalizedHeaders.indexOf(alias);
+                                if (index !== -1) return index;
+                            }
+
+                            // Prioritas 2: header mengandung alias.
+                            for (let i = 0; i < normalizedHeaders.length; i++) {
+                                const header = normalizedHeaders[i];
+                                if (!header) continue;
+
+                                for (const alias of aliasList) {
+                                    if (header.includes(alias) || alias.includes(header)) {
+                                        return i;
+                                    }
+                                }
+                            }
+
+                            return -1;
+                        };
+
+                        // Cari header sampai 50 baris pertama. Jadi tidak harus berada di baris pertama.
+                        let headerRowIndex = -1;
+                        let nameCol = -1;
+                        let stockCol = -1;
+                        let unitCol = -1;
+                        let kodeCol = -1;
+                        let minStockCol = -1;
+
+                        const maxHeaderSearch = Math.min(rows.length, 50);
+
+                        for (let i = 0; i < maxHeaderSearch; i++) {
+                            const row = rows[i] || [];
+                            if (!row.length) continue;
+
+                            const n = findColumn(row, aliases.nama);
+                            if (n !== -1) {
+                                headerRowIndex = i;
+                                nameCol = n;
+                                stockCol = findColumn(row, aliases.stock);
+                                unitCol = findColumn(row, aliases.satuan);
+                                kodeCol = findColumn(row, aliases.kode);
+                                minStockCol = findColumn(row, aliases.minStock);
+                                break;
+                            }
+                        }
+
+
+                        if (headerRowIndex === -1 || nameCol === -1) {
+                            console.error('10 baris pertama Excel:', rows.slice(0, 10));
+                            alert(
+                                'Kolom Nama Barang tidak ditemukan.\n\n' +
+                                'Pastikan Excel memiliki kolom seperti:\n' +
+                                'Nama Barang / Nama / Item / Barang / Description / Part.'
+                            );
+                            event.target.value = '';
+                            return;
+                        }
+
+                        // Parse angka dengan aman untuk format Indonesia maupun format Excel biasa.
+                        const parseNumber = (value) => {
+                            if (value === null || value === undefined || value === '') return 0;
+                            if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+
+                            let text = String(value).trim();
+                            if (!text) return 0;
+
+                            text = text.replace(/[^\d.,-]/g, '');
+                            if (!text) return 0;
+
+                            const lastComma = text.lastIndexOf(',');
+                            const lastDot = text.lastIndexOf('.');
+
+                            if (lastComma !== -1 && lastDot !== -1) {
+                                if (lastComma > lastDot) {
+                                    // Contoh Indonesia: 1.500,50
+                                    text = text.replace(/\./g, '').replace(',', '.');
+                                } else {
+                                    // Contoh internasional: 1,500.50
+                                    text = text.replace(/,/g, '');
+                                }
+                            } else if (lastComma !== -1) {
+                                const decimalPart = text.substring(lastComma + 1);
+                                if (decimalPart.length <= 2) {
+                                    text = text.replace(',', '.');
+                                } else {
+                                    text = text.replace(/,/g, '');
+                                }
+                            } else if (lastDot !== -1) {
+                                const decimalPart = text.substring(lastDot + 1);
+                                if (decimalPart.length > 2) {
+                                    text = text.replace(/\./g, '');
+                                }
+                            }
+
+                            const result = Number(text);
+                            return Number.isFinite(result) ? result : 0;
+                        };
+
+                        const importedItems = [];
+
+                        for (let i = headerRowIndex + 1; i < rows.length; i++) {
+                            const row = rows[i] || [];
+
+                            // Ambil nama dari kolom yang sudah ditemukan, bukan dari posisi tetap.
+                            const rawNama = row[nameCol];
+
+                            if (
+                                rawNama === undefined ||
+                                rawNama === null ||
+                                String(rawNama).trim() === ''
+                            ) {
+                                continue;
+                            }
+
+                            const nama = String(rawNama)
+                                .trim()
+                                .replace(/\s+/g, ' ')
+                                .toUpperCase();
+
+                            const rawStock = stockCol !== -1 ? row[stockCol] : 0;
+                            const currentStock = parseNumber(rawStock);
+
+                            const rawSatuan = unitCol !== -1 ? row[unitCol] : '';
+                            const satuan = String(rawSatuan ?? '').trim().toUpperCase() || 'PCS';
+
+                            let kode = '';
+                            if (kodeCol !== -1) {
+                                kode = String(row[kodeCol] ?? '').trim();
+                            }
+
+                            if (!kode) {
+                                kode = 'SKU-' + String(
+                                    this.masterCatalog.length + importedItems.length + 1
+                                ).padStart(3, '0');
+                            }
+
+                            let minStock;
+                            if (minStockCol !== -1) {
+                                const excelMinStock = parseNumber(row[minStockCol]);
+                                minStock = excelMinStock > 0
+                                    ? excelMinStock
+                                    : this.calculateMinimumStock(currentStock);
+                            } else {
+                                minStock = this.calculateMinimumStock(currentStock);
+                            }
+
+                            importedItems.push({
+                                kode,
+                                nama,
+                                minStock,
+                                currentStock,
+                                satuan
+                            });
+                        }
+
+
+                        if (importedItems.length === 0) {
+                            alert(
+                                'File Excel berhasil dibaca, tetapi tidak ada data barang yang ditemukan setelah baris header.\n\n' +
+                                'Cek apakah kolom Nama Barang memang berisi data.'
+                            );
+                            event.target.value = '';
+                            return;
+                        }
+
+                        // Satu kali mutasi data, lalu urutkan sekali. Tabel hanya merender 100 baris aktif.
+                        this.masterCatalog.push(...importedItems);
+                        this.sortMasterCatalog();
+                        this.masterPage = 1;
+
+                        this.selectedMasterItems = [];
+                        this.selectAllMaster = false;
+
+                        alert(
+                            `Berhasil mengimpor ${importedItems.length} data barang!\n\n` +
+                            'Nama barang, stok, satuan, dan minimum stock sudah dimasukkan ke tabel.'
+                        );
+
+                        event.target.value = '';
+                    } catch (error) {
+                        console.error('ERROR IMPORT EXCEL:', error);
+                        alert(
+                            'Gagal membaca file Excel!\n\n' +
+                            'Pastikan file berformat .xlsx atau .xls dan tidak rusak.'
+                        );
+                        event.target.value = '';
+                    }
+                };
+
+                reader.onerror = () => {
+                    alert('File Excel tidak dapat dibaca oleh browser.');
+                    event.target.value = '';
+                };
+
+                reader.readAsArrayBuffer(file);
+            },
+            tambahMasterManual() {
+                if (!this.formMasterManual.nama) return alert('Nama Barang wajib diisi!');
+                this.masterCatalog.push({
+                    kode: 'SKU-' + String(this.masterCatalog.length + 1).padStart(3, '0'),
+                    nama: this.formMasterManual.nama.toUpperCase(),
+                    minStock: this.calculateMinimumStock(Number(this.formMasterManual.currentStock) || 0),
+                    currentStock: Number(this.formMasterManual.currentStock) || 0,
+                    satuan: (this.formMasterManual.satuan || 'Pcs').toUpperCase()
+                });
+                this.sortMasterCatalog();
+                this.masterPage = 1;
+                this.formMasterManual = { nama: '', minStock: 5, currentStock: 0, satuan: 'Pcs' };
+                alert('Berhasil menambah Data Master!');
+            },
+            deleteMaster(kode) {
+                const item = this.masterCatalog.find(i => i.kode === kode);
+                if (!item) return;
+
+                if (confirm(`Yakin ingin menghapus barang "${item.nama}"?`)) {
+                    this.masterCatalog = this.masterCatalog.filter(i => i.kode !== kode);
+                    this.selectedMasterItems = this.selectedMasterItems.filter(k => k !== kode);
+                    this.selectAllMaster = false;
+                    this.normalizeMasterPage();
+                }
+            },
+            toggleSelectAllMaster() {
+                if (this.selectAllMaster) {
+                    this.selectedMasterItems = this.filteredMasterCatalog.map(item => item.kode);
+                } else {
+                    this.selectedMasterItems = [];
+                }
+            },
+            deleteSelectedMaster() {
+                const selected = this.selectedMasterItems || [];
+
+                if (!selected.length) {
+                    return alert('Pilih minimal satu barang terlebih dahulu.');
+                }
+
+                const selectedItems = this.masterCatalog.filter(item => selected.includes(item.kode));
+                const preview = selectedItems.slice(0, 5).map(item => item.nama).join('\n');
+                const more = selectedItems.length > 5
+                    ? `\n... dan ${selectedItems.length - 5} barang lainnya`
+                    : '';
+
+                if (!confirm(`Yakin ingin menghapus ${selectedItems.length} barang?\n\n${preview}${more}`)) {
+                    return;
+                }
+
+                this.masterCatalog = this.masterCatalog.filter(item => !selected.includes(item.kode));
+                this.selectedMasterItems = [];
+                this.selectAllMaster = false;
+                this.normalizeMasterPage();
+
+                alert(`${selectedItems.length} barang berhasil dihapus.`);
+            },
+            openMonitoringInputModal() {
+                this.formOrderMulti = {
+                    itemsToProcess: [{ nama: '', orderQty: 1, orderSatuan: 'Pcs', keperluan: '' }]
+                };
+                this.showMonitoringInputModal = true;
+            },
+            addManualItemToMonitoring() {
+                this.formOrderMulti.itemsToProcess.push({
+                    nama: '',
+                    orderQty: 1,
+                    orderSatuan: 'Pcs',
+                    keperluan: ''
+                });
+            },
+            onMonitoringItemInput(item) {
+                this.masterAutocompleteQuery = item.nama || '';
+                if (!item.nama) return;
+                const match = this.masterCatalog.find(m => m.nama.toLowerCase() === item.nama.trim().toLowerCase());
+                if (match && match.satuan) {
+                    item.orderSatuan = match.satuan;
+                }
+            },
+            removeMonitoringItemToProcess(idx) {
+                this.formOrderMulti.itemsToProcess.splice(idx, 1);
+            },
+            simpanOrderMulti() {
+                if (this.formOrderMulti.itemsToProcess.length === 0) return alert('Tambahkan minimal 1 item order!');
+                let isValid = true;
+                this.formOrderMulti.itemsToProcess.forEach(item => {
+                    if (!item.nama) isValid = false;
+                });
+                if (!isValid) return alert('Mohon isi nama barang di semua item!');
+                // REVISI 1 (MONITORING): Tanggal tanpa jam
+                const dateOnlyStr = this.getFormattedDateOnly();
+                const isoNow = new Date().toISOString();
+                this.formOrderMulti.itemsToProcess.forEach(item => {
+                    const totalQty = Number(item.orderQty) || 1;
+                    this.monitoringItems.unshift({
+                        id: Date.now() + Math.random(),
+                        isoDate: isoNow,
+                        tgl: dateOnlyStr,
+                        nama: item.nama.toUpperCase(),
+                        keperluan: (item.keperluan || '-').toUpperCase(),
+                        qtyTotal: totalQty,
+                        qtyReceived: 0,
+                        qtyRemaining: totalQty,
+                        satuan: (item.orderSatuan || 'Pcs').toUpperCase(),
+                        status: 'Pending'
+                    });
+                });
+                this.showMonitoringInputModal = false;
+                alert('Order berhasil dimasukkan ke Monitoring!');
+            },
+            cancelOrder(order) {
+                if (confirm(`Yakin ingin membatalkan/cancel order ${order.nama}?`)) {
+                    order.status = 'Cancel';
+                    alert(`Order ${order.nama} berhasil dicancel.`);
+                }
+            },
+            terimaBarang(order) {
+                const qtyTerimaInput = prompt(`Terima order ${order.nama}\nMasukkan Qty Diterima (Sisa: ${order.qtyRemaining} ${order.satuan}):`, order.qtyRemaining);
+                if (!qtyTerimaInput || isNaN(qtyTerimaInput) || Number(qtyTerimaInput) <= 0) return;
+                const qtyTerima = Number(qtyTerimaInput);
+                if (qtyTerima > order.qtyRemaining) return alert('Qty melebihi sisa order!');
+                const targetList = this.spareparts;
+                const stockItem = targetList.find(s => s.nama.toLowerCase() === order.nama.toLowerCase());
+                const qtyAwal = stockItem ? stockItem.qty : 0;
+                if (stockItem) {
+                    stockItem.qty += qtyTerima;
+                } else {
+                    targetList.push({
+                        barcode: 'SP-' + String(targetList.length + 1).padStart(3, '0'),
+                        nama: order.nama,
+                        qty: qtyTerima,
+                        minStock: this.calculateMinimumStock(qtyTerima),
+                        lokasi: 'RAK UTAMA',
+                        satuan: order.satuan
+                    });
+                }
+                const qtyAkhir = qtyAwal + qtyTerima;
+                order.qtyReceived += qtyTerima;
+                order.qtyRemaining -= qtyTerima;
+                order.status = order.qtyRemaining <= 0 ? 'Diterima Semua' : 'Diterima Sebagian';
+                const dateOnlyStr = this.getFormattedDateOnly();
+                const isoNow = new Date().toISOString();
+                this.monitoringHistory.unshift({
+                    id: Date.now() + Math.random(),
+                    type: 'IN',
+                    tgl: dateOnlyStr,
+                    isoDate: isoNow,
+                    keperluan: order.keperluan || order.project,
+                    nama: order.nama,
+                    qty: qtyTerima,
+                    satuan: order.satuan,
+                    status: order.status
+                });
+                this.logs.unshift({
+                    id: Date.now() + Math.random(),
+                    isoDate: isoNow,
+                    gudang: 'Sparepart',
+                    type: 'IN',
+                    nama: order.nama,
+                    qty: qtyTerima,
+                    qtyAwal: qtyAwal,
+                    qtyAkhir: qtyAkhir,
+                    tgl: dateOnlyStr,
+                    keperluan: `Penerimaan Monitoring (${order.keperluan || order.project || '-'})`
+                });
+                alert(`Penerimaan order dicatat! Stok ${order.nama} bertambah.`);
+            },
+            openSparepartMultiOutModal() {
+                this.formSparepartMultiOut = {
+                    user: '',
+                    selectedItems: [this.createSparepartMultiOutItem()]
+                };
+                this.showSparepartMultiOutModal = true;
+            },
+            createSparepartMultiOutItem() {
+                return {
+                    barcode: '',
+                    nama: '',
+                    qty: 0,
+                    satuan: 'Pcs',
+                    outQty: 1,
+                    keperluan: ''
+                };
+            },
+            addCustomItemToSparepartMultiOut() {
+                this.formSparepartMultiOut.selectedItems.push(this.createSparepartMultiOutItem());
+            },
+            onSparepartMultiOutItemInput(item) {
+                const nama = (item.nama || '').trim().toLowerCase();
+                const stockItem = this.spareparts.find(s => (s.nama || '').trim().toLowerCase() === nama);
+                if (stockItem) {
+                    item.barcode = stockItem.barcode;
+                    item.qty = Number(stockItem.qty) || 0;
+                    item.satuan = stockItem.satuan || 'Pcs';
+                    if (item.outQty > item.qty) item.outQty = item.qty || 1;
+                } else {
+                    item.barcode = '';
+                    item.qty = 0;
+                    item.satuan = 'Pcs';
+                }
+            },
+            removeSparepartOutItem(idx) {
+                this.formSparepartMultiOut.selectedItems.splice(idx, 1);
+            },
+            submitSparepartMultiOut() {
+                if (!this.formSparepartMultiOut.user) return alert('Nama Pengambil/Penerima wajib diisi!');
+                if (this.formSparepartMultiOut.selectedItems.length === 0) return alert('Tambahkan minimal 1 item!');
+
+                const validNames = this.formSparepartMultiOut.selectedItems.filter(item => item.nama && item.nama.trim());
+                if (validNames.length !== this.formSparepartMultiOut.selectedItems.length) {
+                    return alert('Nama barang wajib diisi pada semua item!');
+                }
+
+                const duplicateBarcodes = validNames.map(item => item.barcode).filter((barcode, index, arr) => barcode && arr.indexOf(barcode) !== index);
+                if (duplicateBarcodes.length > 0) return alert('Barang yang sama tidak boleh dimasukkan lebih dari satu kali.');
+
+                for (const item of this.formSparepartMultiOut.selectedItems) {
+                    const target = this.spareparts.find(s => s.barcode === item.barcode);
+                    if (!target) return alert(`Barang "${item.nama}" tidak ditemukan di stok Spare Part!`);
+                    if (!item.keperluan) return alert(`Kepentingan spesifik untuk ${item.nama} belum diisi!`);
+                    if (!Number.isFinite(Number(item.outQty)) || Number(item.outQty) <= 0) return alert(`Qty keluar ${item.nama} harus lebih dari 0!`);
+                    if (Number(item.outQty) > Number(target.qty)) return alert(`Qty keluar ${item.nama} melebihi stok tersedia!`);
+                }
+
+                const dateOnlyStr = this.getFormattedDateOnly();
+                const isoNow = new Date().toISOString();
+
+                this.formSparepartMultiOut.selectedItems.forEach(item => {
+                    const target = this.spareparts.find(s => s.barcode === item.barcode);
+                    const qtyAwal = Number(target.qty) || 0;
+                    const outQty = Number(item.outQty);
+                    target.qty = qtyAwal - outQty;
+                    const qtyAkhir = target.qty;
+
+                    this.logs.unshift({
+                        id: Date.now() + Math.random(),
+                        isoDate: isoNow,
+                        gudang: 'Sparepart',
+                        type: 'OUT',
+                        nama: target.nama,
+                        qty: outQty,
+                        qtyAwal: qtyAwal,
+                        qtyAkhir: qtyAkhir,
+                        tgl: dateOnlyStr,
+                        user: this.formSparepartMultiOut.user.toUpperCase(),
+                        keperluan: item.keperluan.toUpperCase()
+                    });
+                });
+
+                this.showSparepartMultiOutModal = false;
+                alert('Pengeluaran barang sparepart berhasil diproses!');
+            },
+            openSisaProjectMultiInModal() {
+                this.formSisaProjectMultiIn = { 
+                    supplier: '', 
+                    itemsToProcess: [{ kode: 'MANUAL-' + Date.now(), nama: '', qty: 1, satuan: 'Pcs', lokasi: 'RAK SISA', keperluan: '' }] 
+                };
+                this.showSisaProjectMultiInModal = true;
+            },
+            addCustomItemToSisaProjectMultiIn() {
+                this.formSisaProjectMultiIn.itemsToProcess.push({
+                    kode: 'MANUAL-' + Date.now(),
+                    nama: '',
+                    qty: 1,
+                    satuan: 'Pcs',
+                    lokasi: 'RAK SISA',
+                    keperluan: ''
+                });
+            },
+            removeSisaProjectMultiInItem(idx) {
+                this.formSisaProjectMultiIn.itemsToProcess.splice(idx, 1);
+            },
+            submitSisaProjectMultiIn() {
+                if (!this.formSisaProjectMultiIn.supplier) return alert('Asal Vendor / Supplier wajib diisi!');
+                if (this.formSisaProjectMultiIn.itemsToProcess.length === 0) return alert('Tambahkan minimal 1 item!');
+                const dateOnlyStr = this.getFormattedDateOnly();
+                const isoNow = new Date().toISOString();
+                this.formSisaProjectMultiIn.itemsToProcess.forEach(item => {
+                    if (!item.nama) return;
+                    const targetList = this.sisaProjects;
+                    const stockItem = targetList.find(s => s.nama.toLowerCase() === item.nama.trim().toLowerCase());
+                    const qtyAwal = stockItem ? stockItem.qty : 0;
+                    const inQty = Number(item.qty) || 1;
+                    if (stockItem) {
+                        stockItem.qty += inQty;
+                    } else {
+                        targetList.push({
+                            barcode: 'SPJ-' + String(targetList.length + 1).padStart(3, '0'),
+                            nama: item.nama.toUpperCase(),
+                            qty: inQty,
+                            minStock: this.calculateMinimumStock(inQty),
+                            lokasi: (item.lokasi || 'RAK SISA').toUpperCase(),
+                            satuan: (item.satuan || 'Pcs').toUpperCase()
+                        });
+                    }
+                    const qtyAkhir = qtyAwal + inQty;
+                    this.logs.unshift({
+                        id: Date.now() + Math.random(),
+                        isoDate: isoNow,
+                        gudang: 'Sisa Project',
+                        type: 'IN',
+                        nama: item.nama.toUpperCase(),
+                        qty: inQty,
+                        qtyAwal: qtyAwal,
+                        qtyAkhir: qtyAkhir,
+                        tgl: dateOnlyStr,
+                        supplier: this.formSisaProjectMultiIn.supplier.toUpperCase(),
+                        keperluan: (item.keperluan || '-').toUpperCase()
+                    });
+                });
+                this.showSisaProjectMultiInModal = false;
+                alert('Barang Sisa Project berhasil disimpan!');
+            },
+            openSisaProjectMultiOutModal() {
+                this.formSisaProjectMultiOut = {
+                    user: '',
+                    selectedItems: [this.createSisaProjectMultiOutItem()]
+                };
+                this.showSisaProjectMultiOutModal = true;
+            },
+            createSisaProjectMultiOutItem() {
+                return {
+                    barcode: '',
+                    nama: '',
+                    qty: 0,
+                    satuan: 'Pcs',
+                    outQty: 1,
+                    keperluan: ''
+                };
+            },
+            addCustomItemToSisaProjectMultiOut() {
+                this.formSisaProjectMultiOut.selectedItems.push(this.createSisaProjectMultiOutItem());
+            },
+            onSisaProjectMultiOutItemInput(item) {
+                const nama = (item.nama || '').trim().toLowerCase();
+                const stockItem = this.sisaProjects.find(s => (s.nama || '').trim().toLowerCase() === nama);
+                if (stockItem) {
+                    item.barcode = stockItem.barcode;
+                    item.qty = Number(stockItem.qty) || 0;
+                    item.satuan = stockItem.satuan || 'Pcs';
+                    if (item.outQty > item.qty) item.outQty = item.qty || 1;
+                } else {
+                    item.barcode = '';
+                    item.qty = 0;
+                    item.satuan = 'Pcs';
+                }
+            },
+            removeSisaProjectOutItem(idx) {
+                this.formSisaProjectMultiOut.selectedItems.splice(idx, 1);
+            },
+            submitSisaProjectMultiOut() {
+                if (!this.formSisaProjectMultiOut.user) return alert('Nama Pengambil/Penerima wajib diisi!');
+                if (this.formSisaProjectMultiOut.selectedItems.length === 0) return alert('Tambahkan minimal 1 item!');
+
+                const validNames = this.formSisaProjectMultiOut.selectedItems.filter(item => item.nama && item.nama.trim());
+                if (validNames.length !== this.formSisaProjectMultiOut.selectedItems.length) {
+                    return alert('Nama barang wajib diisi pada semua item!');
+                }
+
+                const duplicateBarcodes = validNames.map(item => item.barcode).filter((barcode, index, arr) => barcode && arr.indexOf(barcode) !== index);
+                if (duplicateBarcodes.length > 0) return alert('Barang yang sama tidak boleh dimasukkan lebih dari satu kali.');
+
+                for (const item of this.formSisaProjectMultiOut.selectedItems) {
+                    const target = this.sisaProjects.find(s => s.barcode === item.barcode);
+                    if (!target) return alert(`Barang "${item.nama}" tidak ditemukan di stok Sisa Project!`);
+                    if (!item.keperluan) return alert(`Kepentingan spesifik untuk ${item.nama} belum diisi!`);
+                    if (!Number.isFinite(Number(item.outQty)) || Number(item.outQty) <= 0) return alert(`Qty keluar ${item.nama} harus lebih dari 0!`);
+                    if (Number(item.outQty) > Number(target.qty)) return alert(`Qty keluar ${item.nama} melebihi stok tersedia!`);
+                }
+
+                const dateOnlyStr = this.getFormattedDateOnly();
+                const isoNow = new Date().toISOString();
+
+                this.formSisaProjectMultiOut.selectedItems.forEach(item => {
+                    const target = this.sisaProjects.find(s => s.barcode === item.barcode);
+                    const qtyAwal = Number(target.qty) || 0;
+                    const outQty = Number(item.outQty);
+                    target.qty = qtyAwal - outQty;
+                    const qtyAkhir = target.qty;
+
+                    this.logs.unshift({
+                        id: Date.now() + Math.random(),
+                        isoDate: isoNow,
+                        gudang: 'Sisa Project',
+                        type: 'OUT',
+                        nama: target.nama,
+                        qty: outQty,
+                        qtyAwal: qtyAwal,
+                        qtyAkhir: qtyAkhir,
+                        tgl: dateOnlyStr,
+                        user: this.formSisaProjectMultiOut.user.toUpperCase(),
+                        keperluan: item.keperluan.toUpperCase()
+                    });
+                });
+
+                this.showSisaProjectMultiOutModal = false;
+                alert('Pengeluaran Sisa Project berhasil diproses!');
+            },
+            openSingleOutModal(item) {
+                const user = prompt(`Pengeluaran ${item.nama}\nMasukkan Nama Pengambil:`);
+                if (!user) return;
+                const outQtyInput = prompt(`Qty Keluar (Stok Saat Ini: ${item.qty}):`, 1);
+                if (!outQtyInput || isNaN(outQtyInput) || Number(outQtyInput) <= 0) return;
+                const outQty = Number(outQtyInput);
+                if (outQty > item.qty) return alert('Qty melebihi stok tersedia!');
+                const keperluan = prompt('Kepentingan Spesifik Pengeluaran:');
+                if (!keperluan) return alert('Kepentingan spesifik wajib diisi!');
+                const qtyAwal = item.qty;
+                item.qty -= outQty;
+                const qtyAkhir = item.qty;
+                const dateOnlyStr = this.getFormattedDateOnly();
+                const isoNow = new Date().toISOString();
+                const isSparepart = this.activeTab === 'sparepart';
+                this.logs.unshift({
+                    id: Date.now() + Math.random(),
+                    isoDate: isoNow,
+                    gudang: isSparepart ? 'Sparepart' : 'Sisa Project',
+                    type: 'OUT',
+                    nama: item.nama,
+                    qty: outQty,
+                    qtyAwal: qtyAwal,
+                    qtyAkhir: qtyAkhir,
+                    tgl: dateOnlyStr,
+                    user: user.toUpperCase(),
+                    keperluan: keperluan.toUpperCase()
+                });
+                alert('Pengeluaran barang dicatat!');
+            },
+            printLogSection(elementId) {
+                // Cetak laporan/tabel saja. Barcode label tidak pernah ikut dalam print Excel-style.
+                document.body.classList.remove('printing-label');
+                window.print();
+            },
+            printLabel(item) {
+                // Barcode hanya diaktifkan untuk tombol "Cetak Label" pada produk.
+                this.activeItem = item;
+                document.body.classList.add('printing-label');
+                this.$nextTick(() => {
+                    JsBarcode("#barcode-sticker", item.barcode, {
+                        format: "CODE128",
+                        width: 1.5,
+                        height: 35,
+                        fontSize: 10,
+                        displayValue: true
+                    });
+                    window.print();
+                    document.body.classList.remove('printing-label');
+                });
+            },
+            exportToExcel() {
+                const wb = XLSX.utils.book_new();
+                const masterSheet = XLSX.utils.json_to_sheet(this.masterCatalog);
+                XLSX.utils.book_append_sheet(wb, masterSheet, "Master Catalog");
+                const spSheet = XLSX.utils.json_to_sheet(this.spareparts);
+                XLSX.utils.book_append_sheet(wb, spSheet, "Stok Sparepart");
+                const spjSheet = XLSX.utils.json_to_sheet(this.sisaProjects);
+                XLSX.utils.book_append_sheet(wb, spjSheet, "Stok Sisa Project");
+                const monSheet = XLSX.utils.json_to_sheet(this.monitoringItems);
+                XLSX.utils.book_append_sheet(wb, monSheet, "Monitoring Order");
+                const logsSheet = XLSX.utils.json_to_sheet(this.logs);
+                XLSX.utils.book_append_sheet(wb, logsSheet, "Log Pergerakan");
+                XLSX.writeFile(wb, `Laporan_Inventory_Agrofarm_${this.getFormattedDateOnly().replace(/\//g, '-')}.xlsx`);
+            },
+            exportDashboardByDate() {
+                if (!this.dashFilterDateStart && !this.dashFilterDateEnd) {
+                    return alert('Silakan pilih rentang tanggal terlebih dahulu!');
+                }
+                const filteredLogs = this.logs.filter(l => {
+                    const lDate = new Date(l.isoDate || l.id);
+                    if (this.dashFilterDateStart && lDate < new Date(this.dashFilterDateStart)) return false;
+                    if (this.dashFilterDateEnd) {
+                        const endDate = new Date(this.dashFilterDateEnd);
+                        endDate.setHours(23, 59, 59);
+                        if (lDate > endDate) return false;
+                    }
+                    return true;
+                });
+                const wb = XLSX.utils.book_new();
+                const logsSheet = XLSX.utils.json_to_sheet(filteredLogs);
+                XLSX.utils.book_append_sheet(wb, logsSheet, "Pergerakan Stok Filtered");
+                XLSX.writeFile(wb, `Laporan_Pergerakan_Stok_${this.dashFilterDateStart}_sd_${this.dashFilterDateEnd}.xlsx`);
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
