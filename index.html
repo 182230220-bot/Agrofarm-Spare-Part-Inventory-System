@@ -429,14 +429,22 @@
                             <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Barang *</label>
                             <input v-model="formMasterManual.nama" type="text" placeholder="Masukkan Nama Barang / Sparepart" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none uppercase">
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
                             <div>
-                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Stock Awal</label>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Qty</label>
                                 <input v-model.number="formMasterManual.currentStock" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Minimal Stock (Otomatis)</label>
-                                <div class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg font-bold text-xs text-center text-slate-500">20% dari stok awal</div>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Lead Time (Hari)</label>
+                                <input v-model.number="formMasterManual.leadTime" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Safety Stock</label>
+                                <input v-model.number="formMasterManual.safetyStock" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Minimal Stock</label>
+                                <div class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg font-bold text-xs text-center text-slate-500">Qty</div>
                             </div>
                             <div>
                                 <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Satuan</label>
@@ -455,7 +463,7 @@
                             <span>Import Master via Excel</span>
                         </div>
                         <p class="text-xs text-emerald-100/70 leading-relaxed">
-                            Mendukung berbagai format kolom Excel (misal: <strong>Nama Barang / Nama / Item / Deskripsi</strong>, <strong>Stock Awal / Qty / Stok</strong>, <strong>Min Stock</strong>, <strong>Satuan / Unit</strong>).
+                            Mendukung berbagai format kolom Excel (misal: <strong>Nama Barang / Nama / Item / Deskripsi</strong>, <strong>Qty / Stok</strong>, <strong>Lead Time</strong>, <strong>Safety Stock</strong>, <strong>Pemakaian Harian</strong>, <strong>Satuan / Unit</strong>).
                         </p>
                     </div>
                     <label class="bg-emerald-800/80 hover:bg-emerald-700 text-emerald-50 p-3 rounded-lg font-medium text-xs text-center cursor-pointer border border-emerald-600/50 block transition-all">
@@ -500,7 +508,7 @@
                                 <th class="p-3.5 text-center">No</th>
                                 <th class="p-3.5">Kode Barang</th>
                                 <th class="p-3.5">Nama Sparepart</th>
-                                <th class="p-3.5 text-center">Stock Awal</th>
+                                <th class="p-3.5 text-center">Qty</th>
                                 <th class="p-3.5 text-center">Minimal Stock</th>
                                 <th class="p-3.5 text-center">Aksi</th>
                             </tr>
@@ -1262,7 +1270,7 @@
                 masterAutocompleteQuery: '',
                 masterPage: 1,
                 masterPageSize: 100,
-                formMasterManual: { nama: '', minStock: 5, currentStock: 0, satuan: 'Pcs' },
+                formMasterManual: { nama: '', minStock: 0, currentStock: 0, leadTime: 0, safetyStock: 0, avgDailyUsage: 0, satuan: 'Pcs' },
                 showMonitoringInputModal: false,
                 monFilterDateStart: '',
                 monFilterDateEnd: '',
@@ -1582,11 +1590,27 @@
                 this.dashFilterDateStart = '';
                 this.dashFilterDateEnd = '';
             },
-            // Rumus minimum stock: 20% dari stok saat ini, dibulatkan ke atas, minimal 1 unit.
-            // Karena dihitung per item, setiap barang otomatis dapat minimum stock yang berbeda.
-            calculateMinimumStock(stock) {
-                const qty = Number(stock) || 0;
-                return Math.max(1, Math.ceil(qty * 0.20));
+            // Rumus minimum stock menggunakan kebutuhan selama lead time + safety stock.
+            // Pemakaian harian dapat berasal dari Excel; jika tidak ada, sistem mengambil rata-rata histori OUT 30 hari terakhir.
+            calculateMinimumStock(nama, leadTime = 0, safetyStock = 0, avgDailyUsage = 0) {
+                const lt = Math.max(0, Number(leadTime) || 0);
+                const ss = Math.max(0, Number(safetyStock) || 0);
+                let dailyUsage = Math.max(0, Number(avgDailyUsage) || 0);
+
+                if (dailyUsage <= 0 && nama) {
+                    const batas = Date.now() - (30 * 24 * 60 * 60 * 1000);
+                    const totalKeluar = this.logs
+                        .filter(log =>
+                            log.type === 'OUT' &&
+                            String(log.nama || '').trim().toLowerCase() === String(nama || '').trim().toLowerCase() &&
+                            (!log.isoDate || new Date(log.isoDate).getTime() >= batas)
+                        )
+                        .reduce((total, log) => total + (Number(log.qty) || 0), 0);
+
+                    dailyUsage = totalKeluar / 30;
+                }
+
+                return Math.ceil((dailyUsage * lt) + ss);
             },
             importMasterCatalog(event) {
                 const file = event.target.files?.[0];
@@ -1660,9 +1684,15 @@
                                 'partnumber', 'partno', 'itemcode', 'itemnumber',
                                 'materialcode'
                             ],
-                            minStock: [
-                                'minstock', 'minimumstock', 'minimalstock',
-                                'stokminimum', 'stokminimal', 'minstok'
+                            leadTime: [
+                                'leadtime', 'leadtimehari', 'waktutunggu', 'waktutungguhari'
+                            ],
+                            safetyStock: [
+                                'safetystock', 'stokpengaman', 'stockpengaman'
+                            ],
+                            avgDailyUsage: [
+                                'pemakaianharian', 'rataratapemakaianharian', 'averageusage',
+                                'averagedailyusage', 'dailyusage', 'kebutuhanharian'
                             ]
                         };
 
@@ -1699,7 +1729,9 @@
                         let stockCol = -1;
                         let unitCol = -1;
                         let kodeCol = -1;
-                        let minStockCol = -1;
+                        let leadTimeCol = -1;
+                        let safetyStockCol = -1;
+                        let avgDailyUsageCol = -1;
 
                         const maxHeaderSearch = Math.min(rows.length, 50);
 
@@ -1714,7 +1746,9 @@
                                 stockCol = findColumn(row, aliases.stock);
                                 unitCol = findColumn(row, aliases.satuan);
                                 kodeCol = findColumn(row, aliases.kode);
-                                minStockCol = findColumn(row, aliases.minStock);
+                                leadTimeCol = findColumn(row, aliases.leadTime);
+                                safetyStockCol = findColumn(row, aliases.safetyStock);
+                                avgDailyUsageCol = findColumn(row, aliases.avgDailyUsage);
                                 break;
                             }
                         }
@@ -1806,29 +1840,23 @@
                                 throw new Error(`SKU/Kode Barang kosong pada baris Excel ${i + 1}. Import dibatalkan.`);
                             }
 
-                            let minStock;
-                            if (minStockCol !== -1) {
-                                const excelMinStock = parseNumber(row[minStockCol]);
-                                minStock = excelMinStock > 0
-                                    ? excelMinStock
-                                    : this.calculateMinimumStock(currentStock);
-                            } else {
-                                minStock = this.calculateMinimumStock(currentStock);
-                            }
+                            const leadTime = leadTimeCol !== -1 ? parseNumber(row[leadTimeCol]) : 0;
+                            const safetyStock = safetyStockCol !== -1 ? parseNumber(row[safetyStockCol]) : 0;
+                            const avgDailyUsage = avgDailyUsageCol !== -1 ? parseNumber(row[avgDailyUsageCol]) : 0;
+                            const minStock = this.calculateMinimumStock(nama, leadTime, safetyStock, avgDailyUsage);
 
-                            // Jika ada satu SKU atau nama barang yang duplikat, seluruh import dibatalkan.
+                            // Duplikasi hanya berdasarkan SKU/Kode Barang.
+                            // Jika SKU sudah ada, baris tersebut dilewati.
+                            // Data dengan SKU berbeda tetap otomatis dimasukkan.
                             const normalizedKode = kode.trim().toLowerCase();
-                            const normalizedNama = nama.trim().toLowerCase();
                             const duplicateInExisting = this.masterCatalog.some(item =>
-                                String(item.kode || '').trim().toLowerCase() === normalizedKode ||
-                                String(item.nama || '').trim().toLowerCase() === normalizedNama
+                                String(item.kode || '').trim().toLowerCase() === normalizedKode
                             );
                             const duplicateInImport = importedItems.some(item =>
-                                String(item.kode || '').trim().toLowerCase() === normalizedKode ||
-                                String(item.nama || '').trim().toLowerCase() === normalizedNama
+                                String(item.kode || '').trim().toLowerCase() === normalizedKode
                             );
                             if (duplicateInExisting || duplicateInImport) {
-                                throw new Error(`Duplikasi data ditemukan pada baris Excel ${i + 1}: SKU "${kode}" / Nama Barang "${nama}". Import dibatalkan.`);
+                                continue;
                             }
 
                             importedItems.push({
@@ -1836,6 +1864,9 @@
                                 nama,
                                 minStock,
                                 currentStock,
+                                leadTime,
+                                safetyStock,
+                                avgDailyUsage,
                                 satuan
                             });
                         }
@@ -1860,7 +1891,7 @@
 
                         alert(
                             `Berhasil mengimpor ${importedItems.length} data barang!\n\n` +
-                            'Nama barang, stok, satuan, dan minimum stock sudah dimasukkan ke tabel.'
+                            'Data dengan SKU berbeda otomatis dimasukkan. SKU yang sudah terdaftar dilewati.'
                         );
 
                         event.target.value = '';
@@ -1890,13 +1921,21 @@
                 this.masterCatalog.push({
                     kode: 'SKU-' + String(this.masterCatalog.length + 1).padStart(3, '0'),
                     nama: this.formMasterManual.nama.toUpperCase(),
-                    minStock: this.calculateMinimumStock(Number(this.formMasterManual.currentStock) || 0),
+                    minStock: this.calculateMinimumStock(
+                        this.formMasterManual.nama,
+                        this.formMasterManual.leadTime,
+                        this.formMasterManual.safetyStock,
+                        this.formMasterManual.avgDailyUsage
+                    ),
                     currentStock: Number(this.formMasterManual.currentStock) || 0,
+                    leadTime: Number(this.formMasterManual.leadTime) || 0,
+                    safetyStock: Number(this.formMasterManual.safetyStock) || 0,
+                    avgDailyUsage: Number(this.formMasterManual.avgDailyUsage) || 0,
                     satuan: (this.formMasterManual.satuan || 'Pcs').toUpperCase()
                 });
                 this.sortMasterCatalog();
                 this.masterPage = 1;
-                this.formMasterManual = { nama: '', minStock: 5, currentStock: 0, satuan: 'Pcs' };
+                this.formMasterManual = { nama: '', minStock: 0, currentStock: 0, leadTime: 0, safetyStock: 0, avgDailyUsage: 0, satuan: 'Pcs' };
                 alert('Berhasil menambah Data Master!');
             },
             deleteMaster(kode) {
@@ -2015,7 +2054,7 @@
                         barcode: 'SP-' + String(targetList.length + 1).padStart(3, '0'),
                         nama: order.nama,
                         qty: qtyTerima,
-                        minStock: this.calculateMinimumStock(qtyTerima),
+                        minStock: this.calculateMinimumStock(order.nama),
                         lokasi: 'RAK UTAMA',
                         satuan: order.satuan
                     });
@@ -2196,7 +2235,7 @@
                             barcode: 'SPJ-' + String(targetList.length + 1).padStart(3, '0'),
                             nama: item.nama.toUpperCase(),
                             qty: inQty,
-                            minStock: this.calculateMinimumStock(inQty),
+                            minStock: this.calculateMinimumStock(item.nama),
                             lokasi: (item.lokasi || 'RAK SISA').toUpperCase(),
                             satuan: (item.satuan || 'Pcs').toUpperCase()
                         });
