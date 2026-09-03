@@ -55,14 +55,22 @@
             }
             body.printing-label .stock-card-print {
                 width: 100%;
+                max-width: 100%;
                 margin: 0 auto;
+                padding: 0;
+                box-sizing: border-box;
                 font-family: Arial, Helvetica, sans-serif;
                 color: #000;
-                font-size: 9pt;
+                font-size: 9.5pt;
+                line-height: 1.25;
             }
             body.printing-label .stock-card-heading {
                 text-align: center;
-                margin-bottom: 12px;
+                margin: 0 0 8mm 0;
+                padding-bottom: 3mm;
+                border-bottom: 1.5px solid #000;
+                page-break-after: avoid;
+                break-after: avoid-page;
             }
             body.printing-label .stock-card-title {
                 font-size: 17pt;
@@ -87,6 +95,7 @@
                 border: 1px solid #000 !important;
                 padding: 6px 8px !important;
                 vertical-align: middle;
+                line-height: 1.25;
             }
             body.printing-label .stock-card-info .info-label {
                 width: 16%;
@@ -98,20 +107,42 @@
                 font-weight: 600;
             }
             body.printing-label .stock-card-table {
-                font-size: 8pt !important;
+                font-size: 8.5pt !important;
+                margin: 0 !important;
+                table-layout: fixed !important;
+                page-break-inside: auto;
             }
             body.printing-label .stock-card-table th,
             body.printing-label .stock-card-table td {
                 border: 1px solid #000 !important;
-                padding: 5px 6px !important;
+                padding: 5px 5px !important;
                 color: #000 !important;
                 vertical-align: middle !important;
                 word-wrap: break-word;
+                overflow-wrap: anywhere;
+                line-height: 1.2;
+            }
+            body.printing-label .stock-card-table thead {
+                display: table-header-group;
+            }
+            body.printing-label .stock-card-table tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
             body.printing-label .stock-card-table th {
                 text-align: center !important;
                 font-weight: 800 !important;
                 background: #e9e9e9 !important;
+                white-space: nowrap;
+                line-height: 1.15;
+            }
+            body.printing-label .stock-card-table td:nth-child(4) {
+                text-align: left !important;
+                white-space: normal !important;
+            }
+            body.printing-label .stock-card-table td:nth-child(8) {
+                text-align: left !important;
+                white-space: normal !important;
             }
             body.printing-label .stock-card-table .center,
             body.printing-label .stock-card-table .num {
@@ -121,14 +152,13 @@
                 font-weight: 800 !important;
             }
             body.printing-label .stock-card-table .col-no { width: 5%; }
-            body.printing-label .stock-card-table .col-date { width: 11%; }
+            body.printing-label .stock-card-table .col-date { width: 10%; }
             body.printing-label .stock-card-table .col-ref { width: 12%; }
-            body.printing-label .stock-card-table .col-desc { width: 20%; }
-            body.printing-label .stock-card-table .col-opening { width: 9%; }
+            body.printing-label .stock-card-table .col-desc { width: 25%; }
             body.printing-label .stock-card-table .col-in,
             body.printing-label .stock-card-table .col-out { width: 9%; }
             body.printing-label .stock-card-table .col-balance { width: 9%; }
-            body.printing-label .stock-card-table .col-user { width: 11%; }
+            body.printing-label .stock-card-table .col-user { width: 12%; }
             body.printing-label .stock-card-table .empty-row {
                 text-align: center !important;
                 padding: 18px !important;
@@ -172,7 +202,7 @@
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            @page { size: auto; margin: 10mm; }
+            @page { size: A4 landscape; margin: 10mm 12mm; }
         }
         #label-print-area { display: none; }
     </style>
@@ -522,7 +552,7 @@
                                 <input v-model.number="formMasterManual.leadTime" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Safety Stock Barang</label>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Safety Stock</label>
                                 <input v-model.number="formMasterManual.safetyStock" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
                             </div>
                             <div>
@@ -530,7 +560,7 @@
                                 <div class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg font-bold text-xs text-center text-slate-500">Qty</div>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Satuan Barang</label>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Satuan</label>
                                 <input v-model="formMasterManual.satuan" type="text" placeholder="Pcs/Unit" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none uppercase">
                             </div>
                         </div>
@@ -1221,12 +1251,10 @@
                     <div v-for="(item, idx) in formSparepartMultiOut.selectedItems" :key="idx" class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2">
                         <div class="flex justify-between items-center">
                             <div class="relative flex-1 mr-2">
-                                <input v-model="item.nama" @focus="openMasterDropdown('sparepart-out-' + idx, item.nama || '')" @input="masterAutocompleteQuery = item.nama || ''; masterDropdownKey = 'sparepart-out-' + idx; onSparepartMultiOutItemInput(item)" type="text" placeholder="Ketik / pilih barang dari Master" class="w-full font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md">
-                                <div v-if="masterDropdownKey === 'sparepart-out-' + idx && masterAutocompleteOptions.length" class="absolute left-0 right-0 top-full mt-1 bg-white border border-amber-300 rounded-lg shadow-xl z-[80] max-h-48 overflow-y-auto">
-                                    <button v-for="m in masterAutocompleteOptions" :key="m.kode" type="button" @click="selectMasterItem(item, m); masterDropdownKey = ''" class="w-full text-left px-3 py-2 hover:bg-amber-50 border-b border-slate-100 last:border-0">
-                                        <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div><div class="text-[9px] text-slate-500">{{ m.satuan }} · SKU: {{ m.kode }}</div>
-                                    </button>
-                                </div>
+                                <select v-model="item.nama" @change="onSparepartMultiOutItemInput(item)" class="w-full font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md cursor-pointer outline-none">
+                                    <option value="">Pilih Barang Sparepart</option>
+                                    <option v-for="m in spareparts" :key="m.barcode || m.kode || m.nama" :value="m.nama">{{ m.nama }} — {{ m.satuan || 'Pcs' }} — Stok: {{ m.qty }}</option>
+                                </select>
                             </div>
                             <button @click="removeSparepartOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
                         </div>
@@ -3264,7 +3292,7 @@
                             <td>${log.user || '-'}</td>
                         </tr>`;
                 }).join('') : `
-                    <tr><td colspan="9" class="empty-row">Belum ada transaksi untuk barang ini.</td></tr>`;
+                    <tr><td colspan="8" class="empty-row">Belum ada transaksi untuk barang ini.</td></tr>`;
 
                 const labelArea = document.getElementById('label-print-area');
                 labelArea.innerHTML = `
