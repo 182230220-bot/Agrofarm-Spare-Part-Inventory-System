@@ -42,151 +42,102 @@
         @media print {
             .no-print { display: none !important; }
             .print-area { display: block !important; width: 100% !important; }
-
             /* Kartu Stock hanya tampil saat fungsi printLabel() dipanggil. */
             #label-print-area {
                 display: none !important;
             }
             #invoice-print-area { display: none !important; }
-
             body.printing-label #label-print-area {
                 display: block !important;
                 width: 100% !important;
-                margin: 0;
+                margin: 0 auto;
                 padding: 0;
             }
-
-            /* ===== LAYOUT CETAK KARTU STOCK ===== */
             body.printing-label .stock-card-print {
                 width: 100%;
                 margin: 0 auto;
                 font-family: Arial, Helvetica, sans-serif;
                 color: #000;
-                font-size: 8.5pt;
-                line-height: 1.25;
+                font-size: 11pt;
             }
-
             body.printing-label .stock-card-heading {
                 text-align: center;
-                margin: 0 0 8mm 0;
-                padding-bottom: 3mm;
-                border-bottom: 1.5px solid #000;
+                margin-bottom: 16px;
             }
-
             body.printing-label .stock-card-title {
-                font-size: 16pt;
+                font-size: 24pt;
                 font-weight: 800;
-                letter-spacing: .7px;
-                line-height: 1.1;
+                letter-spacing: .5px;
                 margin-bottom: 2px;
             }
-
             body.printing-label .stock-card-subtitle {
-                font-size: 8.5pt;
+                font-size: 12pt;
                 font-weight: 600;
-                letter-spacing: .25px;
             }
-
             body.printing-label .stock-card-info,
             body.printing-label .stock-card-table {
                 width: 100% !important;
                 border-collapse: collapse !important;
                 table-layout: fixed;
             }
-
             body.printing-label .stock-card-info {
-                margin-bottom: 5mm;
+                margin-bottom: 12px;
             }
-
             body.printing-label .stock-card-info td {
                 border: 1px solid #000 !important;
-                padding: 4px 6px !important;
+                padding: 9px 11px !important;
                 vertical-align: middle;
-                line-height: 1.2;
             }
-
             body.printing-label .stock-card-info .info-label {
-                width: 14%;
+                width: 16%;
                 font-weight: 700;
                 background: #f0f0f0 !important;
-                white-space: nowrap;
             }
-
             body.printing-label .stock-card-info .info-value {
-                width: 36%;
+                width: 34%;
                 font-weight: 600;
-                overflow-wrap: anywhere;
             }
-
             body.printing-label .stock-card-table {
-                font-size: 7.8pt !important;
-                margin-bottom: 0 !important;
+                font-size: 10.5pt !important;
             }
-
-            body.printing-label .stock-card-table thead {
-                display: table-header-group;
-            }
-
-            body.printing-label .stock-card-table tr {
-                break-inside: avoid;
-                page-break-inside: avoid;
-            }
-
             body.printing-label .stock-card-table th,
             body.printing-label .stock-card-table td {
                 border: 1px solid #000 !important;
-                padding: 3.5px 5px !important;
+                padding: 8px 8px !important;
                 color: #000 !important;
                 vertical-align: middle !important;
                 word-wrap: break-word;
-                overflow-wrap: anywhere;
-                line-height: 1.2;
             }
-
             body.printing-label .stock-card-table th {
                 text-align: center !important;
                 font-weight: 800 !important;
                 background: #e9e9e9 !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
             }
-
             body.printing-label .stock-card-table .center,
             body.printing-label .stock-card-table .num {
                 text-align: center !important;
             }
-
             body.printing-label .stock-card-table .saldo {
                 font-weight: 800 !important;
             }
-
-            /* Lebar kolom dibuat proporsional untuk kertas A4 landscape. */
-            body.printing-label .stock-card-table .col-no { width: 4%; }
-            body.printing-label .stock-card-table .col-date { width: 10%; }
+            body.printing-label .stock-card-table .col-no { width: 5%; }
+            body.printing-label .stock-card-table .col-date { width: 11%; }
             body.printing-label .stock-card-table .col-ref { width: 12%; }
-            body.printing-label .stock-card-table .col-desc { width: 29%; }
+            body.printing-label .stock-card-table .col-desc { width: 27%; }
             body.printing-label .stock-card-table .col-in,
-            body.printing-label .stock-card-table .col-out { width: 7%; }
+            body.printing-label .stock-card-table .col-out { width: 8%; }
             body.printing-label .stock-card-table .col-balance { width: 10%; }
-            body.printing-label .stock-card-table .col-user { width: 14%; }
-
+            body.printing-label .stock-card-table .col-user { width: 11%; }
             body.printing-label .stock-card-table .empty-row {
                 text-align: center !important;
-                padding: 10px !important;
+                padding: 18px !important;
             }
-
             body.printing-label .stock-card-footer {
                 display: flex;
                 justify-content: space-between;
-                align-items: center;
-                gap: 10mm;
-                margin-top: 4mm;
-                padding-top: 2.5mm;
-                border-top: 1px solid #000;
-                font-size: 7.8pt;
-                font-weight: 600;
+                margin-top: 14px;
+                font-size: 10pt;
             }
-
             body.printing-invoice #app > * {
                 display: none !important;
             }
@@ -198,7 +149,6 @@
                 width: 100% !important;
                 margin: 0 auto;
             }
-
             /* Tampilan Tabel Cetak bergaya Excel */
             table, .excel-print-table {
                 width: 100% !important;
@@ -207,14 +157,12 @@
                 font-size: 9pt !important;
                 margin-bottom: 15px !important;
             }
-
             th, td {
                 border: 1px solid #000000 !important;
                 padding: 4px 6px !important;
                 color: #000000 !important;
                 background-color: transparent !important;
             }
-
             th {
                 background-color: #e2e8f0 !important;
                 font-weight: bold !important;
@@ -223,14 +171,8 @@
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-
-            /* Hanya mengatur media cetak kartu stock: A4 landscape agar 8 kolom rapi. */
-            @page {
-                size: A4 landscape;
-                margin: 8mm;
-            }
+            @page { size: A4 landscape; margin: 8mm; }
         }
-
         #label-print-area { display: none; }
     </style>
 </head>
