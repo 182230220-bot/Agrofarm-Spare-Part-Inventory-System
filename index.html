@@ -1251,10 +1251,20 @@
                     <div v-for="(item, idx) in formSparepartMultiOut.selectedItems" :key="idx" class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2">
                         <div class="flex justify-between items-center">
                             <div class="relative flex-1 mr-2">
-                                <select v-model="item.nama" @change="onSparepartMultiOutItemInput(item)" class="w-full font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md cursor-pointer outline-none">
-                                    <option value="">Pilih Barang Sparepart</option>
-                                    <option v-for="m in spareparts" :key="m.barcode || m.kode || m.nama" :value="m.nama">{{ m.nama }} — {{ m.satuan || 'Pcs' }} — Stok: {{ m.qty }}</option>
-                                </select>
+                                <input
+                                    v-model="item.nama"
+                                    list="sparepart-out-search-list"
+                                    @input="onSparepartMultiOutItemInput(item)"
+                                    @change="onSparepartMultiOutItemInput(item)"
+                                    type="search"
+                                    autocomplete="off"
+                                    placeholder="Ketik / cari / pilih barang..."
+                                    class="w-full font-bold text-xs uppercase bg-white p-2 border-2 border-amber-300 rounded-md cursor-text outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+                                >
+                                <datalist id="sparepart-out-search-list">
+                                    <option v-for="m in spareparts" :key="m.barcode || m.kode || m.nama" :value="m.nama">{{ m.satuan || 'Pcs' }} — Stok: {{ m.qty }}</option>
+                                </datalist>
+                                <div class="text-[9px] text-amber-700 mt-1 font-semibold">Ketik untuk mencari, lalu pilih dari dropdown yang muncul.</div>
                             </div>
                             <button @click="removeSparepartOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
                         </div>
