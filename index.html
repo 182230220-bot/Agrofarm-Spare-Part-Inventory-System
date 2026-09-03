@@ -58,20 +58,20 @@
                 margin: 0 auto;
                 font-family: Arial, Helvetica, sans-serif;
                 color: #000;
-                font-size: 11pt;
+                font-size: 9pt;
             }
             body.printing-label .stock-card-heading {
                 text-align: center;
-                margin-bottom: 16px;
+                margin-bottom: 12px;
             }
             body.printing-label .stock-card-title {
-                font-size: 24pt;
+                font-size: 17pt;
                 font-weight: 800;
                 letter-spacing: .5px;
                 margin-bottom: 2px;
             }
             body.printing-label .stock-card-subtitle {
-                font-size: 12pt;
+                font-size: 9pt;
                 font-weight: 600;
             }
             body.printing-label .stock-card-info,
@@ -85,7 +85,7 @@
             }
             body.printing-label .stock-card-info td {
                 border: 1px solid #000 !important;
-                padding: 9px 11px !important;
+                padding: 6px 8px !important;
                 vertical-align: middle;
             }
             body.printing-label .stock-card-info .info-label {
@@ -98,12 +98,12 @@
                 font-weight: 600;
             }
             body.printing-label .stock-card-table {
-                font-size: 10.5pt !important;
+                font-size: 8pt !important;
             }
             body.printing-label .stock-card-table th,
             body.printing-label .stock-card-table td {
                 border: 1px solid #000 !important;
-                padding: 8px 8px !important;
+                padding: 5px 6px !important;
                 color: #000 !important;
                 vertical-align: middle !important;
                 word-wrap: break-word;
@@ -135,8 +135,8 @@
             body.printing-label .stock-card-footer {
                 display: flex;
                 justify-content: space-between;
-                margin-top: 14px;
-                font-size: 10pt;
+                margin-top: 10px;
+                font-size: 8pt;
             }
             body.printing-invoice #app > * {
                 display: none !important;
@@ -171,7 +171,7 @@
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            @page { size: A4 landscape; margin: 8mm; }
+            @page { size: auto; margin: 10mm; }
         }
         #label-print-area { display: none; }
     </style>
@@ -1111,6 +1111,12 @@
                 <button @click="showMonitoringInputModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
             </div>
             <div class="space-y-4 overflow-y-auto custom-scroll pr-1 flex-1">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Tanggal Transaksi / Tanggal Order *</label>
+                        <input v-model="formOrderMulti.tanggal" type="date" required class="w-full p-2.5 bg-emerald-50 font-extrabold text-sm border-2 border-emerald-500 rounded-lg outline-none focus:ring-2 focus:ring-emerald-200">
+                    </div>
+                </div>
                 <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <span class="text-xs font-bold text-slate-700 uppercase">Daftar Barang Order:</span>
                     <button @click="addManualItemToMonitoring" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg uppercase shadow-sm flex items-center gap-1">
@@ -1168,9 +1174,15 @@
             </div>
 
             <div class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1">
-                <div>
-                    <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Pengambil / Penerima *</label>
-                    <input v-model="formSparepartMultiOut.user" type="text" placeholder="Contoh: Budi (Teknisi)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Transaksi / Tanggal Pengeluaran *</label>
+                        <input v-model="formSparepartMultiOut.tanggal" type="date" required class="w-full p-2.5 bg-amber-50 border-2 border-amber-500 rounded-xl font-extrabold text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Pengambil / Penerima *</label>
+                        <input v-model="formSparepartMultiOut.user" type="text" placeholder="Contoh: Budi (Teknisi)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-1">
@@ -1225,9 +1237,15 @@
                 <button @click="showSisaProjectMultiInModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
             </div>
             <div class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1">
-                <div>
-                    <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Asal Vendor / Supplier Utama *</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Transaksi / Tanggal Penerimaan *</label>
+                        <input v-model="formSisaProjectMultiIn.tanggal" type="date" required class="w-full p-2.5 bg-emerald-50 border-2 border-emerald-500 rounded-xl font-extrabold text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-200">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Asal Vendor / Supplier Utama *</label>
                     <input v-model="formSisaProjectMultiIn.supplier" type="text" placeholder="Contoh: Vendor PT XYZ / Sisa Proyek" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-emerald-500">
+                    </div>
                 </div>
                 <div class="flex items-center justify-between pt-1">
                     <span class="text-[11px] text-slate-500 font-semibold">Daftar Barang Sisa Project:</span>
@@ -1280,9 +1298,15 @@
             </div>
 
             <div class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1">
-                <div>
-                    <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Pengambil / Penerima *</label>
-                    <input v-model="formSisaProjectMultiOut.user" type="text" placeholder="Contoh: Ahmad (Vendor)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Transaksi / Tanggal Pengeluaran *</label>
+                        <input v-model="formSisaProjectMultiOut.tanggal" type="date" required class="w-full p-2.5 bg-amber-50 border-2 border-amber-500 rounded-xl font-extrabold text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Pengambil / Penerima *</label>
+                        <input v-model="formSisaProjectMultiOut.user" type="text" placeholder="Contoh: Ahmad (Vendor)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-1">
@@ -1326,6 +1350,28 @@
             </div>
         </div>
     </div>
+    <!-- MODAL PILIH TANGGAL UNTUK TRANSAKSI LANGSUNG (WAJIB) -->
+    <div v-if="showTransactionDatePicker" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5">
+            <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                    <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-sm uppercase">{{ transactionDatePickerTitle }}</h3>
+                    <p class="text-[10px] text-slate-500 mt-0.5">Tanggal ini yang akan dicatat sebagai tanggal barang masuk/keluar. Pilih sesuai tanggal transaksi sebenarnya.</p>
+                </div>
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Transaksi *</label>
+                <input v-model="transactionDatePickerValue" type="date" required class="w-full p-3 bg-white border border-slate-300 rounded-xl font-bold text-sm text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
+            </div>
+            <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button @click="cancelTransactionDate" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold uppercase">Batal</button>
+                <button @click="confirmTransactionDate" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold uppercase shadow-sm">Lanjutkan</button>
+            </div>
+        </div>
+    </div>
 </div>
 <!-- VUE LOGIC INITIALIZATION -->
 <script>
@@ -1355,14 +1401,14 @@
                 monFilterStatus: '',
                 monFilterBarang: '',
                 monFilterProject: '',
-                formOrderMulti: { itemsToProcess: [] },
+                formOrderMulti: { tanggal: '', itemsToProcess: [] },
                 showSparepartMultiOutModal: false,
                 sparepartOutSearchQuery: '',
                 spLogDateStart: '',
                 spLogDateEnd: '',
                 spLogBarang: '',
                 spLogKeperluan: '',
-                formSparepartMultiOut: { user: '', selectedItems: [] },
+                formSparepartMultiOut: { user: '', tanggal: '', selectedItems: [] },
                 showSisaProjectMultiInModal: false,
                 showSisaProjectMultiOutModal: false,
                 sisaProjectOutSearchQuery: '',
@@ -1370,8 +1416,12 @@
                 spjLogDateEnd: '',
                 spjLogBarang: '',
                 spjLogKeperluan: '',
-                formSisaProjectMultiIn: { supplier: '', itemsToProcess: [] },
-                formSisaProjectMultiOut: { user: '', selectedItems: [] },
+                formSisaProjectMultiIn: { supplier: '', tanggal: '', itemsToProcess: [] },
+                formSisaProjectMultiOut: { user: '', tanggal: '', selectedItems: [] },
+                showTransactionDatePicker: false,
+                transactionDatePickerTitle: 'Pilih Tanggal Transaksi',
+                transactionDatePickerValue: '',
+                transactionDatePickerResolve: null,
                 masterCatalog: [],
                 selectedMasterItems: [],
                 selectAllMaster: false,
@@ -1433,7 +1483,7 @@
                 const source = keyword
                     ? this.masterCatalog.filter(i => String(i.nama || '').toLowerCase().includes(keyword))
                     : this.masterCatalog;
-                return source.slice(0, 100);
+                return source;
             },
             filteredMonitoringItems() {
                 return this.monitoringItems.filter(i => {
@@ -1628,6 +1678,39 @@
                 const month = String(dateObj.getMonth() + 1).padStart(2, '0');
                 const year = dateObj.getFullYear();
                 return `${day}/${month}/${year}`;
+            },
+            getISODateOnly(dateObj = new Date()) {
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const year = dateObj.getFullYear();
+                return `${year}-${month}-${day}`;
+            },
+            getDateFromInput(dateStr) {
+                if (!dateStr) return new Date();
+                const [year, month, day] = dateStr.split('-').map(Number);
+                return new Date(year, month - 1, day, 12, 0, 0);
+            },
+            pickTransactionDate(defaultDate = this.getISODateOnly(), title = 'Pilih Tanggal Transaksi') {
+                this.transactionDatePickerTitle = title;
+                this.transactionDatePickerValue = defaultDate || this.getISODateOnly();
+                this.showTransactionDatePicker = true;
+                return new Promise(resolve => {
+                    this.transactionDatePickerResolve = resolve;
+                });
+            },
+            confirmTransactionDate() {
+                const value = this.transactionDatePickerValue;
+                if (!value) return alert('Tanggal transaksi wajib dipilih!');
+                this.showTransactionDatePicker = false;
+                const resolve = this.transactionDatePickerResolve;
+                this.transactionDatePickerResolve = null;
+                if (resolve) resolve(value);
+            },
+            cancelTransactionDate() {
+                this.showTransactionDatePicker = false;
+                const resolve = this.transactionDatePickerResolve;
+                this.transactionDatePickerResolve = null;
+                if (resolve) resolve(null);
             },
             filterLogs(gudang, type, dStart, dEnd, barang, ket) {
                 return this.logs.filter(l => {
@@ -2254,6 +2337,7 @@
             },
             openMonitoringInputModal() {
                 this.formOrderMulti = {
+                    tanggal: this.getISODateOnly(),
                     itemsToProcess: [{ nama: '', orderQty: 1, orderSatuan: 'Pcs', keperluan: '' }]
                 };
                 this.showMonitoringInputModal = true;
@@ -2278,6 +2362,7 @@
                 this.formOrderMulti.itemsToProcess.splice(idx, 1);
             },
             simpanOrderMulti() {
+                if (!this.formOrderMulti.tanggal) return alert('Tanggal order wajib dipilih!');
                 if (this.formOrderMulti.itemsToProcess.length === 0) return alert('Tambahkan minimal 1 item order!');
                 let isValid = true;
                 this.formOrderMulti.itemsToProcess.forEach(item => {
@@ -2285,8 +2370,9 @@
                 });
                 if (!isValid) return alert('Mohon isi nama barang di semua item!');
                 // REVISI 1 (MONITORING): Tanggal tanpa jam
-                const dateOnlyStr = this.getFormattedDateOnly();
-                const isoNow = new Date().toISOString();
+                const selectedDate = this.getDateFromInput(this.formOrderMulti.tanggal);
+                const dateOnlyStr = this.getFormattedDateOnly(selectedDate);
+                const isoNow = selectedDate.toISOString();
                 this.formOrderMulti.itemsToProcess.forEach(item => {
                     const totalQty = Number(item.orderQty) || 1;
                     this.monitoringItems.unshift({
@@ -2311,7 +2397,9 @@
                     alert(`Order ${order.nama} berhasil dicancel.`);
                 }
             },
-            terimaBarang(order) {
+            async terimaBarang(order) {
+                const selectedDateStr = await this.pickTransactionDate(this.getISODateOnly(), 'Tanggal Penerimaan Barang');
+                if (!selectedDateStr) return;
                 const qtyTerimaInput = prompt(`Terima order ${order.nama}\nMasukkan Qty Diterima (Sisa: ${order.qtyRemaining} ${order.satuan}):`, order.qtyRemaining);
                 if (!qtyTerimaInput || isNaN(qtyTerimaInput) || Number(qtyTerimaInput) <= 0) return;
                 const qtyTerima = Number(qtyTerimaInput);
@@ -2335,8 +2423,9 @@
                 order.qtyReceived += qtyTerima;
                 order.qtyRemaining -= qtyTerima;
                 order.status = order.qtyRemaining <= 0 ? 'Diterima Semua' : 'Diterima Sebagian';
-                const dateOnlyStr = this.getFormattedDateOnly();
-                const isoNow = new Date().toISOString();
+                const selectedDate = this.getDateFromInput(selectedDateStr);
+                const dateOnlyStr = this.getFormattedDateOnly(selectedDate);
+                const isoNow = selectedDate.toISOString();
                 const monitoringHistoryId = Date.now() + Math.random();
                 const monitoringLogId = Date.now() + Math.random();
 
@@ -2394,6 +2483,7 @@
             openSparepartMultiOutModal() {
                 this.formSparepartMultiOut = {
                     user: '',
+                    tanggal: this.getISODateOnly(),
                     selectedItems: [this.createSparepartMultiOutItem()]
                 };
                 this.showSparepartMultiOutModal = true;
@@ -2430,6 +2520,7 @@
             },
             submitSparepartMultiOut() {
                 if (!this.formSparepartMultiOut.user) return alert('Nama Pengambil/Penerima wajib diisi!');
+                if (!this.formSparepartMultiOut.tanggal) return alert('Tanggal pengeluaran wajib dipilih!');
                 if (this.formSparepartMultiOut.selectedItems.length === 0) return alert('Tambahkan minimal 1 item!');
 
                 const validNames = this.formSparepartMultiOut.selectedItems.filter(item => item.nama && item.nama.trim());
@@ -2448,8 +2539,9 @@
                     if (Number(item.outQty) > Number(target.qty)) return alert(`Qty keluar ${item.nama} melebihi stok tersedia!`);
                 }
 
-                const dateOnlyStr = this.getFormattedDateOnly();
-                const isoNow = new Date().toISOString();
+                const selectedDate = this.getDateFromInput(this.formSparepartMultiOut.tanggal);
+                const dateOnlyStr = this.getFormattedDateOnly(selectedDate);
+                const isoNow = selectedDate.toISOString();
 
                 this.formSparepartMultiOut.selectedItems.forEach(item => {
                     const target = this.spareparts.find(s => s.barcode === item.barcode);
@@ -2478,7 +2570,8 @@
             },
             openSisaProjectMultiInModal() {
                 this.formSisaProjectMultiIn = { 
-                    supplier: '', 
+                    supplier: '',
+                    tanggal: this.getISODateOnly(), 
                     itemsToProcess: [{ kode: 'MANUAL-' + Date.now(), nama: '', qty: 1, satuan: 'Pcs', lokasi: 'RAK SISA', keperluan: '' }] 
                 };
                 this.showSisaProjectMultiInModal = true;
@@ -2498,9 +2591,11 @@
             },
             submitSisaProjectMultiIn() {
                 if (!this.formSisaProjectMultiIn.supplier) return alert('Asal Vendor / Supplier wajib diisi!');
+                if (!this.formSisaProjectMultiIn.tanggal) return alert('Tanggal penerimaan wajib dipilih!');
                 if (this.formSisaProjectMultiIn.itemsToProcess.length === 0) return alert('Tambahkan minimal 1 item!');
-                const dateOnlyStr = this.getFormattedDateOnly();
-                const isoNow = new Date().toISOString();
+                const selectedDate = this.getDateFromInput(this.formSisaProjectMultiIn.tanggal);
+                const dateOnlyStr = this.getFormattedDateOnly(selectedDate);
+                const isoNow = selectedDate.toISOString();
                 this.formSisaProjectMultiIn.itemsToProcess.forEach(item => {
                     if (!item.nama) return;
                     const targetList = this.sisaProjects;
@@ -2540,6 +2635,7 @@
             openSisaProjectMultiOutModal() {
                 this.formSisaProjectMultiOut = {
                     user: '',
+                    tanggal: this.getISODateOnly(),
                     selectedItems: [this.createSisaProjectMultiOutItem()]
                 };
                 this.showSisaProjectMultiOutModal = true;
@@ -2576,6 +2672,7 @@
             },
             submitSisaProjectMultiOut() {
                 if (!this.formSisaProjectMultiOut.user) return alert('Nama Pengambil/Penerima wajib diisi!');
+                if (!this.formSisaProjectMultiOut.tanggal) return alert('Tanggal pengeluaran wajib dipilih!');
                 if (this.formSisaProjectMultiOut.selectedItems.length === 0) return alert('Tambahkan minimal 1 item!');
 
                 const validNames = this.formSisaProjectMultiOut.selectedItems.filter(item => item.nama && item.nama.trim());
@@ -2594,8 +2691,9 @@
                     if (Number(item.outQty) > Number(target.qty)) return alert(`Qty keluar ${item.nama} melebihi stok tersedia!`);
                 }
 
-                const dateOnlyStr = this.getFormattedDateOnly();
-                const isoNow = new Date().toISOString();
+                const selectedDate = this.getDateFromInput(this.formSisaProjectMultiOut.tanggal);
+                const dateOnlyStr = this.getFormattedDateOnly(selectedDate);
+                const isoNow = selectedDate.toISOString();
 
                 this.formSisaProjectMultiOut.selectedItems.forEach(item => {
                     const target = this.sisaProjects.find(s => s.barcode === item.barcode);
@@ -2622,7 +2720,9 @@
                 this.showSisaProjectMultiOutModal = false;
                 alert('Pengeluaran Sisa Project berhasil diproses!');
             },
-            openSingleOutModal(item) {
+            async openSingleOutModal(item) {
+                const selectedDateStr = await this.pickTransactionDate(this.getISODateOnly(), 'Tanggal Pengeluaran Barang');
+                if (!selectedDateStr) return;
                 const user = prompt(`Pengeluaran ${item.nama}\nMasukkan Nama Pengambil:`);
                 if (!user) return;
                 const outQtyInput = prompt(`Qty Keluar (Stok Saat Ini: ${item.qty}):`, 1);
@@ -2634,8 +2734,9 @@
                 const qtyAwal = item.qty;
                 item.qty -= outQty;
                 const qtyAkhir = item.qty;
-                const dateOnlyStr = this.getFormattedDateOnly();
-                const isoNow = new Date().toISOString();
+                const selectedDate = this.getDateFromInput(selectedDateStr);
+                const dateOnlyStr = this.getFormattedDateOnly(selectedDate);
+                const isoNow = selectedDate.toISOString();
                 const isSparepart = this.activeTab === 'sparepart';
                 this.logs.unshift({
                     id: Date.now() + Math.random(),
