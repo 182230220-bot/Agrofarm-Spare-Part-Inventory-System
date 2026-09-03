@@ -1570,21 +1570,215 @@
                 });
             },
             editLog(log) {
-                const newQty = prompt(`Adjust Qty untuk ${log.nama} (${log.type}):`, log.qty);
-                if (newQty !== null && !isNaN(newQty) && Number(newQty) > 0) {
-                    const diff = Number(newQty) - log.qty;
-                    log.qty = Number(newQty);
-                    const dateStr = this.getFormattedDateOnly();
-                    log.editedAt = `edited tanggal ${dateStr}`;
-                    const targetList = log.gudang === 'Sparepart' ? this.spareparts : this.sisaProjects;
-                    const stockItem = targetList.find(s => s.nama.toLowerCase() === log.nama.toLowerCase());
-                    if (stockItem) {
-                        if (log.type === 'IN') stockItem.qty += diff;
-                        else if (log.type === 'OUT') stockItem.qty -= diff;
-                        log.qtyAkhir = stockItem.qty;
+                const isMonitoringHistory = this.monitoringHistory.some(h => h.id === log.id);
+                const linkedLog = isMonitoringHistory
+                    ? this.logs.find(l =>
+                        (log.monitoringLogId != null && l.id === log.monitoringLogId) ||
+                        (l.monitoringHistoryId != null && l.monitoringHistoryId === log.id)
+                    )
+                    : log;
+
+                const oldQty = Number(log.qty) || 0;
+                const newQtyInput = prompt(`Adjust Qty untuk ${log.nama} (${log.type}):`, oldQty);
+                if (newQtyInput === null || isNaN(newQtyInput) || Number(newQtyInput) <= 0) return;
+
+                const newQty = Number(newQtyInput);
+                const diff = newQty - oldQty;
+                if (diff === 0) return;
+
+                const dateStr = this.getFormattedDateOnly();
+                const receiptLog = linkedLog && linkedLog.type === 'IN' ? linkedLog : null;
+                const isMonitoringReceipt = log.type === 'IN' && (
+                    isMonitoringHistory ||
+                    (log.gudang === 'Sparepart' && String(log.keperluan || '').toLowerCase().startsWith('penerimaan monitoring')) ||
+                    (receiptLog && String(receiptLog.keperluan || '').toLowerCase().startsWith('penerimaan monitoring'))
+                );
+
+                if (isMonitoringReceipt) {
+                    let historyItem = isMonitoringHistory ? log : null;
+
+                    if (!historyItem && receiptLog?.monitoringHistoryId != null) {
+                        historyItem = this.monitoringHistory.find(h => h.id === receiptLog.monitoringHistoryId);
                     }
-                    alert('Log berhasil di-adjust!');
+                    if (!historyItem && log.monitoringHistoryId != null) {
+                        historyItem = this.monitoringHistory.find(h => h.id === log.monitoringHistoryId);
+                    }
+
+                    // Untuk data lama yang belum mempunyai ID penghubung, cari berdasarkan
+                    // nama barang + project + qty lama agar tidak salah mengambil transaksi lain.
+                    if (!historyItem) {
+                        const projectText = String(log.keperluan || '')
+                            .replace(/^penerimaan monitoring\s*\(?/i, '')
+                            .replace(/\)?\s*$/g, '')
+                            .trim().toLowerCase();
+                        historyItem = this.monitoringHistory.find(h =>
+                            h.type === 'IN' &&
+                            String(h.nama || '').trim().toLowerCase() === String(log.nama || '').trim().toLowerCase() &&
+                            String(h.keperluan || h.project || '').trim().toLowerCase() === projectText &&
+                            Number(h.qty) === oldQty
+                        );
+                    }
+
+                    let monitoringOrder = null;
+                    const orderId = log.monitoringOrderId ?? historyItem?.monitoringOrderId ?? receiptLog?.monitoringOrderId;
+                    if (orderId != null) {
+                        monitoringOrder = this.monitoringItems.find(o => o.id === orderId);
+                    }
+
+                    if (!monitoringOrder) {
+                        const projectText = String(historyItem?.keperluan || String(log.keperluan || '')
+                            .replace(/^penerimaan monitoring\s*\(?/i, '')
+                            .replace(/\)?\s*$/g, ''))
+                            .trim().toLowerCase();
+                        monitoringOrder = this.monitoringItems.find(o =>
+                            String(o.nama || '').trim().toLowerCase() === String(log.nama || '').trim().toLowerCase() &&
+                            String(o.keperluan || o.project || '').trim().toLowerCase() === projectText
+                        );
+                    }
+
+                    const namaKey = String(log.nama || '').trim().toLowerCase();
+                    const stockItem = this.spareparts.find(s =>
+                        String(s.nama || '').trim().toLowerCase() === namaKey
+                    );
+                    if (!stockItem) return alert(`Barang ${log.nama} tidak ditemukan di stok Sparepart.`);
+
+                    // Pastikan edit tidak membuat qty diterima melewati total order.
+                    if (monitoringOrder) {
+                        const updatedReceived = (Number(monitoringOrder.qtyReceived) || 0) + diff;
+                        const totalOrder = Number(monitoringOrder.qtyTotal) || 0;
+                        if (updatedReceived < 0 || updatedReceived > totalOrder) {
+                            return alert('Qty edit tidak valid karena melebihi batas Total Order.');
+                        }
+                    }
+
+                    // Jika penerimaan dikurangi, stok akhir harus tetap tidak negatif.
+                    if (diff < 0 && (Number(stockItem.qty) || 0) + diff < 0) {
+                        return alert('Qty penerimaan tidak dapat dikurangi karena stok Sparepart tidak mencukupi.');
+                    }
+
+                    // 1. Ubah stok Sparepart sekarang.
+                    stockItem.qty = (Number(stockItem.qty) || 0) + diff;
+
+                    // 2. Ubah record yang sedang diedit.
+                    log.qty = newQty;
+                    log.editedAt = `edited tanggal ${dateStr}`;
+                    if (receiptLog && receiptLog !== log) {
+                        receiptLog.qty = newQty;
+                        receiptLog.editedAt = `edited tanggal ${dateStr}`;
+                    }
+                    if (historyItem) {
+                        historyItem.qty = newQty;
+                        historyItem.editedAt = `edited tanggal ${dateStr}`;
+                    }
+
+                    // 3. Sinkronkan Monitoring Order: Diterima, Sisa Order, dan Status.
+                    if (monitoringOrder) {
+                        monitoringOrder.qtyReceived = Math.max(0, (Number(monitoringOrder.qtyReceived) || 0) + diff);
+                        monitoringOrder.qtyRemaining = Math.max(0,
+                            (Number(monitoringOrder.qtyTotal) || 0) - monitoringOrder.qtyReceived
+                        );
+                        monitoringOrder.status = monitoringOrder.qtyRemaining <= 0
+                            ? 'Diterima Semua'
+                            : monitoringOrder.qtyReceived > 0
+                                ? 'Diterima Sebagian'
+                                : 'Pending';
+
+                        // Semua history penerimaan dari order yang sama mengikuti status terakhir.
+                        this.monitoringHistory.forEach(h => {
+                            if (h.monitoringOrderId === monitoringOrder.id) {
+                                h.status = monitoringOrder.status;
+                            }
+                        });
+                    }
+
+                    // 4. Hitung ulang seluruh rantai Qty Awal dan Qty Akhir untuk item Sparepart.
+                    // Jadi transaksi setelah penerimaan yang diedit otomatis ikut bergeser.
+                    const itemLogs = this.logs
+                        .filter(l =>
+                            String(l.gudang || '').toLowerCase() === 'sparepart' &&
+                            String(l.nama || '').trim().toLowerCase() === namaKey
+                        )
+                        .sort((a, b) => {
+                            const ta = a.isoDate ? new Date(a.isoDate).getTime() : Number(a.id) || 0;
+                            const tb = b.isoDate ? new Date(b.isoDate).getTime() : Number(b.id) || 0;
+                            return ta - tb;
+                        });
+
+                    if (itemLogs.length > 0) {
+                        // Baseline diambil dari Qty Awal transaksi pertama yang tersedia.
+                        let runningStock = Number(itemLogs[0].qtyAwal);
+                        if (!Number.isFinite(runningStock)) runningStock = 0;
+
+                        itemLogs.forEach(itemLog => {
+                            itemLog.qtyAwal = runningStock;
+                            const qty = Number(itemLog.qty) || 0;
+                            runningStock = itemLog.type === 'OUT'
+                                ? runningStock - qty
+                                : runningStock + qty;
+                            itemLog.qtyAkhir = runningStock;
+                        });
+
+                        // Nilai stok sekarang harus sama dengan hasil transaksi terakhir.
+                        stockItem.qty = runningStock;
+                    }
+
+                    // 5. Master Data memakai currentStock terpisah, jadi ikut disamakan dengan stok Sparepart.
+                    const masterItem = this.masterCatalog.find(m =>
+                        String(m.nama || '').trim().toLowerCase() === namaKey
+                    );
+                    if (masterItem) masterItem.currentStock = Number(stockItem.qty) || 0;
+
+                    alert('Qty penerimaan berhasil diubah. Monitoring, History, Sparepart, Master Data, Qty Awal, Qty Akhir, dan Total Stok sudah otomatis disesuaikan.');
+                    return;
                 }
+
+                // LOG BIASA: perilaku sebelumnya tetap dipertahankan, tetapi Qty Awal/Akhir
+                // transaksi berikutnya juga dihitung ulang agar rantai stok konsisten.
+                log.qty = newQty;
+                log.editedAt = `edited tanggal ${dateStr}`;
+                const targetList = log.gudang === 'Sparepart' ? this.spareparts : this.sisaProjects;
+                const stockItem = targetList.find(s =>
+                    String(s.nama || '').trim().toLowerCase() === String(log.nama || '').trim().toLowerCase()
+                );
+
+                if (stockItem) {
+                    if (log.type === 'IN') stockItem.qty = (Number(stockItem.qty) || 0) + diff;
+                    else if (log.type === 'OUT') stockItem.qty = (Number(stockItem.qty) || 0) - diff;
+
+                    const namaKey = String(log.nama || '').trim().toLowerCase();
+                    const itemLogs = this.logs
+                        .filter(l =>
+                            l.gudang === log.gudang &&
+                            String(l.nama || '').trim().toLowerCase() === namaKey
+                        )
+                        .sort((a, b) => {
+                            const ta = a.isoDate ? new Date(a.isoDate).getTime() : Number(a.id) || 0;
+                            const tb = b.isoDate ? new Date(b.isoDate).getTime() : Number(b.id) || 0;
+                            return ta - tb;
+                        });
+
+                    if (itemLogs.length > 0) {
+                        let runningStock = Number(itemLogs[0].qtyAwal);
+                        if (!Number.isFinite(runningStock)) runningStock = 0;
+                        itemLogs.forEach(itemLog => {
+                            itemLog.qtyAwal = runningStock;
+                            const qty = Number(itemLog.qty) || 0;
+                            runningStock = itemLog.type === 'OUT'
+                                ? runningStock - qty
+                                : runningStock + qty;
+                            itemLog.qtyAkhir = runningStock;
+                        });
+                        stockItem.qty = runningStock;
+                    }
+
+                    if (log.gudang === 'Sparepart') {
+                        const masterItem = this.masterCatalog.find(m =>
+                            String(m.nama || '').trim().toLowerCase() === namaKey
+                        );
+                        if (masterItem) masterItem.currentStock = Number(stockItem.qty) || 0;
+                    }
+                }
+                alert('Log berhasil di-adjust dan saldo transaksi setelahnya sudah otomatis disesuaikan!');
             },
             resetDashFilter() {
                 this.dashFilterDateStart = '';
@@ -2065,8 +2259,11 @@
                 order.status = order.qtyRemaining <= 0 ? 'Diterima Semua' : 'Diterima Sebagian';
                 const dateOnlyStr = this.getFormattedDateOnly();
                 const isoNow = new Date().toISOString();
+                const monitoringHistoryId = Date.now() + Math.random();
+                const monitoringLogId = Date.now() + Math.random();
+
                 this.monitoringHistory.unshift({
-                    id: Date.now() + Math.random(),
+                    id: monitoringHistoryId,
                     type: 'IN',
                     tgl: dateOnlyStr,
                     isoDate: isoNow,
@@ -2074,10 +2271,12 @@
                     nama: order.nama,
                     qty: qtyTerima,
                     satuan: order.satuan,
-                    status: order.status
+                    status: order.status,
+                    monitoringOrderId: order.id,
+                    monitoringLogId: monitoringLogId
                 });
                 this.logs.unshift({
-                    id: Date.now() + Math.random(),
+                    id: monitoringLogId,
                     isoDate: isoNow,
                     gudang: 'Sparepart',
                     type: 'IN',
@@ -2086,7 +2285,9 @@
                     qtyAwal: qtyAwal,
                     qtyAkhir: qtyAkhir,
                     tgl: dateOnlyStr,
-                    keperluan: `Penerimaan Monitoring (${order.keperluan || order.project || '-'})`
+                    keperluan: `Penerimaan Monitoring (${order.keperluan || order.project || '-'})`,
+                    monitoringOrderId: order.id,
+                    monitoringHistoryId: monitoringHistoryId
                 });
                 alert(`Penerimaan order dicatat! Stok ${order.nama} bertambah.`);
             },
