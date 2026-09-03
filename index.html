@@ -123,10 +123,11 @@
             body.printing-label .stock-card-table .col-no { width: 5%; }
             body.printing-label .stock-card-table .col-date { width: 11%; }
             body.printing-label .stock-card-table .col-ref { width: 12%; }
-            body.printing-label .stock-card-table .col-desc { width: 27%; }
+            body.printing-label .stock-card-table .col-desc { width: 20%; }
+            body.printing-label .stock-card-table .col-opening { width: 9%; }
             body.printing-label .stock-card-table .col-in,
-            body.printing-label .stock-card-table .col-out { width: 8%; }
-            body.printing-label .stock-card-table .col-balance { width: 10%; }
+            body.printing-label .stock-card-table .col-out { width: 9%; }
+            body.printing-label .stock-card-table .col-balance { width: 9%; }
             body.printing-label .stock-card-table .col-user { width: 11%; }
             body.printing-label .stock-card-table .empty-row {
                 text-align: center !important;
@@ -507,9 +508,13 @@
                             <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Barang *</label>
                             <input v-model="formMasterManual.nama" type="text" placeholder="Masukkan Nama Barang / Sparepart" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none uppercase">
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-6 gap-3">
                             <div>
-                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Qty</label>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Input *</label>
+                                <input v-model="formMasterManual.tanggal" type="date" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Qty / Stock Awal</label>
                                 <input v-model.number="formMasterManual.currentStock" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
                             </div>
                             <div>
@@ -586,13 +591,14 @@
                                 <th class="p-3.5 text-center">No</th>
                                 <th class="p-3.5">Kode Barang</th>
                                 <th class="p-3.5">Nama Sparepart</th>
-                                <th class="p-3.5 text-center">Qty</th>
+                                <th class="p-3.5 text-center">Tanggal Input</th>
+                                <th class="p-3.5 text-center">Qty / Stock Awal</th>
                                 <th class="p-3.5 text-center">Minimal Stock</th>
                                 <th class="p-3.5 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            <tr v-for="(item, idx) in paginatedMasterCatalog" :key="item.kode" v-memo="[item.kode, item.nama, item.currentStock, item.minStock, item.satuan]" class="hover:bg-slate-50">
+                            <tr v-for="(item, idx) in paginatedMasterCatalog" :key="item.kode" v-memo="[item.kode, item.nama, item.currentStock, item.minStock, item.satuan, item.tanggal]" class="hover:bg-slate-50">
                                 <td class="p-3.5 text-center">
                                     <input
                                         type="checkbox"
@@ -605,7 +611,8 @@
                                 <td class="p-3.5 text-center font-bold text-slate-500">{{ ((masterPage - 1) * masterPageSize) + idx + 1 }}</td>
                                 <td class="p-3.5 font-mono font-bold text-emerald-700">{{ item.kode }}</td>
                                 <td class="p-3.5 font-bold text-slate-800 uppercase">{{ item.nama }}</td>
-                                <td class="p-3.5 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">{{ item.currentStock ?? 0 }} {{ item.satuan || 'Pcs' }}</td>
+                                <td class="p-3.5 text-center font-mono text-slate-600">{{ item.tanggal || '-' }}</td>
+                                <td class="p-3.5 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">{{ item.stockAwal ?? item.currentStock ?? 0 }} {{ item.satuan || 'Pcs' }}</td>
                                 <td class="p-3.5 text-center font-bold text-slate-700">{{ item.minStock }} {{ item.satuan || 'Pcs' }}</td>
                                 <td class="p-3.5 text-center">
                                     <button @click="deleteMaster(item.kode)" class="bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white px-3 py-1.5 rounded-lg border border-rose-300 transition-all font-bold text-[11px] inline-flex items-center gap-1.5 shadow-sm">
@@ -615,7 +622,7 @@
                                 </td>
                             </tr>
                             <tr v-if="filteredMasterCatalog.length === 0">
-                                <td colspan="7" class="p-12 text-center text-slate-400 font-medium">Database Master masih kosong. Silakan import atau tambah manual.</td>
+                                <td colspan="8" class="p-12 text-center text-slate-400 font-medium">Database Master masih kosong. Silakan import atau tambah manual.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1135,7 +1142,14 @@
                             <!-- Input Nama Barang Manual dengan Saran Datalist dari Master -->
                             <div class="md:col-span-5">
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Nama Barang (Ketik / Pilih Master)</label>
-                                <input v-model="item.nama" @focus="masterAutocompleteQuery = item.nama || ''" @input="onMonitoringItemInput(item)" list="master-catalog-list" type="text" placeholder="Ketik nama barang..." class="w-full p-2 bg-white font-bold text-xs uppercase border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+                                <div class="relative flex-1 mr-2">
+                                <input v-model="item.nama" @focus="openMasterDropdown('monitoring-' + idx, item.nama || '')" @input="masterAutocompleteQuery = item.nama || ''; masterDropdownKey = 'monitoring-' + idx; onMonitoringItemInput(item)" type="text" placeholder="Ketik nama barang..." class="w-full p-2 bg-white font-bold text-xs uppercase border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+                                <div v-if="masterDropdownKey === 'monitoring-' + idx && masterAutocompleteOptions.length" class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-xl z-[80] max-h-48 overflow-y-auto">
+                                    <button v-for="m in masterAutocompleteOptions" :key="m.kode" type="button" @click="selectMasterItem(item, m); masterDropdownKey = ''" class="w-full text-left px-3 py-2 hover:bg-emerald-50 border-b border-slate-100 last:border-0">
+                                        <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div><div class="text-[9px] text-slate-500">{{ m.satuan }} · SKU: {{ m.kode }}</div>
+                                    </button>
+                                </div>
+                            </div>
                             </div>
                             <!-- Qty Order -->
                             <div class="md:col-span-2">
@@ -1151,6 +1165,16 @@
                             <div class="md:col-span-3">
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Kepentingan Spesifik *</label>
                                 <input v-model="item.keperluan" type="text" placeholder="Contoh: GH-A / Maintenance" class="w-full p-2 bg-white font-semibold text-xs border border-slate-300 rounded-lg uppercase outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <div>
+                                <label class="text-[9px] font-bold text-emerald-700 uppercase block mb-1">Nama Penerima *</label>
+                                <input v-model="item.penerima" type="text" placeholder="Nama penerima item ini" class="w-full p-2 bg-white font-semibold text-xs border border-emerald-300 rounded-lg uppercase outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-emerald-700 uppercase block mb-1">Nama Pengambil</label>
+                                <input v-model="item.pengambil" type="text" placeholder="Jika ada" class="w-full p-2 bg-white font-semibold text-xs border border-emerald-300 rounded-lg uppercase outline-none focus:border-emerald-500">
                             </div>
                         </div>
                     </div>
@@ -1179,10 +1203,7 @@
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Transaksi / Tanggal Pengeluaran *</label>
                         <input v-model="formSparepartMultiOut.tanggal" type="date" required class="w-full p-2.5 bg-amber-50 border-2 border-amber-500 rounded-xl font-extrabold text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
                     </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Pengambil / Penerima *</label>
-                        <input v-model="formSparepartMultiOut.user" type="text" placeholder="Contoh: Budi (Teknisi)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
-                    </div>
+
                 </div>
 
                 <div class="flex items-center justify-between pt-1">
@@ -1195,8 +1216,25 @@
                 <div class="space-y-2 border-t border-slate-100 pt-3">
                     <div v-for="(item, idx) in formSparepartMultiOut.selectedItems" :key="idx" class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2">
                         <div class="flex justify-between items-center">
-                            <input v-model="item.nama" @focus="masterAutocompleteQuery = item.nama || ''" @input="onSparepartMultiOutItemInput(item)" list="master-catalog-list" type="text" placeholder="Nama Barang (Ketik / Pilih Master)" class="font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md flex-1 mr-2">
+                            <div class="relative flex-1 mr-2">
+                                <input v-model="item.nama" @focus="openMasterDropdown('sparepart-out-' + idx, item.nama || '')" @input="masterAutocompleteQuery = item.nama || ''; masterDropdownKey = 'sparepart-out-' + idx; onSparepartMultiOutItemInput(item)" type="text" placeholder="Ketik / pilih barang dari Master" class="w-full font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md">
+                                <div v-if="masterDropdownKey === 'sparepart-out-' + idx && masterAutocompleteOptions.length" class="absolute left-0 right-0 top-full mt-1 bg-white border border-amber-300 rounded-lg shadow-xl z-[80] max-h-48 overflow-y-auto">
+                                    <button v-for="m in masterAutocompleteOptions" :key="m.kode" type="button" @click="selectMasterItem(item, m); masterDropdownKey = ''" class="w-full text-left px-3 py-2 hover:bg-amber-50 border-b border-slate-100 last:border-0">
+                                        <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div><div class="text-[9px] text-slate-500">{{ m.satuan }} · SKU: {{ m.kode }}</div>
+                                    </button>
+                                </div>
+                            </div>
                             <button @click="removeSparepartOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <div>
+                                <label class="text-[9px] font-bold text-amber-700 uppercase block">Nama Pengambil *</label>
+                                <input v-model="item.pengambil" type="text" placeholder="Nama pengambil barang ini" class="w-full p-1.5 bg-white font-semibold text-xs border border-amber-300 rounded-md uppercase">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-amber-700 uppercase block">Nama Penerima</label>
+                                <input v-model="item.penerima" type="text" placeholder="Jika ada" class="w-full p-1.5 bg-white font-semibold text-xs border border-amber-300 rounded-md uppercase">
+                            </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
                             <div>
@@ -1256,8 +1294,25 @@
                 <div class="space-y-2 border-t border-slate-100 pt-3">
                     <div v-for="(item, idx) in formSisaProjectMultiIn.itemsToProcess" :key="idx" class="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 space-y-2">
                         <div class="flex justify-between items-center">
-                            <input v-model="item.nama" @focus="masterAutocompleteQuery = item.nama || ''" @input="masterAutocompleteQuery = item.nama || ''" list="master-catalog-list" type="text" placeholder="Nama Barang (Ketik / Pilih Master)" class="font-bold text-xs uppercase bg-white p-1.5 border border-emerald-300 rounded-md flex-1 mr-2">
+                            <div class="relative flex-1 mr-2">
+                                <input v-model="item.nama" @focus="openMasterDropdown('sisa-in-' + idx, item.nama || '')" @input="masterAutocompleteQuery = item.nama || ''; masterDropdownKey = 'sisa-in-' + idx" type="text" placeholder="Ketik / pilih barang dari Master" class="w-full font-bold text-xs uppercase bg-white p-1.5 border border-emerald-300 rounded-md">
+                                <div v-if="masterDropdownKey === 'sisa-in-' + idx && masterAutocompleteOptions.length" class="absolute left-0 right-0 top-full mt-1 bg-white border border-emerald-300 rounded-lg shadow-xl z-[80] max-h-48 overflow-y-auto">
+                                    <button v-for="m in masterAutocompleteOptions" :key="m.kode" type="button" @click="selectMasterItem(item, m); masterDropdownKey = ''" class="w-full text-left px-3 py-2 hover:bg-emerald-50 border-b border-slate-100 last:border-0">
+                                        <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div><div class="text-[9px] text-slate-500">{{ m.satuan }} · SKU: {{ m.kode }}</div>
+                                    </button>
+                                </div>
+                            </div>
                             <button @click="removeSisaProjectMultiInItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <div>
+                                <label class="text-[9px] font-bold text-emerald-700 uppercase block">Nama Penerima *</label>
+                                <input v-model="item.penerima" type="text" placeholder="Nama penerima barang ini" class="w-full p-1.5 bg-white font-semibold text-xs border border-emerald-300 rounded-md uppercase">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-emerald-700 uppercase block">Nama Pengambil</label>
+                                <input v-model="item.pengambil" type="text" placeholder="Jika ada" class="w-full p-1.5 bg-white font-semibold text-xs border border-emerald-300 rounded-md uppercase">
+                            </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
                             <div>
@@ -1303,10 +1358,7 @@
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Transaksi / Tanggal Pengeluaran *</label>
                         <input v-model="formSisaProjectMultiOut.tanggal" type="date" required class="w-full p-2.5 bg-amber-50 border-2 border-amber-500 rounded-xl font-extrabold text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
                     </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Pengambil / Penerima *</label>
-                        <input v-model="formSisaProjectMultiOut.user" type="text" placeholder="Contoh: Ahmad (Vendor)" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
-                    </div>
+
                 </div>
 
                 <div class="flex items-center justify-between pt-1">
@@ -1319,8 +1371,25 @@
                 <div class="space-y-2 border-t border-slate-100 pt-3">
                     <div v-for="(item, idx) in formSisaProjectMultiOut.selectedItems" :key="idx" class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2">
                         <div class="flex justify-between items-center">
-                            <input v-model="item.nama" @focus="masterAutocompleteQuery = item.nama || ''" @input="onSisaProjectMultiOutItemInput(item)" list="master-catalog-list" type="text" placeholder="Nama Barang (Ketik / Pilih Master)" class="font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md flex-1 mr-2">
+                            <div class="relative flex-1 mr-2">
+                                <input v-model="item.nama" @focus="openMasterDropdown('sisa-out-' + idx, item.nama || '')" @input="masterAutocompleteQuery = item.nama || ''; masterDropdownKey = 'sisa-out-' + idx; onSisaProjectMultiOutItemInput(item)" type="text" placeholder="Ketik / pilih barang dari Master" class="w-full font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md">
+                                <div v-if="masterDropdownKey === 'sisa-out-' + idx && masterAutocompleteOptions.length" class="absolute left-0 right-0 top-full mt-1 bg-white border border-amber-300 rounded-lg shadow-xl z-[80] max-h-48 overflow-y-auto">
+                                    <button v-for="m in masterAutocompleteOptions" :key="m.kode" type="button" @click="selectMasterItem(item, m); masterDropdownKey = ''" class="w-full text-left px-3 py-2 hover:bg-amber-50 border-b border-slate-100 last:border-0">
+                                        <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div><div class="text-[9px] text-slate-500">{{ m.satuan }} · SKU: {{ m.kode }}</div>
+                                    </button>
+                                </div>
+                            </div>
                             <button @click="removeSisaProjectOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <div>
+                                <label class="text-[9px] font-bold text-amber-700 uppercase block">Nama Pengambil *</label>
+                                <input v-model="item.pengambil" type="text" placeholder="Nama pengambil barang ini" class="w-full p-1.5 bg-white font-semibold text-xs border border-amber-300 rounded-md uppercase">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-amber-700 uppercase block">Nama Penerima</label>
+                                <input v-model="item.penerima" type="text" placeholder="Jika ada" class="w-full p-1.5 bg-white font-semibold text-xs border border-amber-300 rounded-md uppercase">
+                            </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
                             <div>
@@ -1392,9 +1461,10 @@
                 dashFilterDateEnd: '',
                 searchMaster: '',
                 masterAutocompleteQuery: '',
+                masterDropdownKey: '',
                 masterPage: 1,
                 masterPageSize: 100,
-                formMasterManual: { nama: '', minStock: 0, currentStock: 0, leadTime: 0, safetyStock: 0, avgDailyUsage: 0, satuan: 'Pcs' },
+                formMasterManual: { nama: '', minStock: 0, currentStock: 0, stockAwal: 0, tanggal: new Date().toISOString().slice(0,10), leadTime: 0, safetyStock: 0, avgDailyUsage: 0, satuan: 'Pcs' },
                 showMonitoringInputModal: false,
                 monFilterDateStart: '',
                 monFilterDateEnd: '',
@@ -1478,12 +1548,27 @@
                     this.filteredMasterCatalog.length
                 );
             },
+            openMasterDropdown(key, query = '') {
+                this.masterDropdownKey = key;
+                this.masterAutocompleteQuery = query || '';
+            },
+            selectMasterItem(item, master) {
+                item.nama = master.nama;
+                item.satuan = master.satuan || item.satuan || 'Pcs';
+                this.masterAutocompleteQuery = master.nama || '';
+                if (this.masterDropdownKey.startsWith('sparepart-out-')) this.onSparepartMultiOutItemInput(item);
+                if (this.masterDropdownKey.startsWith('sisa-out-')) this.onSisaProjectMultiOutItemInput(item);
+                if (this.masterDropdownKey.startsWith('monitoring-')) this.onMonitoringItemInput(item);
+                this.masterDropdownKey = '';
+            },
             masterAutocompleteOptions() {
                 const keyword = this.masterAutocompleteQuery.trim().toLowerCase();
-                const source = keyword
-                    ? this.masterCatalog.filter(i => String(i.nama || '').toLowerCase().includes(keyword))
-                    : this.masterCatalog;
-                return source;
+                let source = this.masterCatalog;
+                if (this.masterDropdownKey.startsWith('sparepart-out-')) source = this.spareparts;
+                if (this.masterDropdownKey.startsWith('sisa-out-')) source = this.sisaProjects;
+                return keyword
+                    ? source.filter(i => String(i.nama || '').toLowerCase().includes(keyword))
+                    : source;
             },
             filteredMonitoringItems() {
                 return this.monitoringItems.filter(i => {
@@ -2283,6 +2368,8 @@
                         this.formMasterManual.avgDailyUsage
                     ),
                     currentStock: Number(this.formMasterManual.currentStock) || 0,
+                    stockAwal: Number(this.formMasterManual.currentStock) || 0,
+                    tanggal: this.formMasterManual.tanggal || this.getISODateOnly(),
                     leadTime: Number(this.formMasterManual.leadTime) || 0,
                     safetyStock: Number(this.formMasterManual.safetyStock) || 0,
                     avgDailyUsage: Number(this.formMasterManual.avgDailyUsage) || 0,
@@ -2290,7 +2377,7 @@
                 });
                 this.sortMasterCatalog();
                 this.masterPage = 1;
-                this.formMasterManual = { nama: '', minStock: 0, currentStock: 0, leadTime: 0, safetyStock: 0, avgDailyUsage: 0, satuan: 'Pcs' };
+                this.formMasterManual = { nama: '', minStock: 0, currentStock: 0, stockAwal: 0, tanggal: this.getISODateOnly(), leadTime: 0, safetyStock: 0, avgDailyUsage: 0, satuan: 'Pcs' };
                 alert('Berhasil menambah Data Master!');
             },
             deleteMaster(kode) {
@@ -2338,7 +2425,7 @@
             openMonitoringInputModal() {
                 this.formOrderMulti = {
                     tanggal: this.getISODateOnly(),
-                    itemsToProcess: [{ nama: '', orderQty: 1, orderSatuan: 'Pcs', keperluan: '' }]
+                    itemsToProcess: [{ nama: '', orderQty: 1, orderSatuan: 'Pcs', keperluan: '', pengambil: '', penerima: '' }]
                 };
                 this.showMonitoringInputModal = true;
             },
@@ -2347,7 +2434,9 @@
                     nama: '',
                     orderQty: 1,
                     orderSatuan: 'Pcs',
-                    keperluan: ''
+                    keperluan: '',
+                    pengambil: '',
+                    penerima: ''
                 });
             },
             onMonitoringItemInput(item) {
@@ -2363,6 +2452,7 @@
             },
             simpanOrderMulti() {
                 if (!this.formOrderMulti.tanggal) return alert('Tanggal order wajib dipilih!');
+                if (this.formOrderMulti.itemsToProcess.some(item => !item.penerima || !item.penerima.trim())) return alert('Nama Penerima wajib diisi pada setiap item!');
                 if (this.formOrderMulti.itemsToProcess.length === 0) return alert('Tambahkan minimal 1 item order!');
                 let isValid = true;
                 this.formOrderMulti.itemsToProcess.forEach(item => {
@@ -2381,6 +2471,8 @@
                         tgl: dateOnlyStr,
                         nama: item.nama.toUpperCase(),
                         keperluan: (item.keperluan || '-').toUpperCase(),
+                        penerima: item.penerima.toUpperCase(),
+                        pengambil: (item.pengambil || '').toUpperCase(),
                         qtyTotal: totalQty,
                         qtyReceived: 0,
                         qtyRemaining: totalQty,
@@ -2495,7 +2587,9 @@
                     qty: 0,
                     satuan: 'Pcs',
                     outQty: 1,
-                    keperluan: ''
+                    keperluan: '',
+                    pengambil: '',
+                    penerima: ''
                 };
             },
             addCustomItemToSparepartMultiOut() {
@@ -2519,7 +2613,7 @@
                 this.formSparepartMultiOut.selectedItems.splice(idx, 1);
             },
             submitSparepartMultiOut() {
-                if (!this.formSparepartMultiOut.user) return alert('Nama Pengambil/Penerima wajib diisi!');
+                if (this.formSparepartMultiOut.selectedItems.some(item => !item.pengambil || !item.pengambil.trim())) return alert('Nama Pengambil wajib diisi pada setiap item!');
                 if (!this.formSparepartMultiOut.tanggal) return alert('Tanggal pengeluaran wajib dipilih!');
                 if (this.formSparepartMultiOut.selectedItems.length === 0) return alert('Tambahkan minimal 1 item!');
 
@@ -2560,7 +2654,9 @@
                         qtyAwal: qtyAwal,
                         qtyAkhir: qtyAkhir,
                         tgl: dateOnlyStr,
-                        user: this.formSparepartMultiOut.user.toUpperCase(),
+                        user: item.pengambil.toUpperCase(),
+                        pengambil: item.pengambil.toUpperCase(),
+                        penerima: (item.penerima || '').toUpperCase(),
                         keperluan: item.keperluan.toUpperCase()
                     });
                 });
@@ -2572,7 +2668,7 @@
                 this.formSisaProjectMultiIn = { 
                     supplier: '',
                     tanggal: this.getISODateOnly(), 
-                    itemsToProcess: [{ kode: 'MANUAL-' + Date.now(), nama: '', qty: 1, satuan: 'Pcs', lokasi: 'RAK SISA', keperluan: '' }] 
+                    itemsToProcess: [{ kode: 'MANUAL-' + Date.now(), nama: '', qty: 1, satuan: 'Pcs', lokasi: 'RAK SISA', keperluan: '', pengambil: '', penerima: '' }] 
                 };
                 this.showSisaProjectMultiInModal = true;
             },
@@ -2583,7 +2679,9 @@
                     qty: 1,
                     satuan: 'Pcs',
                     lokasi: 'RAK SISA',
-                    keperluan: ''
+                    keperluan: '',
+                    pengambil: '',
+                    penerima: ''
                 });
             },
             removeSisaProjectMultiInItem(idx) {
@@ -2591,6 +2689,7 @@
             },
             submitSisaProjectMultiIn() {
                 if (!this.formSisaProjectMultiIn.supplier) return alert('Asal Vendor / Supplier wajib diisi!');
+                if (this.formSisaProjectMultiIn.itemsToProcess.some(item => !item.penerima || !item.penerima.trim())) return alert('Nama Penerima wajib diisi pada setiap item!');
                 if (!this.formSisaProjectMultiIn.tanggal) return alert('Tanggal penerimaan wajib dipilih!');
                 if (this.formSisaProjectMultiIn.itemsToProcess.length === 0) return alert('Tambahkan minimal 1 item!');
                 const selectedDate = this.getDateFromInput(this.formSisaProjectMultiIn.tanggal);
@@ -2626,7 +2725,9 @@
                         qtyAkhir: qtyAkhir,
                         tgl: dateOnlyStr,
                         supplier: this.formSisaProjectMultiIn.supplier.toUpperCase(),
-                        keperluan: (item.keperluan || '-').toUpperCase()
+                        keperluan: (item.keperluan || '-').toUpperCase(),
+                        penerima: item.penerima.toUpperCase(),
+                        pengambil: (item.pengambil || '').toUpperCase()
                     });
                 });
                 this.showSisaProjectMultiInModal = false;
@@ -2647,7 +2748,9 @@
                     qty: 0,
                     satuan: 'Pcs',
                     outQty: 1,
-                    keperluan: ''
+                    keperluan: '',
+                    pengambil: '',
+                    penerima: ''
                 };
             },
             addCustomItemToSisaProjectMultiOut() {
@@ -2671,7 +2774,7 @@
                 this.formSisaProjectMultiOut.selectedItems.splice(idx, 1);
             },
             submitSisaProjectMultiOut() {
-                if (!this.formSisaProjectMultiOut.user) return alert('Nama Pengambil/Penerima wajib diisi!');
+                if (this.formSisaProjectMultiOut.selectedItems.some(item => !item.pengambil || !item.pengambil.trim())) return alert('Nama Pengambil wajib diisi pada setiap item!');
                 if (!this.formSisaProjectMultiOut.tanggal) return alert('Tanggal pengeluaran wajib dipilih!');
                 if (this.formSisaProjectMultiOut.selectedItems.length === 0) return alert('Tambahkan minimal 1 item!');
 
@@ -2712,7 +2815,9 @@
                         qtyAwal: qtyAwal,
                         qtyAkhir: qtyAkhir,
                         tgl: dateOnlyStr,
-                        user: this.formSisaProjectMultiOut.user.toUpperCase(),
+                        user: item.pengambil.toUpperCase(),
+                        pengambil: item.pengambil.toUpperCase(),
+                        penerima: (item.penerima || '').toUpperCase(),
                         keperluan: item.keperluan.toUpperCase()
                     });
                 });
@@ -2767,6 +2872,11 @@
                 const namaKey = namaBarang.toLowerCase();
                 const gudang = this.activeTab === 'sisa_project' ? 'Sisa Project' : 'Sparepart';
                 const satuan = item.satuan || 'Pcs';
+                const firstLog = this.logs
+                    .filter(log => String(log.gudang || '').trim().toLowerCase() === gudang.toLowerCase() && String(log.nama || '').trim().toLowerCase() === namaKey)
+                    .slice()
+                    .sort((a, b) => new Date(a.isoDate || a.id || 0).getTime() - new Date(b.isoDate || b.id || 0).getTime())[0];
+                const stockAwal = firstLog && firstLog.qtyAwal !== undefined ? Number(firstLog.qtyAwal) || 0 : (Number(item.stockAwal ?? item.currentStock) || 0);
 
                 const stockLogs = this.logs
                     .filter(log =>
@@ -2805,7 +2915,7 @@
                             <td>${log.user || '-'}</td>
                         </tr>`;
                 }).join('') : `
-                    <tr><td colspan="8" class="empty-row">Belum ada transaksi untuk barang ini.</td></tr>`;
+                    <tr><td colspan="9" class="empty-row">Belum ada transaksi untuk barang ini.</td></tr>`;
 
                 const labelArea = document.getElementById('label-print-area');
                 labelArea.innerHTML = `
