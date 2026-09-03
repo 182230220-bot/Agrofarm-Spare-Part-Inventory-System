@@ -1710,8 +1710,7 @@
                         this.spareparts = Array.isArray(state.spareparts) ? state.spareparts : [];
                         this.sisaProjects = Array.isArray(state.sisaProjects) ? state.sisaProjects : [];
                         this.logs = Array.isArray(state.logs) ? state.logs : [];
-                        this.sortMasterCatalog();
-                        this.masterPage = 1;
+                        this.syncMasterAndSparepart();
                     }
                     this.supabaseConnected = true;
                 } catch (err) {
@@ -2056,6 +2055,119 @@
 
                 return Math.ceil((dailyUsage * lt) + ss);
             },
+            // ================================================================
+            // MASTER DATA <-> GUDANG SPAREPART = SATU SUMBER DATA
+            // Nama/SKU/Satuan/Min Stock berasal dari Master Data.
+            // Qty stok berjalan adalah satu nilai yang sama di Master & Gudang.
+            // ================================================================
+            syncMasterAndSparepart() {
+                const norm = value => String(value || '').trim().toLowerCase();
+                const usedBarcodes = new Set(this.spareparts.map(s => String(s.barcode || '').trim()).filter(Boolean));
+                let barcodeSeq = this.spareparts.length + 1;
+
+                const nextBarcode = () => {
+                    let barcode;
+                    do {
+                        barcode = 'SP-' + String(barcodeSeq++).padStart(3, '0');
+                    } while (usedBarcodes.has(barcode));
+                    usedBarcodes.add(barcode);
+                    return barcode;
+                };
+
+                // 1. Setiap Master Data wajib mempunyai pasangan di Gudang Sparepart.
+                this.masterCatalog.forEach(master => {
+                    const key = norm(master.nama);
+                    if (!key) return;
+
+                    let stock = this.spareparts.find(s => norm(s.nama) === key || (master.kode && s.kode === master.kode));
+                    const masterQty = Math.max(0, Number(master.currentStock ?? master.stockAwal) || 0);
+
+                    // Hanya barang yang punya stok > 0 yang boleh tampil di Gudang Sparepart.
+                    // Master Data tetap boleh menyimpan barang dengan stok 0.
+                    if (!stock && masterQty > 0) {
+                        stock = {
+                            barcode: nextBarcode(),
+                            kode: master.kode,
+                            nama: master.nama,
+                            qty: masterQty,
+                            minStock: Number(master.minStock) || 0,
+                            lokasi: 'RAK UTAMA',
+                            satuan: master.satuan || 'PCS'
+                        };
+                        this.spareparts.push(stock);
+                    } else if (stock) {
+                        // Jika stok Gudang sudah berjalan, pertahankan Qty transaksi sebagai sumber stok.
+                        // Metadata tetap mengikuti Master Data.
+                        stock.kode = master.kode || stock.kode;
+                        stock.nama = master.nama;
+                        stock.minStock = Number(master.minStock) || 0;
+                        stock.satuan = master.satuan || stock.satuan || 'PCS';
+
+                        // Jika Master punya stok > 0 tetapi pasangan Gudang kosong/0,
+                        // pulihkan pasangan Gudang dari stok Master agar keduanya tidak pernah terputus.
+                        if ((Number(stock.qty) || 0) <= 0) {
+                            if (masterQty > 0) {
+                                stock.qty = masterQty;
+                            } else {
+                                // Stok 0 memang tidak perlu masuk/tampil di Gudang Sparepart.
+                                this.spareparts = this.spareparts.filter(s => s !== stock);
+                                stock = null;
+                            }
+                        }
+                    }
+
+                    master.currentStock = stock ? (Number(stock.qty) || 0) : 0;
+                });
+
+                // 2. Data Gudang lama yang belum ada di Master otomatis dibuatkan Master.
+                // Ini mencegah ada SKU yatim yang hanya muncul di salah satu modul.
+                this.spareparts.slice().forEach(stock => {
+                    const key = norm(stock.nama);
+                    if (!key) return;
+                    let master = this.masterCatalog.find(m => norm(m.nama) === key || (stock.kode && m.kode === stock.kode));
+                    if (!master) {
+                        const kode = stock.kode || ('SKU-' + String(this.masterCatalog.length + 1).padStart(3, '0'));
+                        master = {
+                            kode,
+                            nama: stock.nama,
+                            minStock: Number(stock.minStock) || 0,
+                            currentStock: Number(stock.qty) || 0,
+                            stockAwal: Number(stock.qty) || 0,
+                            tanggal: this.getISODateOnly(),
+                            leadTime: 0,
+                            safetyStock: 0,
+                            avgDailyUsage: 0,
+                            satuan: stock.satuan || 'PCS'
+                        };
+                        this.masterCatalog.push(master);
+                    } else {
+                        master.currentStock = Number(stock.qty) || 0;
+                        master.satuan = stock.satuan || master.satuan || 'PCS';
+                    }
+                });
+
+                this.sortMasterCatalog();
+                this.masterPage = 1;
+            },
+            syncMasterStockForSparepart(stockItem) {
+                if (!stockItem) return;
+                const key = String(stockItem.nama || '').trim().toLowerCase();
+                if (!key) return;
+                const master = this.masterCatalog.find(m =>
+                    String(m.nama || '').trim().toLowerCase() === key ||
+                    (stockItem.kode && m.kode === stockItem.kode)
+                );
+                const qty = Math.max(0, Number(stockItem.qty) || 0);
+                if (master) {
+                    master.currentStock = qty;
+                    master.satuan = stockItem.satuan || master.satuan || 'PCS';
+                }
+
+                // Aturan tunggal: stok 0 tidak ditampilkan di Gudang Sparepart.
+                if (qty <= 0) {
+                    this.spareparts = this.spareparts.filter(s => s !== stockItem);
+                }
+            },
             importMasterCatalog(event) {
                 const file = event.target.files?.[0];
                 if (!file) return;
@@ -2308,6 +2420,8 @@
                                 nama,
                                 minStock,
                                 currentStock,
+                                stockAwal: currentStock,
+                                tanggal: this.getISODateOnly(),
                                 leadTime,
                                 safetyStock,
                                 avgDailyUsage,
@@ -2327,8 +2441,7 @@
 
                         // Satu kali mutasi data, lalu urutkan sekali. Tabel hanya merender 100 baris aktif.
                         this.masterCatalog.push(...importedItems);
-                        this.sortMasterCatalog();
-                        this.masterPage = 1;
+                        this.syncMasterAndSparepart();
 
                         this.selectedMasterItems = [];
                         this.selectAllMaster = false;
@@ -2601,8 +2714,7 @@
                     avgDailyUsage: Number(this.formMasterManual.avgDailyUsage) || 0,
                     satuan: (this.formMasterManual.satuan || 'Pcs').toUpperCase()
                 });
-                this.sortMasterCatalog();
-                this.masterPage = 1;
+                this.syncMasterAndSparepart();
                 this.formMasterManual = { nama: '', minStock: 0, currentStock: 0, stockAwal: 0, tanggal: this.getISODateOnly(), leadTime: 0, safetyStock: 0, avgDailyUsage: 0, satuan: 'Pcs' };
                 alert('Berhasil menambah Data Master!');
             },
@@ -2611,7 +2723,11 @@
                 if (!item) return;
 
                 if (confirm(`Yakin ingin menghapus barang "${item.nama}"?`)) {
+                    const deletedName = String(item.nama || '').trim().toLowerCase();
                     this.masterCatalog = this.masterCatalog.filter(i => i.kode !== kode);
+                    this.spareparts = this.spareparts.filter(s =>
+                        String(s.nama || '').trim().toLowerCase() !== deletedName && s.kode !== kode
+                    );
                     this.selectedMasterItems = this.selectedMasterItems.filter(k => k !== kode);
                     this.selectAllMaster = false;
                     this.normalizeMasterPage();
@@ -2641,7 +2757,11 @@
                     return;
                 }
 
+                const deletedNames = new Set(selectedItems.map(item => String(item.nama || '').trim().toLowerCase()));
                 this.masterCatalog = this.masterCatalog.filter(item => !selected.includes(item.kode));
+                this.spareparts = this.spareparts.filter(stock =>
+                    !selected.includes(stock.kode) && !deletedNames.has(String(stock.nama || '').trim().toLowerCase())
+                );
                 this.selectedMasterItems = [];
                 this.selectAllMaster = false;
                 this.normalizeMasterPage();
@@ -2738,6 +2858,8 @@
                     });
                 }
                 const qtyAkhir = qtyAwal + qtyTerima;
+                const linkedStock = this.spareparts.find(s => s.nama.toLowerCase() === order.nama.toLowerCase());
+                this.syncMasterStockForSparepart(linkedStock);
                 order.qtyReceived += qtyTerima;
                 order.qtyRemaining -= qtyTerima;
                 order.status = order.qtyRemaining <= 0 ? 'Diterima Semua' : 'Diterima Sebagian';
@@ -2869,6 +2991,7 @@
                     const outQty = Number(item.outQty);
                     target.qty = qtyAwal - outQty;
                     const qtyAkhir = target.qty;
+                    this.syncMasterStockForSparepart(target);
 
                     this.logs.unshift({
                         id: Date.now() + Math.random(),
