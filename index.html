@@ -522,7 +522,7 @@
                                 <input v-model.number="formMasterManual.leadTime" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Safety Stock</label>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Safety Stock Barang</label>
                                 <input v-model.number="formMasterManual.safetyStock" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
                             </div>
                             <div>
@@ -530,7 +530,7 @@
                                 <div class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg font-bold text-xs text-center text-slate-500">Qty</div>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Satuan</label>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Satuan Barang</label>
                                 <input v-model="formMasterManual.satuan" type="text" placeholder="Pcs/Unit" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none uppercase">
                             </div>
                         </div>
@@ -645,6 +645,10 @@
                 <button @click="openMonitoringInputModal" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl font-extrabold text-xs uppercase flex items-center gap-2 shadow-md transition-all">
                     <i data-lucide="plus-circle" class="w-4 h-4"></i> + Input Order Monitoring Baru
                 </button>
+                <label class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-extrabold text-xs uppercase flex items-center gap-2 shadow-md cursor-pointer transition-all">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Import Monitoring Excel
+                    <input type="file" @change="importMonitoringExcel" accept=".xlsx, .xls" class="hidden"/>
+                </label>
                 <button @click="printLogSection('monitoring-print-area')" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
                     <i data-lucide="printer" class="w-4 h-4"></i> Cetak Tabel Monitoring (Tabel Excel)
                 </button>
@@ -2350,6 +2354,228 @@
                     event.target.value = '';
                 };
 
+                reader.readAsArrayBuffer(file);
+            },
+            importMonitoringExcel(event) {
+                const file = event.target.files?.[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        if (!workbook.SheetNames.length) {
+                            alert('File Excel tidak memiliki sheet.');
+                            event.target.value = '';
+                            return;
+                        }
+
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const rows = XLSX.utils.sheet_to_json(sheet, {
+                            header: 1,
+                            defval: '',
+                            raw: false
+                        });
+                        if (!rows || !rows.length) {
+                            alert('File Excel kosong.');
+                            event.target.value = '';
+                            return;
+                        }
+
+                        // Konsep sama seperti Import Data Master:
+                        // header fleksibel, tidak wajib persis sama, cukup mengandung kata kunci.
+                        const normalize = (value) => String(value ?? '')
+                            .trim().toLowerCase()
+                            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                            .replace(/[^a-z0-9]/g, '');
+
+                        const aliases = {
+                            tanggal: ['tanggal', 'tgl', 'tanggalorder', 'tglorder', 'tanggalpermintaan', 'tglpermintaan', 'date', 'orderdate'],
+                            nama: ['nama', 'namabarang', 'namapart', 'namasparepart', 'barangnama', 'item', 'itemname', 'itemdescription', 'description', 'deskripsi', 'desc', 'part', 'partname', 'product', 'productname', 'produk', 'namaproduk', 'material', 'namamaterial', 'uraian', 'uraianbarang'],
+                            qty: ['qty', 'quantity', 'jumlah', 'qtyorder', 'quantityorder', 'jumlahorder', 'totalorder', 'totalqty', 'orderqty'],
+                            satuan: ['satuan', 'unit', 'uom', 'sat', 'unitofmeasure', 'satuanbarang'],
+                            keperluan: ['keperluan', 'kepentingan', 'project', 'proyek', 'purpose', 'kebutuhan', 'remark', 'remarks', 'keterangan', 'descriptionpurpose'],
+                            penerima: ['penerima', 'namapenerima', 'recipient', 'receiver', 'diterimaoleh'],
+                            pengambil: ['pengambil', 'namapengambil', 'pengambilbarang', 'requester', 'peminta', 'diambilholeh']
+                        };
+
+                        const findColumn = (headers, aliasList) => {
+                            const normalizedHeaders = headers.map(normalize);
+                            for (const alias of aliasList) {
+                                const exact = normalizedHeaders.indexOf(alias);
+                                if (exact !== -1) return exact;
+                            }
+                            let bestIndex = -1;
+                            let bestScore = 0;
+                            for (let i = 0; i < normalizedHeaders.length; i++) {
+                                const header = normalizedHeaders[i];
+                                if (!header) continue;
+                                for (const alias of aliasList) {
+                                    if (alias.length < 4) continue;
+                                    if (header.includes(alias)) {
+                                        const score = alias.length;
+                                        if (score > bestScore) {
+                                            bestScore = score;
+                                            bestIndex = i;
+                                        }
+                                    }
+                                }
+                            }
+                            return bestIndex;
+                        };
+
+                        let headerRowIndex = -1;
+                        let cols = {};
+                        const maxHeaderSearch = Math.min(rows.length, 50);
+                        for (let i = 0; i < maxHeaderSearch; i++) {
+                            const row = rows[i] || [];
+                            const namaCol = findColumn(row, aliases.nama);
+                            if (namaCol !== -1) {
+                                headerRowIndex = i;
+                                cols = {
+                                    tanggal: findColumn(row, aliases.tanggal),
+                                    nama: namaCol,
+                                    qty: findColumn(row, aliases.qty),
+                                    satuan: findColumn(row, aliases.satuan),
+                                    keperluan: findColumn(row, aliases.keperluan),
+                                    penerima: findColumn(row, aliases.penerima),
+                                    pengambil: findColumn(row, aliases.pengambil)
+                                };
+                                break;
+                            }
+                        }
+
+                        if (headerRowIndex === -1 || cols.nama === -1) {
+                            alert('Kolom Nama Barang tidak ditemukan.\n\nGunakan header yang mengandung kata seperti: Nama Barang / Nama / Item / Barang / Description / Part.');
+                            event.target.value = '';
+                            return;
+                        }
+
+                        const parseNumber = (value) => {
+                            if (value === null || value === undefined || value === '') return 0;
+                            if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+                            let text = String(value).trim().replace(/[^\d.,-]/g, '');
+                            if (!text) return 0;
+                            const lastComma = text.lastIndexOf(',');
+                            const lastDot = text.lastIndexOf('.');
+                            if (lastComma !== -1 && lastDot !== -1) {
+                                text = lastComma > lastDot ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '');
+                            } else if (lastComma !== -1) {
+                                const dec = text.substring(lastComma + 1);
+                                text = dec.length <= 2 ? text.replace(',', '.') : text.replace(/,/g, '');
+                            } else if (lastDot !== -1 && text.substring(lastDot + 1).length > 2) {
+                                text = text.replace(/\./g, '');
+                            }
+                            const result = Number(text);
+                            return Number.isFinite(result) ? result : 0;
+                        };
+
+                        const parseDateOnly = (value) => {
+                            // Prioritas utama: tanggal yang benar-benar ada di file Excel.
+                            // Jika kolom tanggal tidak ada/kosong/tidak terbaca, baru gunakan tanggal hari ini.
+                            if (value === null || value === undefined || String(value).trim() === '') return this.getISODateOnly();
+                            if (value instanceof Date && !isNaN(value.getTime())) return this.getISODateOnly(value);
+                            if (typeof value === 'number' && Number.isFinite(value)) {
+                                // Excel serial date (1900 date system).
+                                const excelDate = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
+                                return isNaN(excelDate.getTime()) ? this.getISODateOnly() : this.getISODateOnly(excelDate);
+                            }
+                            const text = String(value).trim();
+                            const m = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+                            if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+                            const ymd = text.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+                            if (ymd) return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`;
+                            const parsed = new Date(text);
+                            return isNaN(parsed.getTime()) ? this.getISODateOnly() : this.getISODateOnly(parsed);
+                        };
+
+                        const importedItems = [];
+                        let skippedDuplicate = 0;
+                        let skippedInvalid = 0;
+
+                        const makeKey = (item) => [
+                            String(item.nama || '').trim().toLowerCase(),
+                            String(item.tgl || '').trim(),
+                            String(item.keperluan || '').trim().toLowerCase(),
+                            String(Number(item.qtyTotal) || 0),
+                            String(item.penerima || '').trim().toLowerCase(),
+                            String(item.pengambil || '').trim().toLowerCase()
+                        ].join('|');
+
+                        for (let i = headerRowIndex + 1; i < rows.length; i++) {
+                            const row = rows[i] || [];
+                            const rawNama = row[cols.nama];
+                            if (rawNama === undefined || rawNama === null || String(rawNama).trim() === '') continue;
+
+                            const nama = String(rawNama).trim().replace(/\s+/g, ' ').toUpperCase();
+                            const tgl = parseDateOnly(cols.tanggal !== -1 ? row[cols.tanggal] : '');
+                            const qtyTotal = Math.max(1, parseNumber(cols.qty !== -1 ? row[cols.qty] : 1) || 1);
+                            const satuan = String(cols.satuan !== -1 ? row[cols.satuan] ?? '' : '').trim().toUpperCase() || 'PCS';
+                            const keperluan = String(cols.keperluan !== -1 ? row[cols.keperluan] ?? '' : '').trim().replace(/\s+/g, ' ').toUpperCase() || '-';
+                            const penerima = String(cols.penerima !== -1 ? row[cols.penerima] ?? '' : '').trim().replace(/\s+/g, ' ').toUpperCase();
+                            const pengambil = String(cols.pengambil !== -1 ? row[cols.pengambil] ?? '' : '').trim().replace(/\s+/g, ' ').toUpperCase();
+
+                            const candidate = { nama, tgl, keperluan, qtyTotal, penerima, pengambil };
+                            const key = makeKey(candidate);
+                            const duplicateExisting = this.monitoringItems.some(item => makeKey({
+                                nama: item.nama,
+                                tgl: item.tgl,
+                                keperluan: item.keperluan || item.project || '-',
+                                qtyTotal: item.qtyTotal,
+                                penerima: item.penerima || '',
+                                pengambil: item.pengambil || ''
+                            }) === key);
+                            const duplicateImport = importedItems.some(item => makeKey(item) === key);
+
+                            if (duplicateExisting || duplicateImport) {
+                                skippedDuplicate++;
+                                continue;
+                            }
+
+                            importedItems.push({
+                                id: Date.now() + Math.random(),
+                                isoDate: new Date(tgl + 'T00:00:00').toISOString(),
+                                tgl,
+                                nama,
+                                keperluan,
+                                penerima,
+                                pengambil,
+                                qtyTotal,
+                                qtyReceived: 0,
+                                qtyRemaining: qtyTotal,
+                                satuan,
+                                status: 'Pending'
+                            });
+                        }
+
+                        if (!importedItems.length) {
+                            alert(`Import Monitoring selesai, tetapi tidak ada data baru yang dimasukkan.\n\nDuplikat dilewati: ${skippedDuplicate}\nBaris tidak valid/kosong: ${skippedInvalid}`);
+                            event.target.value = '';
+                            return;
+                        }
+
+                        this.monitoringItems.push(...importedItems);
+                        this.monitoringItems.sort((a, b) => new Date(b.isoDate || b.id).getTime() - new Date(a.isoDate || a.id).getTime());
+
+                        alert(
+                            `Import Monitoring berhasil!\n\n` +
+                            `Berhasil dimasukkan: ${importedItems.length} data\n` +
+                            `Duplikat dilewati: ${skippedDuplicate} data\n` +
+                            `Baris kosong/tidak terbaca: ${skippedInvalid} data\n\n` +
+                            `Data yang tidak duplikat tetap dimasukkan.`
+                        );
+                        event.target.value = '';
+                    } catch (error) {
+                        console.error('ERROR IMPORT MONITORING:', error);
+                        alert(error?.message || 'Gagal membaca file Excel Monitoring. Pastikan file .xlsx atau .xls dan tidak rusak.');
+                        event.target.value = '';
+                    }
+                };
+                reader.onerror = () => {
+                    alert('File Excel Monitoring tidak dapat dibaca oleh browser.');
+                    event.target.value = '';
+                };
                 reader.readAsArrayBuffer(file);
             },
             tambahMasterManual() {
