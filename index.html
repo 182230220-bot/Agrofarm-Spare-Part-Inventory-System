@@ -47,6 +47,9 @@
                 display: none !important;
             }
             #invoice-print-area { display: none !important; }
+            body.printing-label #app > *:not(#label-print-area) {
+                display: none !important;
+            }
             body.printing-label #label-print-area {
                 display: block !important;
                 width: 100% !important;
@@ -107,7 +110,7 @@
                 font-weight: 600;
             }
             body.printing-label .stock-card-table {
-                font-size: 8.5pt !important;
+                font-size: 8pt !important;
                 margin: 0 !important;
                 table-layout: fixed !important;
                 page-break-inside: auto;
@@ -115,7 +118,7 @@
             body.printing-label .stock-card-table th,
             body.printing-label .stock-card-table td {
                 border: 1px solid #000 !important;
-                padding: 5px 5px !important;
+                padding: 4px 5px !important;
                 color: #000 !important;
                 vertical-align: middle !important;
                 word-wrap: break-word;
@@ -136,11 +139,8 @@
                 white-space: nowrap;
                 line-height: 1.15;
             }
-            body.printing-label .stock-card-table td:nth-child(4) {
-                text-align: left !important;
-                white-space: normal !important;
-            }
-            body.printing-label .stock-card-table td:nth-child(8) {
+            body.printing-label .stock-card-table td:nth-child(4),
+            body.printing-label .stock-card-table td:nth-child(6) {
                 text-align: left !important;
                 white-space: normal !important;
             }
@@ -151,14 +151,12 @@
             body.printing-label .stock-card-table .saldo {
                 font-weight: 800 !important;
             }
-            body.printing-label .stock-card-table .col-no { width: 5%; }
-            body.printing-label .stock-card-table .col-date { width: 10%; }
-            body.printing-label .stock-card-table .col-ref { width: 12%; }
-            body.printing-label .stock-card-table .col-desc { width: 25%; }
-            body.printing-label .stock-card-table .col-in,
-            body.printing-label .stock-card-table .col-out { width: 9%; }
-            body.printing-label .stock-card-table .col-balance { width: 9%; }
-            body.printing-label .stock-card-table .col-user { width: 12%; }
+            body.printing-label .stock-card-table .col-no { width: 6%; }
+            body.printing-label .stock-card-table .col-opening { width: 11%; }
+            body.printing-label .stock-card-table .col-date { width: 12%; }
+            body.printing-label .stock-card-table .col-desc { width: 39%; }
+            body.printing-label .stock-card-table .col-balance { width: 14%; }
+            body.printing-label .stock-card-table .col-user { width: 18%; }
             body.printing-label .stock-card-table .empty-row {
                 text-align: center !important;
                 padding: 18px !important;
@@ -235,6 +233,62 @@
         </table>
         <div style="margin-top:45px; display:flex; justify-content:space-between; font-size:11px;"><div style="text-align:center; width:180px;">Penerima<br><br><br>____________________</div><div style="text-align:center; width:180px;">Petugas Gudang<br><br><br>____________________</div></div>
     </div>
+    <!-- MODAL OPSI CETAK KARTU STOCK -->
+    <div v-if="showKartuStockOptions" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100">
+                        <i data-lucide="printer" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-slate-800 text-base">Opsi Cetak Kartu Stock</h3>
+                        <p class="text-[11px] text-slate-500 mt-0.5" v-if="kartuStockOptions.item">Barang: <b class="uppercase">{{ kartuStockOptions.item.nama }}</b></p>
+                    </div>
+                </div>
+                <button @click="showKartuStockOptions = false" class="p-1.5 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">Ukuran Kertas</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button @click="kartuStockOptions.paperSize = 'A4'" :class="kartuStockOptions.paperSize === 'A4' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-300'" class="px-3 py-2 rounded-lg text-xs font-bold border">A4<span class="block text-[9px] font-medium opacity-70 mt-0.5">210 x 297 mm</span></button>
+                        <button @click="kartuStockOptions.paperSize = 'F4'" :class="kartuStockOptions.paperSize === 'F4' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-300'" class="px-3 py-2 rounded-lg text-xs font-bold border">F4<span class="block text-[9px] font-medium opacity-70 mt-0.5">210 x 330 mm</span></button>
+                        <button @click="kartuStockOptions.paperSize = 'A5'" :class="kartuStockOptions.paperSize === 'A5' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-300'" class="px-3 py-2 rounded-lg text-xs font-bold border">A5<span class="block text-[9px] font-medium opacity-70 mt-0.5">148 x 210 mm</span></button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">Orientasi</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button @click="kartuStockOptions.orientation = 'portrait'" :class="kartuStockOptions.orientation === 'portrait' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-300'" class="px-3 py-2 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5"><i data-lucide="rectangle-vertical" class="w-3.5 h-3.5"></i> Portrait</button>
+                        <button @click="kartuStockOptions.orientation = 'landscape'" :class="kartuStockOptions.orientation === 'landscape' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-300'" class="px-3 py-2 rounded-lg text-xs font-bold border flex items-center justify-center gap-1.5"><i data-lucide="rectangle-horizontal" class="w-3.5 h-3.5"></i> Landscape</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">Filter Periode Transaksi</label>
+                    <div class="grid grid-cols-3 gap-2 mb-2">
+                        <button @click="kartuStockOptions.filterMode = 'all'" :class="kartuStockOptions.filterMode === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'" class="px-3 py-2 rounded-lg text-xs font-bold border">Semua</button>
+                        <button @click="kartuStockOptions.filterMode = 'bulan'" :class="kartuStockOptions.filterMode === 'bulan' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'" class="px-3 py-2 rounded-lg text-xs font-bold border">Per Bulan</button>
+                        <button @click="kartuStockOptions.filterMode = 'rentang'" :class="kartuStockOptions.filterMode === 'rentang' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'" class="px-3 py-2 rounded-lg text-xs font-bold border">Rentang Tgl</button>
+                    </div>
+                    <div v-if="kartuStockOptions.filterMode === 'bulan'">
+                        <input v-model="kartuStockOptions.bulan" type="month" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold">
+                    </div>
+                    <div v-else-if="kartuStockOptions.filterMode === 'rentang'" class="grid grid-cols-2 gap-2">
+                        <input v-model="kartuStockOptions.dateStart" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                        <input v-model="kartuStockOptions.dateEnd" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    </div>
+                    <p v-else class="text-[10px] text-slate-500 italic">Semua transaksi barang ini akan dicetak (mulai stok awal).</p>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50 rounded-b-2xl">
+                <button @click="showKartuStockOptions = false" class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-bold border border-slate-200">Batal</button>
+                <button @click="confirmPrintKartuStock" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-black flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="printer" class="w-3.5 h-3.5"></i> Cetak Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
     <!-- SIDEBAR LEFT NAVIGATION -->
     <aside class="w-full md:w-72 bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white flex-shrink-0 border-r border-emerald-800/50 flex flex-col justify-between no-print sticky top-0 md:h-screen z-40">
         <div>
@@ -270,6 +324,21 @@
                         <span>Monitoring Order</span>
                     </div>
                     <span class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30 font-mono">{{ monitoringItems.length }}</span>
+                </button>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/60 px-3 mt-6 mb-2">Stock Opname</p>
+                <button @click="activeTab = 'opname'" :class="activeTab === 'opname' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="clipboard-check" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Input Stock Opname</span>
+                    </div>
+                    <span v-if="opnameDraftSelisihCount > 0" class="bg-red-500/20 text-red-300 text-[10px] px-2 py-0.5 rounded-full border border-red-500/30 font-mono">{{ opnameDraftSelisihCount }} Selisih</span>
+                </button>
+                <button @click="activeTab = 'opname_history'" :class="activeTab === 'opname_history' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center justify-between text-xs transition-all">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="history" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Riwayat Opname</span>
+                    </div>
+                    <span class="bg-emerald-900/80 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700 font-mono">{{ opnameHistory.length }}</span>
                 </button>
                 <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/60 px-3 mt-6 mb-2">Manajemen Gudang</p>
                 <button @click="activeTab = 'sparepart'" :class="activeTab === 'sparepart' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center justify-between text-xs transition-all">
@@ -338,6 +407,43 @@
                     </div>
                 </div>
             </div>
+            <!-- LOW STOCK ALERT WIDGET -->
+            <div v-if="lowStockItems.length > 0" class="portal-card rounded-xl overflow-hidden border-l-4 border-red-500 no-print">
+                <div class="p-4 border-b border-slate-100 bg-red-50/40 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="alert-triangle" class="w-4 h-4 text-red-600"></i>
+                        <h3 class="font-black text-red-900 uppercase text-xs tracking-wider">Peringatan Stok Menipis / Habis</h3>
+                    </div>
+                    <span class="text-[11px] font-bold bg-red-100 text-red-800 px-2 py-0.5 rounded border border-red-200">{{ lowStockItems.length }} Item Perlu Restock</span>
+                </div>
+                <div class="overflow-x-auto max-h-52">
+                    <table class="w-full text-xs">
+                        <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 sticky top-0">
+                            <tr>
+                                <th class="p-2.5 text-left">Nama Barang</th>
+                                <th class="p-2.5 text-center">Gudang</th>
+                                <th class="p-2.5 text-center">Lokasi</th>
+                                <th class="p-2.5 text-center">Stok Saat Ini</th>
+                                <th class="p-2.5 text-center">Min. Stok</th>
+                                <th class="p-2.5 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="(row, i) in lowStockItems" :key="i" :class="row.qty === 0 ? 'bg-red-50/60' : 'bg-amber-50/40'">
+                                <td class="p-2.5 font-bold text-slate-800 uppercase">{{ row.nama }}</td>
+                                <td class="p-2.5 text-center text-slate-600 text-[10px] font-bold">{{ row.gudang }}</td>
+                                <td class="p-2.5 text-center text-slate-500 text-[10px] uppercase">{{ row.lokasi }}</td>
+                                <td class="p-2.5 text-center font-black" :class="row.qty === 0 ? 'text-red-700' : 'text-amber-700'">{{ row.qty }} {{ row.satuan }}</td>
+                                <td class="p-2.5 text-center text-slate-600 font-semibold">{{ row.minStock }}</td>
+                                <td class="p-2.5 text-center">
+                                    <span v-if="row.qty === 0" class="px-2 py-0.5 rounded-lg text-[10px] font-black bg-red-100 text-red-800 border border-red-200">HABIS</span>
+                                    <span v-else class="px-2 py-0.5 rounded-lg text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">MENIPIS</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <!-- FILTER DASHBOARD -->
             <div class="portal-card p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 no-print">
                 <div class="flex items-center gap-2">
@@ -349,9 +455,18 @@
                     <span class="text-xs text-slate-400">s/d</span>
                     <input v-model="dashFilterDateEnd" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500">
                     <button @click="resetDashFilter" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold">Reset</button>
-                    <button @click="exportDashboardByDate" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm">
-                        <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Per Tanggal
+                    <button @click="printDailyLogReport('all')" class="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i> Cetak Laporan Per Tanggal
                     </button>
+                    <button @click="exportDashboardByDate" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Excel Per Tanggal
+                    </button>
+                </div>
+            </div>
+            <div class="portal-card p-4 rounded-xl no-print">
+                <div class="relative max-w-xl">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
+                    <input v-model="dashSearchBarang" type="text" autocomplete="off" spellcheck="false" placeholder="Cari nama barang di Dashboard..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium uppercase focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
                 </div>
             </div>
             <!-- SECTION 1: GUDANG SPAREPART (IN & OUT DASHBOARD) -->
@@ -552,7 +667,7 @@
                                 <input v-model.number="formMasterManual.leadTime" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Safety Stock</label>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Safety Stock Barang</label>
                                 <input v-model.number="formMasterManual.safetyStock" type="number" min="0" placeholder="0" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
                             </div>
                             <div>
@@ -560,7 +675,7 @@
                                 <div class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg font-bold text-xs text-center text-slate-500">Qty</div>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Satuan</label>
+                                <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Satuan Barang</label>
                                 <input v-model="formMasterManual.satuan" type="text" placeholder="Pcs/Unit" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-xs text-center focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none uppercase">
                             </div>
                         </div>
@@ -833,6 +948,269 @@
                 </div>
             </div>
         </div>
+        <!-- TAB: STOCK OPNAME -->
+        <div v-if="activeTab === 'opname'" class="space-y-6">
+            <div class="portal-card p-5 rounded-xl border-l-4 border-emerald-600">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100">
+                        <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-black text-slate-800 text-base tracking-tight">Input Stock Opname</h2>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Bandingkan stok fisik dengan stok sistem. Sistem akan otomatis mencatat penyesuaian &amp; update Master Data + Gudang.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="portal-card p-4 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-3 no-print">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Gudang</label>
+                    <div class="flex gap-2">
+                        <button @click="setOpnameGudang('Sparepart')" :class="opnameDraft.gudang === 'Sparepart' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-300'" class="flex-1 px-3 py-2 rounded-lg text-xs font-bold border transition-all">Spare Part</button>
+                        <button @click="setOpnameGudang('Sisa Project')" :class="opnameDraft.gudang === 'Sisa Project' ? 'bg-teal-700 text-white border-teal-700' : 'bg-white text-slate-600 border-slate-300'" class="flex-1 px-3 py-2 rounded-lg text-xs font-bold border transition-all">Sisa Project</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Tanggal Opname</label>
+                    <input v-model="opnameDraft.tanggal" type="date" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Petugas Opname *</label>
+                    <input v-model="opnameDraft.petugas" type="text" placeholder="Nama petugas..." class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase font-medium">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Keterangan</label>
+                    <input v-model="opnameDraft.keterangan" type="text" placeholder="Catatan opname (opsional)" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
+                </div>
+            </div>
+            <!-- SIGNAL BANNER -->
+            <div v-if="opnameDraftSelisihCount > 0" class="rounded-xl border-2 border-red-300 bg-red-50 p-4 flex items-start gap-3 no-print">
+                <div class="p-2 bg-red-100 text-red-700 rounded-lg border border-red-200 flex-shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-black text-red-900 text-sm">Terdeteksi {{ opnameDraftSelisihCount }} item dengan SELISIH stok fisik vs sistem</p>
+                    <p class="text-[11px] text-red-700 mt-0.5">Data ini akan masuk sebagai <span class="font-bold">penyesuaian otomatis</span> ke Gudang &amp; Master Data. Silakan review sebelum submit.</p>
+                </div>
+            </div>
+            <div v-else-if="opnameDraftMatchCount > 0" class="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 flex items-start gap-3 no-print">
+                <div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 flex-shrink-0">
+                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-black text-emerald-900 text-sm">Semua {{ opnameDraftMatchCount }} item yang diisi COCOK dengan stok sistem</p>
+                    <p class="text-[11px] text-emerald-700 mt-0.5">Tidak ada penyesuaian yang perlu dilakukan. Anda tetap dapat menyimpan hasil opname sebagai record.</p>
+                </div>
+            </div>
+            <div class="portal-card p-4 rounded-xl flex flex-wrap items-center justify-between gap-2 no-print">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                        <input v-model="opnameSearch" type="search" placeholder="Cari barang..." class="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase w-64">
+                    </div>
+                    <select v-model="opnameFilterMode" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold">
+                        <option value="all">Semua Item</option>
+                        <option value="selisih">Hanya Ada Selisih</option>
+                        <option value="match">Hanya Cocok</option>
+                        <option value="unfilled">Belum Diisi</option>
+                    </select>
+                    <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-1 rounded">Cocok: {{ opnameDraftMatchCount }}</span>
+                    <span class="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-1 rounded">Selisih: {{ opnameDraftSelisihCount }}</span>
+                    <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-1 rounded">Belum: {{ opnameDraftUnfilledCount }}</span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button @click="fillOpnameEqualSystem" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                        <i data-lucide="equal" class="w-3.5 h-3.5"></i> Isi = Sistem
+                    </button>
+                    <button @click="resetOpnameDraft" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset
+                    </button>
+                    <button @click="downloadOpnameTemplate" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-blue-200">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> Template Excel
+                    </button>
+                    <label class="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-emerald-200 cursor-pointer">
+                        <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import Excel Opname
+                        <input type="file" accept=".xlsx,.xls" @change="importOpnameExcel" class="hidden">
+                    </label>
+                    <button @click="openOpnameConfirm" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-black flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="save" class="w-3.5 h-3.5"></i> Submit &amp; Sesuaikan Stok
+                    </button>
+                </div>
+            </div>
+            <div class="portal-card rounded-xl overflow-hidden no-print">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 text-center">No</th>
+                                <th class="p-3">Nama Barang</th>
+                                <th class="p-3 text-center">Satuan</th>
+                                <th class="p-3 text-center">Lokasi</th>
+                                <th class="p-3 text-center">Qty Sistem</th>
+                                <th class="p-3 text-center">Qty Fisik</th>
+                                <th class="p-3 text-center">Selisih</th>
+                                <th class="p-3">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="(row, i) in opnameDraftItemsFiltered" :key="row.barcode || row.nama" :class="row.selisih === null ? '' : (row.selisih === 0 ? 'bg-emerald-50/40' : 'bg-red-50/40')">
+                                <td class="p-3 text-center font-bold text-slate-400">{{ i + 1 }}</td>
+                                <td class="p-3 font-bold text-slate-800 uppercase">{{ row.nama }}</td>
+                                <td class="p-3 text-center text-slate-600 uppercase">{{ row.satuan }}</td>
+                                <td class="p-3 text-center text-slate-600 uppercase">{{ row.lokasi }}</td>
+                                <td class="p-3 text-center font-bold text-slate-700">{{ row.qtySystem }}</td>
+                                <td class="p-3 text-center">
+                                    <input type="number" v-model.number="opnameDraft.items[row.idx].qtyFisik" min="0" class="w-24 p-1.5 text-center bg-white border border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200">
+                                </td>
+                                <td class="p-3 text-center">
+                                    <span v-if="row.selisih === null" class="text-slate-300 text-[10px] italic">belum diisi</span>
+                                    <span v-else-if="row.selisih === 0" class="px-2 py-0.5 rounded-lg font-black text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200">COCOK</span>
+                                    <span v-else :class="row.selisih > 0 ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-red-100 text-red-800 border-red-200'" class="px-2 py-0.5 rounded-lg font-black text-[10px] border">{{ row.selisih > 0 ? '+' : '' }}{{ row.selisih }}</span>
+                                </td>
+                                <td class="p-3">
+                                    <input type="text" v-model="opnameDraft.items[row.idx].catatan" placeholder="Catatan..." class="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs uppercase">
+                                </td>
+                            </tr>
+                            <tr v-if="opnameDraftItemsFiltered.length === 0">
+                                <td colspan="8" class="p-10 text-center text-slate-400 font-medium">Tidak ada item pada filter ini. Pilih gudang atau ubah filter.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- MODAL KONFIRMASI OPNAME -->
+            <div v-if="showOpnameConfirmModal" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-amber-50 text-amber-700 rounded-lg border border-amber-100"><i data-lucide="alert-circle" class="w-5 h-5"></i></div>
+                            <div>
+                                <h3 class="font-black text-slate-800 text-base">Konfirmasi Penyesuaian Stock Opname</h3>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Gudang: <b>{{ opnameDraft.gudang }}</b> &middot; Petugas: <b>{{ opnameDraft.petugas }}</b> &middot; Tanggal: <b>{{ opnameDraft.tanggal }}</b></p>
+                            </div>
+                        </div>
+                        <button @click="showOpnameConfirmModal = false" class="p-1.5 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="p-5 overflow-y-auto flex-1 space-y-3">
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-center">
+                                <p class="text-[10px] font-bold text-emerald-700 uppercase">Cocok</p>
+                                <p class="text-2xl font-black text-emerald-800">{{ opnameDraftMatchCount }}</p>
+                            </div>
+                            <div class="p-3 bg-red-50 rounded-lg border border-red-200 text-center">
+                                <p class="text-[10px] font-bold text-red-700 uppercase">Ada Selisih</p>
+                                <p class="text-2xl font-black text-red-800">{{ opnameDraftSelisihCount }}</p>
+                            </div>
+                            <div class="p-3 bg-slate-100 rounded-lg border border-slate-200 text-center">
+                                <p class="text-[10px] font-bold text-slate-600 uppercase">Total Diisi</p>
+                                <p class="text-2xl font-black text-slate-800">{{ opnameDraftMatchCount + opnameDraftSelisihCount }}</p>
+                            </div>
+                        </div>
+                        <div v-if="opnameDraftSelisihCount > 0" class="border border-red-200 rounded-lg overflow-hidden">
+                            <div class="bg-red-50 px-3 py-2 border-b border-red-200 text-[11px] font-black text-red-900 uppercase">Detail Item dengan Selisih ({{ opnameDraftSelisihCount }})</div>
+                            <div class="overflow-x-auto max-h-72">
+                                <table class="w-full text-xs">
+                                    <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 sticky top-0">
+                                        <tr><th class="p-2">Nama Barang</th><th class="p-2 text-center">Qty Sistem</th><th class="p-2 text-center">Qty Fisik</th><th class="p-2 text-center">Selisih</th><th class="p-2 text-center">Aksi Otomatis</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        <tr v-for="row in opnameDraftSelisihItems" :key="row.nama">
+                                            <td class="p-2 font-bold text-slate-800 uppercase">{{ row.nama }}</td>
+                                            <td class="p-2 text-center">{{ row.qtySystem }}</td>
+                                            <td class="p-2 text-center font-bold">{{ row.qtyFisikNum }}</td>
+                                            <td class="p-2 text-center font-black" :class="row.selisih > 0 ? 'text-blue-700' : 'text-red-700'">{{ row.selisih > 0 ? '+' : '' }}{{ row.selisih }}</td>
+                                            <td class="p-2 text-center">
+                                                <span v-if="row.selisih > 0" class="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Tambah Stok (IN)</span>
+                                                <span v-else class="text-[10px] font-bold bg-red-100 text-red-800 px-2 py-0.5 rounded">Kurangi Stok (OUT)</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div v-else class="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-sm font-semibold text-center">
+                            <i data-lucide="check-circle" class="w-5 h-5 inline-block"></i> Semua item cocok. Tidak ada penyesuaian yang akan dibuat, hanya record opname yang disimpan.
+                        </div>
+                    </div>
+                    <div class="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50 rounded-b-2xl">
+                        <button @click="showOpnameConfirmModal = false" class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-bold border border-slate-200">Batal</button>
+                        <button @click="submitOpname" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-black flex items-center gap-1.5 shadow-sm">
+                            <i data-lucide="check" class="w-3.5 h-3.5"></i> Ya, Sesuaikan Stok Sekarang
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- TAB: RIWAYAT OPNAME -->
+        <div v-if="activeTab === 'opname_history'" class="space-y-6">
+            <div class="portal-card p-5 rounded-xl border-l-4 border-teal-600 flex items-center gap-3">
+                <div class="p-2.5 bg-teal-50 text-teal-700 rounded-lg border border-teal-100"><i data-lucide="history" class="w-5 h-5"></i></div>
+                <div>
+                    <h2 class="font-black text-slate-800 text-base tracking-tight">Riwayat Stock Opname</h2>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Semua record opname beserta detail selisih &amp; berita acara.</p>
+                </div>
+            </div>
+            <div class="portal-card p-4 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-2 no-print">
+                <input v-model="opnameHistorySearch" type="search" placeholder="Cari nomor / petugas..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
+                <select v-model="opnameHistoryGudang" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold">
+                    <option value="">Semua Gudang</option>
+                    <option value="Sparepart">Sparepart</option>
+                    <option value="Sisa Project">Sisa Project</option>
+                </select>
+                <input v-model="opnameHistoryDateStart" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                <input v-model="opnameHistoryDateEnd" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+            </div>
+            <div class="space-y-3">
+                <div v-for="op in filteredOpnameHistory" :key="op.id" class="portal-card rounded-xl overflow-hidden">
+                    <div class="p-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/40">
+                        <div class="flex items-center gap-3">
+                            <div :class="op.gudang === 'Sisa Project' ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" class="p-2 rounded-lg border">
+                                <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="font-black text-slate-800 text-sm">{{ op.nomor }}</p>
+                                <p class="text-[11px] text-slate-500">{{ op.tgl }} &middot; {{ op.gudang }} &middot; Petugas: <span class="font-bold uppercase text-slate-700">{{ op.petugas }}</span></p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-[10px] bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded">{{ op.totalItem }} Item</span>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">Cocok: {{ op.totalMatch }}</span>
+                            <span :class="op.totalSelisih > 0 ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-500'" class="text-[10px] font-bold px-2 py-0.5 rounded">Selisih: {{ op.totalSelisih }}</span>
+                            <button @click="printBeritaAcara(op)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold flex items-center gap-1.5">
+                                <i data-lucide="printer" class="w-3 h-3"></i> Berita Acara
+                            </button>
+                            <button @click="exportOpnameHistoryExcel(op)" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold flex items-center gap-1.5">
+                                <i data-lucide="file-spreadsheet" class="w-3 h-3"></i> Excel
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <p v-if="op.keterangan" class="text-[11px] text-slate-500 mb-2 italic">Keterangan: {{ op.keterangan }}</p>
+                        <div class="overflow-x-auto max-h-60">
+                            <table class="w-full text-xs">
+                                <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 sticky top-0">
+                                    <tr><th class="p-2">Nama Barang</th><th class="p-2 text-center">Sistem</th><th class="p-2 text-center">Fisik</th><th class="p-2 text-center">Selisih</th><th class="p-2">Catatan</th></tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr v-for="(it, i) in op.items" :key="i" :class="it.selisih === 0 ? '' : 'bg-red-50/30'">
+                                        <td class="p-2 font-semibold text-slate-800 uppercase">{{ it.nama }}</td>
+                                        <td class="p-2 text-center">{{ it.qtySystem }}</td>
+                                        <td class="p-2 text-center font-bold">{{ it.qtyFisik }}</td>
+                                        <td class="p-2 text-center font-black" :class="it.selisih === 0 ? 'text-slate-500' : (it.selisih > 0 ? 'text-blue-700' : 'text-red-700')">
+                                            <span v-if="it.selisih === 0" class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px]">OK</span>
+                                            <span v-else>{{ it.selisih > 0 ? '+' : '' }}{{ it.selisih }}</span>
+                                        </td>
+                                        <td class="p-2 text-slate-500 uppercase text-[10px]">{{ it.catatan || '-' }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="filteredOpnameHistory.length === 0" class="portal-card p-10 text-center text-slate-400 font-medium rounded-xl">
+                    Belum ada riwayat stock opname.
+                </div>
+            </div>
+        </div>
         <!-- TAB 4: GUDANG SPAREPART -->
         <div v-if="activeTab === 'sparepart'" class="space-y-6">
             <div class="flex flex-wrap justify-between items-center gap-3 no-print">
@@ -841,17 +1219,25 @@
                         <i data-lucide="minus-square" class="w-4 h-4"></i> Pengeluaran Multiple Sparepart
                     </button>
                 </div>
-                <button @click="printLogSection('sparepart-log-print')" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
-                    <i data-lucide="printer" class="w-4 h-4"></i> Cetak  Sparepart (Tabel Excel)
-                </button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input v-model="spLogDateStart" type="date" title="Tanggal mulai Excel" class="p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium">
+                    <span class="text-xs font-bold text-slate-400">s/d</span>
+                    <input v-model="spLogDateEnd" type="date" title="Tanggal akhir Excel" class="p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium">
+                    <button @click="printDailyLogReport('Sparepart')" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
+                        <i data-lucide="printer" class="w-4 h-4"></i> Cetak Laporan Sparepart
+                    </button>
+                    <button @click="exportSparepartExcelByDate" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Export Excel Sparepart
+                    </button>
+                </div>
             </div>
             <div class="portal-card p-4 rounded-xl space-y-2 no-print">
                 <span class="text-xs font-bold text-slate-700 uppercase">Filter Log Sparepart:</span>
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                    <input v-model="spLogDateStart" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                    <input v-model="spLogDateEnd" type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                    <input v-model="spLogBarang" type="text" placeholder="Cari Barang..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
-                    <input v-model="spLogKeperluan" type="text" placeholder="Cari Kepentingan / Supplier..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
+                    <input v-model="spLogDateStart" @click.stop @mousedown.stop type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs" style="pointer-events:auto !important; position:relative; z-index:20 !important;">
+                    <input v-model="spLogDateEnd" @click.stop @mousedown.stop type="date" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs" style="pointer-events:auto !important; position:relative; z-index:20 !important;">
+                    <input v-model="spLogBarang" @click.stop @mousedown.stop @input.stop type="search" autocomplete="off" spellcheck="false" placeholder="Cari Barang..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase" style="pointer-events:auto !important; position:relative; z-index:20 !important;">
+                    <input v-model="spLogKeperluan" @click.stop @mousedown.stop @input.stop type="search" autocomplete="off" spellcheck="false" placeholder="Cari Kepentingan / Supplier..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase" style="pointer-events:auto !important; position:relative; z-index:20 !important;">
                 </div>
             </div>
             <div id="sparepart-log-print" class="grid grid-cols-1 lg:grid-cols-2 gap-6 print-area">
@@ -996,8 +1382,8 @@
                         <i data-lucide="minus-square" class="w-4 h-4"></i> Pengeluaran Multiple Sisa Project
                     </button>
                 </div>
-                <button @click="printLogSection('sisa-log-print')" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
-                    <i data-lucide="printer" class="w-4 h-4"></i> Cetak Log Sisa Project (Tabel Excel)
+                <button @click="printDailyLogReport('Sisa Project')" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Cetak Laporan Sisa Project
                 </button>
             </div>
             <div class="portal-card p-4 rounded-xl space-y-2 no-print">
@@ -1140,6 +1526,46 @@
             </div>
         </div>
     </main>
+    <!-- SEARCH DROPDOWN: TELEPORT KE BODY AGAR TIDAK TERPOTONG overflow-y-auto MODAL -->
+    <teleport to="body">
+        <div v-if="masterDropdownKey"
+             class="fixed bg-white border-2 border-amber-400 rounded-xl shadow-2xl overflow-y-auto"
+             :style="Object.assign({ zIndex: 2147483647, position: 'fixed', pointerEvents: 'auto', left: '20px', top: '100px', width: '360px', maxHeight: '300px' }, masterDropdownStyle)"
+             @mousedown.stop>
+            <template v-if="masterAutocompleteOptions.length">
+                <button v-for="m in masterAutocompleteOptions"
+                        :key="m.barcode || m.kode || m.nama"
+                        type="button"
+                        @mousedown.prevent.stop="selectMasterItem(m)"
+                        class="w-full text-left px-3 py-2.5 hover:bg-amber-50 active:bg-amber-100 border-b border-slate-100 last:border-0 cursor-pointer"
+                        style="pointer-events:auto;">
+                    <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div>
+                    <div class="text-[9px] text-slate-500">{{ m.satuan || 'Pcs' }} · SKU: {{ m.kode || m.barcode || '-' }}<span v-if="masterDropdownKey.startsWith('sparepart-out-') || masterDropdownKey.startsWith('sisa-out-')"> · Stok: {{ m.qty }}</span></div>
+                </button>
+            </template>
+            <div v-else class="px-3 py-3 text-[10px] font-semibold text-slate-500">
+                Barang tidak ditemukan di stok.
+            </div>
+        </div>
+    </teleport>
+    <!-- DROPDOWN KHUSUS SPAREPART OUT: TELEPORT KE BODY -->
+    <teleport to="body">
+        <div v-if="activeSparepartOutDropdown !== null"
+             class="fixed bg-white border-2 border-amber-400 rounded-xl shadow-2xl overflow-y-auto"
+             :style="sparepartOutDropdownStyle"
+             @mousedown.stop>
+            <button v-for="m in sparepartOutDropdownOptions"
+                    :key="m.barcode || m.kode || m.nama"
+                    type="button"
+                    @mousedown.prevent.stop="selectSparepartOutItem(activeSparepartOutDropdown, formSparepartMultiOut.selectedItems[activeSparepartOutDropdown], m)"
+                    class="w-full text-left px-3 py-2.5 hover:bg-amber-50 active:bg-amber-100 border-b border-slate-100 last:border-0 cursor-pointer">
+                <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div>
+                <div class="text-[9px] text-slate-500">{{ m.satuan || 'Pcs' }} · SKU: {{ m.kode || m.barcode || '-' }} · Stok: {{ m.qty }}</div>
+            </button>
+            <div v-if="sparepartOutDropdownOptions.length === 0" class="px-3 py-3 text-[10px] font-semibold text-slate-500">Barang tidak ditemukan di stok.</div>
+        </div>
+    </teleport>
+    
     <!-- MODAL 1: INPUT MONITORING ORDER -->
     <!-- REVISI 1 & 2: Ketik Manual Dulu Baru Ada Pilihan Data Master + Kepentingan Spesifik Per Barang -->
     <div v-if="showMonitoringInputModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1177,12 +1603,7 @@
                             <div class="md:col-span-5">
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Nama Barang (Ketik / Pilih Master)</label>
                                 <div class="relative flex-1 mr-2">
-                                <input v-model="item.nama" @focus="openMasterDropdown('monitoring-' + idx, item.nama || '')" @input="masterAutocompleteQuery = item.nama || ''; masterDropdownKey = 'monitoring-' + idx; onMonitoringItemInput(item)" type="text" placeholder="Ketik nama barang..." class="w-full p-2 bg-white font-bold text-xs uppercase border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
-                                <div v-if="masterDropdownKey === 'monitoring-' + idx && masterAutocompleteOptions.length" class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-xl z-[80] max-h-48 overflow-y-auto">
-                                    <button v-for="m in masterAutocompleteOptions" :key="m.kode" type="button" @click="selectMasterItem(item, m); masterDropdownKey = ''" class="w-full text-left px-3 py-2 hover:bg-emerald-50 border-b border-slate-100 last:border-0">
-                                        <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div><div class="text-[9px] text-slate-500">{{ m.satuan }} · SKU: {{ m.kode }}</div>
-                                    </button>
-                                </div>
+                                <input v-model="item.nama" @focus="openMasterDropdown('monitoring-' + idx, item, $event)" @click="openMasterDropdown('monitoring-' + idx, item, $event)" @input="updateMasterDropdown('monitoring-' + idx, item, $event); onMonitoringItemInput(item)" :data-master-dropdown-input="'monitoring-' + idx" type="text" placeholder="Ketik nama barang..." class="w-full p-2 bg-white font-bold text-xs uppercase border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
                             </div>
                             </div>
                             <!-- Qty Order -->
@@ -1251,20 +1672,11 @@
                     <div v-for="(item, idx) in formSparepartMultiOut.selectedItems" :key="idx" class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2">
                         <div class="flex justify-between items-center">
                             <div class="relative flex-1 mr-2">
-                                <input
-                                    v-model="item.nama"
-                                    list="sparepart-out-search-list"
-                                    @input="onSparepartMultiOutItemInput(item)"
-                                    @change="onSparepartMultiOutItemInput(item)"
-                                    type="search"
-                                    autocomplete="off"
-                                    placeholder="Ketik / cari / pilih barang..."
-                                    class="w-full font-bold text-xs uppercase bg-white p-2 border-2 border-amber-300 rounded-md cursor-text outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
-                                >
-                                <datalist id="sparepart-out-search-list">
-                                    <option v-for="m in spareparts" :key="m.barcode || m.kode || m.nama" :value="m.nama">{{ m.satuan || 'Pcs' }} — Stok: {{ m.qty }}</option>
-                                </datalist>
-                                <div class="text-[9px] text-amber-700 mt-1 font-semibold">Ketik untuk mencari, lalu pilih dari dropdown yang muncul.</div>
+                                <div class="relative flex-1">
+                                    <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-amber-500 pointer-events-none"></i>
+                                    <input v-model="item.nama" @focus="openSparepartOutDropdown(idx, item)" @click.stop="openSparepartOutDropdown(idx, item)" @input="updateSparepartOutDropdown(idx, item)" :data-sparepart-out-input="idx" type="text" autocomplete="off" spellcheck="false" placeholder="Ketik untuk cari barang dari stok sparepart..." class="w-full pl-8 pr-2 py-2 font-bold text-xs uppercase bg-white border-2 border-amber-300 rounded-md cursor-text outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
+                                    <!-- Dropdown ditampilkan via Teleport agar TIDAK terpotong oleh overflow-y-auto modal -->
+                                </div>
                             </div>
                             <button @click="removeSparepartOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
                         </div>
@@ -1337,12 +1749,7 @@
                     <div v-for="(item, idx) in formSisaProjectMultiIn.itemsToProcess" :key="idx" class="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 space-y-2">
                         <div class="flex justify-between items-center">
                             <div class="relative flex-1 mr-2">
-                                <input v-model="item.nama" @focus="openMasterDropdown('sisa-in-' + idx, item.nama || '')" @input="masterAutocompleteQuery = item.nama || ''; masterDropdownKey = 'sisa-in-' + idx" type="text" placeholder="Ketik / pilih barang dari Master" class="w-full font-bold text-xs uppercase bg-white p-1.5 border border-emerald-300 rounded-md">
-                                <div v-if="masterDropdownKey === 'sisa-in-' + idx && masterAutocompleteOptions.length" class="absolute left-0 right-0 top-full mt-1 bg-white border border-emerald-300 rounded-lg shadow-xl z-[80] max-h-48 overflow-y-auto">
-                                    <button v-for="m in masterAutocompleteOptions" :key="m.kode" type="button" @click="selectMasterItem(item, m); masterDropdownKey = ''" class="w-full text-left px-3 py-2 hover:bg-emerald-50 border-b border-slate-100 last:border-0">
-                                        <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div><div class="text-[9px] text-slate-500">{{ m.satuan }} · SKU: {{ m.kode }}</div>
-                                    </button>
-                                </div>
+                                <input v-model="item.nama" @focus="openMasterDropdown('sisa-in-' + idx, item, $event)" @click="openMasterDropdown('sisa-in-' + idx, item, $event)" @input="updateMasterDropdown('sisa-in-' + idx, item, $event)" :data-master-dropdown-input="'sisa-in-' + idx" type="text" autocomplete="off" spellcheck="false" placeholder="Ketik untuk cari / pilih barang..." class="w-full font-bold text-xs uppercase bg-white p-1.5 border border-emerald-300 rounded-md">
                             </div>
                             <button @click="removeSisaProjectMultiInItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
                         </div>
@@ -1414,12 +1821,7 @@
                     <div v-for="(item, idx) in formSisaProjectMultiOut.selectedItems" :key="idx" class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2">
                         <div class="flex justify-between items-center">
                             <div class="relative flex-1 mr-2">
-                                <input v-model="item.nama" @focus="openMasterDropdown('sisa-out-' + idx, item.nama || '')" @input="masterAutocompleteQuery = item.nama || ''; masterDropdownKey = 'sisa-out-' + idx; onSisaProjectMultiOutItemInput(item)" type="text" placeholder="Ketik / pilih barang dari Master" class="w-full font-bold text-xs uppercase bg-white p-1.5 border border-amber-300 rounded-md">
-                                <div v-if="masterDropdownKey === 'sisa-out-' + idx && masterAutocompleteOptions.length" class="absolute left-0 right-0 top-full mt-1 bg-white border border-amber-300 rounded-lg shadow-xl z-[80] max-h-48 overflow-y-auto">
-                                    <button v-for="m in masterAutocompleteOptions" :key="m.kode" type="button" @click="selectMasterItem(item, m); masterDropdownKey = ''" class="w-full text-left px-3 py-2 hover:bg-amber-50 border-b border-slate-100 last:border-0">
-                                        <div class="font-bold text-xs uppercase text-slate-800">{{ m.nama }}</div><div class="text-[9px] text-slate-500">{{ m.satuan }} · SKU: {{ m.kode }}</div>
-                                    </button>
-                                </div>
+                                <input v-model="item.nama" @focus="openMasterDropdown('sisa-out-' + idx, item, $event)" @click.stop="openMasterDropdown('sisa-out-' + idx, item, $event)" @input="updateMasterDropdown('sisa-out-' + idx, item, $event); onSisaProjectMultiOutItemInput(item)" :data-master-dropdown-input="'sisa-out-' + idx" type="text" autocomplete="off" spellcheck="false" placeholder="Ketik untuk cari / pilih barang..." class="w-full font-bold text-xs uppercase bg-white p-1.5 border-2 border-amber-300 rounded-md">
                             </div>
                             <button @click="removeSisaProjectOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
                         </div>
@@ -1501,9 +1903,15 @@
                 invoiceData: { number: '', date: '', nama: '', keperluan: '-', qtyTotal: 0, qtyReceived: 0, qtyRemaining: 0, satuan: 'PCS', status: '' },
                 dashFilterDateStart: '',
                 dashFilterDateEnd: '',
+                dashSearchBarang: '',
                 searchMaster: '',
                 masterAutocompleteQuery: '',
                 masterDropdownKey: '',
+                masterDropdownItem: null,
+                masterDropdownStyle: { left: '20px', top: '100px', width: '360px', maxHeight: '300px' },
+                activeSparepartOutDropdown: null,
+                sparepartOutDropdownQuery: '',
+                sparepartOutDropdownStyle: { left: '20px', top: '100px', width: '360px', maxHeight: '300px', zIndex: 2147483647, position: 'fixed', pointerEvents: 'auto' },
                 masterPage: 1,
                 masterPageSize: 100,
                 formMasterManual: { nama: '', minStock: 0, currentStock: 0, stockAwal: 0, tanggal: new Date().toISOString().slice(0,10), leadTime: 0, safetyStock: 0, avgDailyUsage: 0, satuan: 'Pcs' },
@@ -1542,6 +1950,33 @@
                 spareparts: [],
                 sisaProjects: [],
                 logs: [],
+                opnameHistory: [],
+                opnameDraft: {
+                    gudang: 'Sparepart',
+                    tanggal: new Date().toISOString().slice(0,10),
+                    petugas: '',
+                    keterangan: '',
+                    items: []
+                },
+                opnameSearch: '',
+                opnameFilterMode: 'all',
+                showOpnameConfirmModal: false,
+                showKartuStockOptions: false,
+                kartuStockOptions: {
+                    item: null,
+                    paperSize: 'A4',
+                    orientation: 'portrait',
+                    filterMode: 'all',
+                    dateStart: '',
+                    dateEnd: '',
+                    bulan: new Date().toISOString().slice(0, 7)
+                },
+                showOpnameImportPreview: false,
+                opnameImportPreview: [],
+                opnameHistorySearch: '',
+                opnameHistoryDateStart: '',
+                opnameHistoryDateEnd: '',
+                opnameHistoryGudang: '',
                 supabaseConnected: false,
                 isHydratingFromSupabase: true,
                 supabaseSaveTimer: null,
@@ -1556,11 +1991,15 @@
             spareparts: { handler() { this.scheduleSupabaseSave(); }, deep: true },
             sisaProjects: { handler() { this.scheduleSupabaseSave(); }, deep: true },
             logs: { handler() { this.scheduleSupabaseSave(); }, deep: true },
+            opnameHistory: { handler() { this.scheduleSupabaseSave(); }, deep: true },
             searchMaster() {
                 this.masterPage = 1;
             },
-            activeTab() {
+            activeTab(newTab) {
                 this.refreshIcons();
+                if (newTab === 'opname' && (!this.opnameDraft.items || this.opnameDraft.items.length === 0)) {
+                    this.initOpnameDraft(this.opnameDraft.gudang || 'Sparepart');
+                }
             }
         },
         computed: {
@@ -1590,28 +2029,6 @@
                     this.filteredMasterCatalog.length
                 );
             },
-            openMasterDropdown(key, query = '') {
-                this.masterDropdownKey = key;
-                this.masterAutocompleteQuery = query || '';
-            },
-            selectMasterItem(item, master) {
-                item.nama = master.nama;
-                item.satuan = master.satuan || item.satuan || 'Pcs';
-                this.masterAutocompleteQuery = master.nama || '';
-                if (this.masterDropdownKey.startsWith('sparepart-out-')) this.onSparepartMultiOutItemInput(item);
-                if (this.masterDropdownKey.startsWith('sisa-out-')) this.onSisaProjectMultiOutItemInput(item);
-                if (this.masterDropdownKey.startsWith('monitoring-')) this.onMonitoringItemInput(item);
-                this.masterDropdownKey = '';
-            },
-            masterAutocompleteOptions() {
-                const keyword = this.masterAutocompleteQuery.trim().toLowerCase();
-                let source = this.masterCatalog;
-                if (this.masterDropdownKey.startsWith('sparepart-out-')) source = this.spareparts;
-                if (this.masterDropdownKey.startsWith('sisa-out-')) source = this.sisaProjects;
-                return keyword
-                    ? source.filter(i => String(i.nama || '').toLowerCase().includes(keyword))
-                    : source;
-            },
             filteredMonitoringItems() {
                 return this.monitoringItems.filter(i => {
                     const matchBarang = !this.monFilterBarang || i.nama.toLowerCase().includes(this.monFilterBarang.toLowerCase());
@@ -1635,10 +2052,33 @@
                 return this.monitoringHistory.filter(h => h.type === 'IN');
             },
             filteredSpareparts() {
-                return this.spareparts;
+                const q = String(this.spLogBarang || '').trim().toLowerCase();
+                if (!q) return this.spareparts;
+                return this.spareparts.filter(item => String(item.nama || '').toLowerCase().includes(q));
             },
             filteredSisaProjects() {
-                return this.sisaProjects;
+                const q = String(this.spjLogBarang || '').trim().toLowerCase();
+                if (!q) return this.sisaProjects;
+                return this.sisaProjects.filter(item => String(item.nama || '').toLowerCase().includes(q));
+            },
+            sparepartOutDropdownOptions() {
+                const keyword = String(this.sparepartOutDropdownQuery || '').trim().toLowerCase();
+                const source = this.spareparts.filter(i => (Number(i.qty) || 0) > 0);
+                if (!keyword) return source;
+                return source.filter(i => String(i.nama || '').toLowerCase().includes(keyword));
+            },
+            masterAutocompleteOptions() {
+                const keyword = String(this.masterAutocompleteQuery || '').trim().toLowerCase();
+                let source = this.masterCatalog;
+                if (String(this.masterDropdownKey || '').startsWith('sparepart-out-')) {
+                    // Pengeluaran Sparepart HANYA mengambil barang dari stok Sparepart yang benar-benar tersedia.
+                    source = this.spareparts.filter(i => (Number(i.qty) || 0) > 0);
+                } else if (String(this.masterDropdownKey || '').startsWith('sisa-out-')) {
+                    // Pengeluaran Sisa Project HANYA mengambil barang dari stok Sisa Project yang tersedia.
+                    source = this.sisaProjects.filter(i => (Number(i.qty) || 0) > 0);
+                }
+                if (!keyword) return source;
+                return source.filter(i => String(i.nama || '').toLowerCase().includes(keyword));
             },
             sparepartLogsIn() {
                 return this.filterLogs('Sparepart', 'IN', this.spLogDateStart, this.spLogDateEnd, this.spLogBarang, this.spLogKeperluan);
@@ -1653,23 +2093,199 @@
                 return this.filterLogs('Sisa Project', 'OUT', this.spjLogDateStart, this.spjLogDateEnd, this.spjLogBarang, this.spjLogKeperluan);
             },
             filteredSparepartLogsIn() {
-                return this.filterLogs('Sparepart', 'IN', this.dashFilterDateStart, this.dashFilterDateEnd, '', '');
+                // FILTER IN GUDANG SPAREPART HARUS MENGGUNAKAN FILTER
+                // KHUSUS LOG SPAREPART, BUKAN FILTER DASHBOARD.
+                return this.filterLogs(
+                    'Sparepart',
+                    'IN',
+                    this.spLogDateStart,
+                    this.spLogDateEnd,
+                    this.spLogBarang,
+                    this.spLogKeperluan
+                );
             },
             filteredSparepartLogsOut() {
-                return this.filterLogs('Sparepart', 'OUT', this.dashFilterDateStart, this.dashFilterDateEnd, '', '');
+                // FILTER OUT GUDANG SPAREPART HARUS MENGGUNAKAN FILTER
+                // KHUSUS LOG SPAREPART, BUKAN FILTER DASHBOARD.
+                return this.filterLogs(
+                    'Sparepart',
+                    'OUT',
+                    this.spLogDateStart,
+                    this.spLogDateEnd,
+                    this.spLogBarang,
+                    this.spLogKeperluan
+                );
             },
             filteredProjectLogsIn() {
-                return this.filterLogs('Sisa Project', 'IN', this.dashFilterDateStart, this.dashFilterDateEnd, '', '');
+                const q = String(this.dashSearchBarang || '').trim().toLowerCase();
+                return this.filterLogs('Sisa Project', 'IN', this.dashFilterDateStart, this.dashFilterDateEnd, '', '').filter(log => !q || String(log.nama || '').toLowerCase().includes(q));
             },
             filteredProjectLogsOut() {
-                return this.filterLogs('Sisa Project', 'OUT', this.dashFilterDateStart, this.dashFilterDateEnd, '', '');
+                const q = String(this.dashSearchBarang || '').trim().toLowerCase();
+                return this.filterLogs('Sisa Project', 'OUT', this.dashFilterDateStart, this.dashFilterDateEnd, '', '').filter(log => !q || String(log.nama || '').toLowerCase().includes(q));
+            },
+            lowStockItems() {
+                const rows = [];
+                this.spareparts.forEach(s => {
+                    const min = Number(s.minStock) || 0;
+                    if (min > 0 && Number(s.qty) <= min) {
+                        rows.push({ gudang: 'Sparepart', nama: s.nama, qty: Number(s.qty) || 0, minStock: min, satuan: s.satuan || 'Pcs', lokasi: s.lokasi || '-' });
+                    }
+                });
+                this.sisaProjects.forEach(s => {
+                    const min = Number(s.minStock) || 0;
+                    if (min > 0 && Number(s.qty) <= min) {
+                        rows.push({ gudang: 'Sisa Project', nama: s.nama, qty: Number(s.qty) || 0, minStock: min, satuan: s.satuan || 'Pcs', lokasi: s.lokasi || '-' });
+                    }
+                });
+                return rows.sort((a, b) => (a.qty - a.minStock) - (b.qty - b.minStock));
+            },
+            opnameDraftItemsWithSelisih() {
+                return (this.opnameDraft.items || []).map((it, idx) => {
+                    const qtyFisik = it.qtyFisik === '' || it.qtyFisik === null || it.qtyFisik === undefined ? null : Number(it.qtyFisik);
+                    const qtySystem = Number(it.qtySystem) || 0;
+                    const selisih = qtyFisik === null ? null : (qtyFisik - qtySystem);
+                    return { ...it, idx, qtyFisikNum: qtyFisik, qtySystemNum: qtySystem, selisih };
+                });
+            },
+            opnameDraftItemsFiltered() {
+                const q = String(this.opnameSearch || '').trim().toLowerCase();
+                let list = this.opnameDraftItemsWithSelisih;
+                if (q) list = list.filter(x => String(x.nama || '').toLowerCase().includes(q));
+                if (this.opnameFilterMode === 'selisih') list = list.filter(x => x.selisih !== null && x.selisih !== 0);
+                else if (this.opnameFilterMode === 'match') list = list.filter(x => x.selisih === 0);
+                else if (this.opnameFilterMode === 'unfilled') list = list.filter(x => x.qtyFisikNum === null);
+                return list;
+            },
+            opnameDraftSelisihCount() {
+                return this.opnameDraftItemsWithSelisih.filter(x => x.selisih !== null && x.selisih !== 0).length;
+            },
+            opnameDraftMatchCount() {
+                return this.opnameDraftItemsWithSelisih.filter(x => x.selisih === 0).length;
+            },
+            opnameDraftUnfilledCount() {
+                return this.opnameDraftItemsWithSelisih.filter(x => x.qtyFisikNum === null).length;
+            },
+            opnameDraftSelisihItems() {
+                return this.opnameDraftItemsWithSelisih.filter(x => x.selisih !== null && x.selisih !== 0);
+            },
+            filteredOpnameHistory() {
+                const q = String(this.opnameHistorySearch || '').trim().toLowerCase();
+                return this.opnameHistory.filter(op => {
+                    if (this.opnameHistoryGudang && op.gudang !== this.opnameHistoryGudang) return false;
+                    if (this.opnameHistoryDateStart && new Date(op.isoDate || 0) < new Date(this.opnameHistoryDateStart)) return false;
+                    if (this.opnameHistoryDateEnd) {
+                        const end = new Date(this.opnameHistoryDateEnd);
+                        end.setHours(23, 59, 59, 999);
+                        if (new Date(op.isoDate || 0) > end) return false;
+                    }
+                    if (q) {
+                        const hay = `${op.nomor || ''} ${op.petugas || ''} ${op.keterangan || ''} ${op.gudang || ''}`.toLowerCase();
+                        if (!hay.includes(q)) return false;
+                    }
+                    return true;
+                }).slice().sort((a, b) => new Date(b.isoDate || 0) - new Date(a.isoDate || 0));
             }
         },
         async mounted() {
             this.refreshIcons();
             await this.loadFromSupabase();
+            window.addEventListener('resize', this.repositionMasterDropdown);
+            window.addEventListener('scroll', this.repositionMasterDropdown, true);
+            window.addEventListener('resize', this.repositionSparepartOutDropdown);
+            window.addEventListener('scroll', this.repositionSparepartOutDropdown, true);
+        },
+        beforeUnmount() {
+            window.removeEventListener('resize', this.repositionMasterDropdown);
+            window.removeEventListener('scroll', this.repositionMasterDropdown, true);
         },
         methods: {
+            openSparepartOutDropdown(idx, item) {
+                this.activeSparepartOutDropdown = idx;
+                this.sparepartOutDropdownQuery = String(item?.nama || '');
+                this.onSparepartMultiOutItemInput(item);
+                this.$nextTick(() => this.updateSparepartOutDropdownPosition(idx));
+            },
+            updateSparepartOutDropdown(idx, item) {
+                this.activeSparepartOutDropdown = idx;
+                this.sparepartOutDropdownQuery = String(item?.nama || '');
+                this.onSparepartMultiOutItemInput(item);
+                this.$nextTick(() => this.updateSparepartOutDropdownPosition(idx));
+            },
+            updateSparepartOutDropdownPosition(idx) {
+                const el = this.$el.querySelector('[data-sparepart-out-input="' + idx + '"]');
+                if (!el) return;
+                const r = el.getBoundingClientRect();
+                const width = Math.max(r.width, 280);
+                let left = r.left;
+                if (left + width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - width - 8);
+                const spaceBelow = window.innerHeight - r.bottom - 8;
+                const spaceAbove = r.top - 8;
+                const openAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
+                const maxH = Math.min(300, Math.max(100, openAbove ? spaceAbove : spaceBelow));
+                const top = openAbove ? Math.max(8, r.top - maxH - 4) : r.bottom + 4;
+                this.sparepartOutDropdownStyle = { left: left + 'px', top: top + 'px', width: width + 'px', maxHeight: maxH + 'px', zIndex: 2147483647, position: 'fixed', pointerEvents: 'auto' };
+            },
+            selectSparepartOutItem(idx, item, master) {
+                item.nama = master.nama;
+                item.barcode = master.barcode || '';
+                item.qty = Number(master.qty) || 0;
+                item.satuan = master.satuan || 'Pcs';
+                if (Number(item.outQty) > item.qty) item.outQty = item.qty || 1;
+                this.sparepartOutDropdownQuery = master.nama || '';
+                this.activeSparepartOutDropdown = null;
+            },
+            openMasterDropdown(key, item, event) {
+                this.masterDropdownKey = key;
+                this.masterDropdownItem = item;
+                this.masterAutocompleteQuery = event?.target?.value ?? item?.nama ?? '';
+                this.$nextTick(() => this.updateMasterDropdownPosition(event?.target));
+            },
+            updateMasterDropdown(key, item, event) {
+                this.masterDropdownKey = key;
+                this.masterDropdownItem = item;
+                this.masterAutocompleteQuery = event?.target?.value ?? item?.nama ?? '';
+                this.$nextTick(() => this.updateMasterDropdownPosition(event?.target));
+            },
+            updateMasterDropdownPosition(el) {
+                if (!el) return;
+                const r = el.getBoundingClientRect();
+                const width = Math.max(r.width, 280);
+                let left = r.left;
+                if (left + width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - width - 8);
+                const spaceBelow = window.innerHeight - r.bottom - 8;
+                const spaceAbove = r.top - 8;
+                const openAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
+                const maxH = Math.min(300, Math.max(120, openAbove ? spaceAbove : spaceBelow));
+                const top = openAbove ? Math.max(8, r.top - maxH - 4) : r.bottom + 4;
+                this.masterDropdownStyle = { left: left + 'px', top: top + 'px', width: width + 'px', maxHeight: maxH + 'px' };
+            },
+            repositionMasterDropdown() {
+                if (!this.masterDropdownKey || !this.masterDropdownItem) return;
+                const el = this.$el.querySelector('[data-master-dropdown-input="' + this.masterDropdownKey + '"]');
+                if (el) this.updateMasterDropdownPosition(el);
+            },
+            selectMasterItem(master) {
+                const item = this.masterDropdownItem;
+                if (!item) return;
+                const key = this.masterDropdownKey;
+                item.nama = master.nama;
+                item.satuan = master.satuan || item.satuan || 'Pcs';
+                this.masterAutocompleteQuery = master.nama || '';
+                if (key.startsWith('sparepart-out-')) this.onSparepartMultiOutItemInput(item);
+                if (key.startsWith('sisa-out-')) this.onSisaProjectMultiOutItemInput(item);
+                if (key.startsWith('monitoring-')) this.onMonitoringItemInput(item);
+                this.masterDropdownKey = '';
+                this.masterDropdownItem = null;
+            },
+            closeMasterDropdown() {
+                this.masterDropdownKey = '';
+                this.masterDropdownItem = null;
+            },
+            repositionSparepartOutDropdown() {
+                if (this.activeSparepartOutDropdown === null) return;
+                this.$nextTick(() => this.updateSparepartOutDropdownPosition(this.activeSparepartOutDropdown));
+            },
             refreshIcons() {
                 if (this._iconRefreshPending) return;
                 this._iconRefreshPending = true;
@@ -1711,7 +2327,8 @@
                     monitoringHistory: raw(this.monitoringHistory),
                     spareparts: raw(this.spareparts),
                     sisaProjects: raw(this.sisaProjects),
-                    logs: raw(this.logs)
+                    logs: raw(this.logs),
+                    opnameHistory: raw(this.opnameHistory)
                 };
             },
             scheduleSupabaseSave(delay = 900) {
@@ -1748,6 +2365,7 @@
                         this.spareparts = Array.isArray(state.spareparts) ? state.spareparts : [];
                         this.sisaProjects = Array.isArray(state.sisaProjects) ? state.sisaProjects : [];
                         this.logs = Array.isArray(state.logs) ? state.logs : [];
+                        this.opnameHistory = Array.isArray(state.opnameHistory) ? state.opnameHistory : [];
                         this.syncMasterAndSparepart();
                     }
                     this.supabaseConnected = true;
@@ -2070,6 +2688,7 @@
             resetDashFilter() {
                 this.dashFilterDateStart = '';
                 this.dashFilterDateEnd = '';
+                this.dashSearchBarang = '';
             },
             // Rumus minimum stock menggunakan kebutuhan selama lead time + safety stock.
             // Pemakaian harian dapat berasal dari Excel; jika tidak ada, sistem mengambil rata-rata histori OUT 30 hari terakhir.
@@ -3252,112 +3871,321 @@
             },
             printLabel(item) {
                 if (!item) return;
+                this.kartuStockOptions = {
+                    item: item,
+                    paperSize: 'A4',
+                    orientation: 'portrait',
+                    filterMode: 'all',
+                    dateStart: '',
+                    dateEnd: '',
+                    bulan: new Date().toISOString().slice(0, 7)
+                };
+                this.showKartuStockOptions = true;
+                this.$nextTick(() => this.refreshIcons());
+            },
+            confirmPrintKartuStock() {
+                const opts = this.kartuStockOptions;
+                if (!opts.item) { this.showKartuStockOptions = false; return; }
+                if (opts.filterMode === 'bulan' && !opts.bulan) return alert('Silakan pilih bulan terlebih dahulu.');
+                if (opts.filterMode === 'rentang' && (!opts.dateStart || !opts.dateEnd)) return alert('Silakan pilih tanggal mulai dan akhir.');
+                const item = opts.item;
+                this.showKartuStockOptions = false;
+                this.$nextTick(() => this.doPrintKartuStock(item, { ...opts }));
+            },
+            doPrintKartuStock(item, options) {
+                if (!item) return;
 
-                // Cetak Kartu Stock untuk BARANG YANG DIPILIH saja.
-                // Format dibuat seperti kartu stok/rekap Excel: Masuk, Keluar, dan Saldo.
                 const namaBarang = String(item.nama || '').trim();
                 const namaKey = namaBarang.toLowerCase();
                 const gudang = this.activeTab === 'sisa_project' ? 'Sisa Project' : 'Sparepart';
                 const satuan = item.satuan || 'Pcs';
-                const firstLog = this.logs
-                    .filter(log => String(log.gudang || '').trim().toLowerCase() === gudang.toLowerCase() && String(log.nama || '').trim().toLowerCase() === namaKey)
-                    .slice()
-                    .sort((a, b) => new Date(a.isoDate || a.id || 0).getTime() - new Date(b.isoDate || b.id || 0).getTime())[0];
-                const stockAwal = firstLog && firstLog.qtyAwal !== undefined ? Number(firstLog.qtyAwal) || 0 : (Number(item.stockAwal ?? item.currentStock) || 0);
 
-                const stockLogs = this.logs
+                const masterItem = this.masterCatalog.find(master =>
+                    String(master.nama || '').trim().toLowerCase() === namaKey ||
+                    (item.kode && master.kode && String(master.kode).trim().toLowerCase() === String(item.kode).trim().toLowerCase())
+                );
+                const stockAwalMaster = masterItem && masterItem.stockAwal !== undefined && masterItem.stockAwal !== null
+                    ? Number(masterItem.stockAwal) || 0
+                    : (masterItem && masterItem.currentStock !== undefined ? Number(masterItem.currentStock) || 0 : (Number(item.stockAwal ?? item.currentStock ?? item.qty) || 0));
+
+                const lokasi = item.lokasi || (masterItem && masterItem.lokasi) || '-';
+                const kode = item.kode || (masterItem && masterItem.kode) || '-';
+                const minStock = item.minStock || (masterItem && masterItem.minStock) || '-';
+
+                // Ambil semua transaksi barang urut kronologis
+                const allLogs = this.logs
                     .filter(log =>
                         String(log.gudang || '').trim().toLowerCase() === gudang.toLowerCase() &&
                         String(log.nama || '').trim().toLowerCase() === namaKey
                     )
                     .slice()
-                    .sort((a, b) => {
-                        const da = new Date(a.isoDate || a.id || 0).getTime();
-                        const db = new Date(b.isoDate || b.id || 0).getTime();
-                        return da - db;
-                    });
+                    .sort((a, b) => new Date(a.isoDate || a.id || 0).getTime() - new Date(b.isoDate || b.id || 0).getTime());
 
-                let saldo = 0;
-                const rows = stockLogs.length ? stockLogs.map((log, idx) => {
+                // Tentukan rentang tanggal filter
+                let filterStart = null;
+                let filterEnd = null;
+                let periodeLabel = 'Semua Periode';
+                if (options.filterMode === 'bulan' && options.bulan) {
+                    const [yy, mm] = options.bulan.split('-').map(Number);
+                    filterStart = new Date(yy, mm - 1, 1, 0, 0, 0, 0);
+                    filterEnd = new Date(yy, mm, 0, 23, 59, 59, 999);
+                    periodeLabel = new Date(yy, mm - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                } else if (options.filterMode === 'rentang' && options.dateStart && options.dateEnd) {
+                    filterStart = new Date(options.dateStart + 'T00:00:00');
+                    filterEnd = new Date(options.dateEnd + 'T23:59:59.999');
+                    periodeLabel = `${options.dateStart} s/d ${options.dateEnd}`;
+                }
+
+                // Hitung saldo awal periode = stok awal master + akumulasi sebelum filterStart
+                let saldoAwalPeriode = stockAwalMaster;
+                let runningSaldo = stockAwalMaster;
+                const filteredLogs = [];
+                allLogs.forEach((log) => {
                     const qty = Number(log.qty) || 0;
-                    const masuk = log.type === 'IN' ? qty : 0;
-                    const keluar = log.type === 'OUT' ? qty : 0;
-
-                    // Gunakan saldo transaksi yang tersimpan jika tersedia.
+                    const logDate = new Date(log.isoDate || log.id || 0);
+                    const beforePeriod = filterStart && logDate < filterStart;
+                    // Update running saldo
                     if (log.qtyAkhir !== undefined && log.qtyAkhir !== null && log.qtyAkhir !== '') {
-                        saldo = Number(log.qtyAkhir) || 0;
+                        runningSaldo = Number(log.qtyAkhir) || 0;
                     } else {
-                        saldo += masuk - keluar;
+                        runningSaldo += log.type === 'IN' ? qty : -qty;
                     }
+                    if (beforePeriod) {
+                        saldoAwalPeriode = runningSaldo;
+                    } else if (!filterEnd || logDate <= filterEnd) {
+                        filteredLogs.push({
+                            log: log,
+                            saldoSetelah: runningSaldo,
+                            qty: qty
+                        });
+                    }
+                });
 
-                    return `
-                        <tr>
-                            <td class="center">${idx + 1}</td>
-                            <td>${log.tgl || '-'}</td>
-                            <td>${log.id || '-'}</td>
-                            <td>${log.keperluan || log.supplier || '-'}</td>
-                            <td class="num">${masuk ? masuk.toLocaleString('id-ID') : '-'}</td>
-                            <td class="num">${keluar ? keluar.toLocaleString('id-ID') : '-'}</td>
-                            <td class="num saldo">${saldo.toLocaleString('id-ID')}</td>
-                            <td>${log.user || '-'}</td>
+                const enrichedLogs = filteredLogs.map((f, idx) => {
+                    const log = f.log;
+                    return {
+                        no: idx + 1,
+                        tgl: log.tgl || '-',
+                        keperluan: log.keperluan || log.supplier || '-',
+                        qtyIn: log.type === 'IN' ? f.qty : '',
+                        qtyOut: log.type === 'OUT' ? f.qty : '',
+                        saldo: f.saldoSetelah,
+                        src: log.type === 'IN' ? (log.supplier || log.user || '-') : (log.user || '-'),
+                        isOpname: (log.adjustmentType === 'OPNAME') || String(log.keperluan || '').includes('PENYESUAIAN STOCK OPNAME')
+                    };
+                });
+                const finalSaldo = enrichedLogs.length > 0 ? enrichedLogs[enrichedLogs.length - 1].saldo : saldoAwalPeriode;
+                const stokSaatIniValue = Number(item.qty) || 0;
+                const printedDate = this.getFormattedDateOnly();
+
+                // Bagi ke halaman - 25 baris per halaman
+                const ROWS_PER_PAGE = 25;
+                const chunks = [];
+                if (enrichedLogs.length === 0) {
+                    chunks.push([]);
+                } else {
+                    for (let i = 0; i < enrichedLogs.length; i += ROWS_PER_PAGE) {
+                        chunks.push(enrichedLogs.slice(i, i + ROWS_PER_PAGE));
+                    }
+                }
+                const totalPages = chunks.length;
+
+                // Set @page CSS dinamis berdasarkan opsi
+                const paperSizeMap = {
+                    'A4': { size: 'A4', margin: '12mm' },
+                    'F4': { size: '210mm 330mm', margin: '12mm 12mm 14mm 12mm' },
+                    'A5': { size: 'A5', margin: '8mm' }
+                };
+                const spec = paperSizeMap[options.paperSize] || paperSizeMap.A4;
+                const sizeDecl = options.paperSize === 'F4'
+                    ? (options.orientation === 'landscape' ? '330mm 210mm' : '210mm 330mm')
+                    : `${spec.size} ${options.orientation}`;
+                let dynamicStyle = document.getElementById('__kartu_stock_dynamic_style');
+                if (!dynamicStyle) {
+                    dynamicStyle = document.createElement('style');
+                    dynamicStyle.id = '__kartu_stock_dynamic_style';
+                    document.head.appendChild(dynamicStyle);
+                }
+                dynamicStyle.textContent = `@media print { @page { size: ${sizeDecl}; margin: ${spec.margin}; } }`;
+
+                const AGROFARM_LOGO = 'https://customer-assets-eiarnc6j.emergentagent.net/job_pensive-babbage-6/artifacts/u0i9y95c_WhatsApp%20Image%202026-08-11%20at%2014.22.45.jpeg';
+
+                const buildRowHtml = (r) => `
+                    <tr${r.isOpname ? ' style="background:#fef3c7;"' : ''}>
+                        <td class="center">${r.no}</td>
+                        <td class="center">${r.tgl}</td>
+                        <td>${r.keperluan}${r.isOpname ? ' <b>[OPNAME]</b>' : ''}</td>
+                        <td class="num">${r.qtyIn === '' ? '' : Number(r.qtyIn).toLocaleString('id-ID')}</td>
+                        <td class="num">${r.qtyOut === '' ? '' : Number(r.qtyOut).toLocaleString('id-ID')}</td>
+                        <td class="num saldo">${r.saldo.toLocaleString('id-ID')}</td>
+                        <td>${r.src}</td>
+                    </tr>`;
+
+                const stokAwalLabel = (options.filterMode === 'all')
+                    ? 'STOK AWAL (Master Data)'
+                    : `SALDO AWAL PERIODE (${periodeLabel})`;
+
+                const buildPage = (chunkRows, pageIdx) => {
+                    const isFirst = pageIdx === 0;
+                    const isLast = pageIdx === totalPages - 1;
+                    const openingRow = isFirst ? `
+                        <tr style="background:#f8fafc;">
+                            <td class="center">-</td>
+                            <td class="center">${filterStart ? filterStart.toLocaleDateString('id-ID') : printedDate}</td>
+                            <td style="font-style:italic; font-weight:700;">${stokAwalLabel}</td>
+                            <td class="num">-</td>
+                            <td class="num">-</td>
+                            <td class="num saldo">${saldoAwalPeriode.toLocaleString('id-ID')}</td>
+                            <td>-</td>
+                        </tr>` : `
+                        <tr style="background:#f1f5f9;">
+                            <td class="center">-</td>
+                            <td class="center">-</td>
+                            <td style="font-style:italic; font-weight:700;">SALDO AWAL HALAMAN INI</td>
+                            <td class="num">-</td>
+                            <td class="num">-</td>
+                            <td class="num saldo">${(chunks[pageIdx - 1][chunks[pageIdx - 1].length - 1].saldo).toLocaleString('id-ID')}</td>
+                            <td>-</td>
                         </tr>`;
-                }).join('') : `
-                    <tr><td colspan="8" class="empty-row">Belum ada transaksi untuk barang ini.</td></tr>`;
-
-                const labelArea = document.getElementById('label-print-area');
-                labelArea.innerHTML = `
-                    <div class="stock-card-print">
-                        <div class="stock-card-heading">
-                            <div class="stock-card-title">KARTU STOCK</div>
-                            <div class="stock-card-subtitle">KARTU PERSEDIAAN BARANG</div>
+                    const emptyRow = (chunkRows.length === 0 && isFirst) ? `
+                        <tr>
+                            <td colspan="7" class="empty-row" style="font-style:italic; color:#64748b;">Belum ada transaksi ${options.filterMode !== 'all' ? 'pada periode ' + periodeLabel : 'tercatat untuk barang ini'}.</td>
+                        </tr>` : '';
+                    const saldoAkhirLabel = (options.filterMode === 'all') ? 'SALDO AKHIR / STOK SAAT INI' : `SALDO AKHIR PERIODE`;
+                    const saldoAkhirRow = isLast ? `
+                        <tr style="background:#ecfdf5; font-weight:800;">
+                            <td class="center" colspan="5" style="text-align:right; font-weight:800;">${saldoAkhirLabel}</td>
+                            <td class="num saldo" style="font-weight:800;">${finalSaldo.toLocaleString('id-ID')}</td>
+                            <td>-</td>
+                        </tr>` : '';
+                    const signatureBlock = isLast ? `
+                        <div class="stock-card-footer">
+                            <span>Dicetak: ${printedDate}</span>
+                            <span>Transaksi Ditampilkan: ${enrichedLogs.length}${options.filterMode !== 'all' ? ' (' + periodeLabel + ')' : ''}</span>
+                            <span>Stok Saat Ini: <b>${stokSaatIniValue.toLocaleString('id-ID')} ${satuan}</b></span>
                         </div>
-
+                        <div style="margin-top:14mm; display:flex; justify-content:space-around; font-size:9pt;">
+                            <div style="text-align:center; width:200px;">Petugas Gudang<br><br><br><br>____________________</div>
+                            <div style="text-align:center; width:200px;">Diketahui,<br><br><br><br>____________________</div>
+                        </div>` : `
+                        <div style="margin-top:6mm; text-align:right; font-size:8pt; font-style:italic; color:#475569;">Bersambung ke halaman ${pageIdx + 2}...</div>`;
+                    const pageStyle = isLast ? '' : 'page-break-after: always;';
+                    return `
+                    <div class="stock-card-print" style="${pageStyle}">
+                        <div class="stock-card-heading" style="text-align:left; display:flex; align-items:center; gap:14px; border-bottom:2px solid #000; padding-bottom:6mm;">
+                            <img src="${AGROFARM_LOGO}" alt="Agrofarm" style="height:16mm; width:auto; object-fit:contain;">
+                            <div style="flex:1; text-align:center;">
+                                <div class="stock-card-title">KARTU STOCK BARANG</div>
+                                <div class="stock-card-subtitle">AGROFARM NUSA RAYA &mdash; SISTEM INVENTORY SPARE PART</div>
+                                <div style="font-size:9pt; font-weight:700; margin-top:2px;">Periode: ${periodeLabel} &middot; Halaman ${pageIdx + 1} dari ${totalPages}</div>
+                            </div>
+                            <div style="text-align:right; font-size:9pt;">
+                                <div><b>Tanggal Cetak</b></div>
+                                <div>${printedDate}</div>
+                            </div>
+                        </div>
                         <table class="stock-card-info">
                             <tr>
                                 <td class="info-label">Nama Barang</td>
-                                <td class="info-value">${namaBarang || '-'}</td>
+                                <td class="info-value" colspan="3" style="font-weight:800; text-transform:uppercase;">${namaBarang || '-'}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Kode / SKU</td>
+                                <td class="info-value">${kode}</td>
                                 <td class="info-label">Gudang</td>
                                 <td class="info-value">${gudang}</td>
                             </tr>
                             <tr>
                                 <td class="info-label">Satuan</td>
                                 <td class="info-value">${satuan}</td>
+                                <td class="info-label">Lokasi Rak</td>
+                                <td class="info-value">${lokasi}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Min. Stok</td>
+                                <td class="info-value">${minStock}</td>
                                 <td class="info-label">Stok Saat Ini</td>
-                                <td class="info-value">${(Number(item.qty) || 0).toLocaleString('id-ID')} ${satuan}</td>
+                                <td class="info-value" style="font-weight:800;">${stokSaatIniValue.toLocaleString('id-ID')} ${satuan}</td>
                             </tr>
                         </table>
-
                         <table class="stock-card-table">
                             <thead>
                                 <tr>
-                                    <th rowspan="2" class="col-no">No</th>
-                                    <th rowspan="2" class="col-date">Tanggal</th>
-                                    <th rowspan="2" class="col-ref">No. Referensi</th>
-                                    <th rowspan="2" class="col-desc">Keterangan / Kepentingan</th>
-                                    <th colspan="2">MUTASI STOCK</th>
-                                    <th rowspan="2" class="col-balance">SALDO</th>
-                                    <th rowspan="2" class="col-user">Pengguna / Supplier</th>
-                                </tr>
-                                <tr>
-                                    <th class="col-in">MASUK</th>
-                                    <th class="col-out">KELUAR</th>
+                                    <th class="col-no">No</th>
+                                    <th class="col-date">Tanggal</th>
+                                    <th class="col-desc">Keterangan / Kepentingan</th>
+                                    <th class="col-opening">Masuk</th>
+                                    <th class="col-opening">Keluar</th>
+                                    <th class="col-balance">Saldo</th>
+                                    <th class="col-user">Petugas / Supplier</th>
                                 </tr>
                             </thead>
-                            <tbody>${rows}</tbody>
+                            <tbody>
+                                ${openingRow}
+                                ${chunkRows.map(buildRowHtml).join('')}
+                                ${emptyRow}
+                                ${saldoAkhirRow}
+                            </tbody>
                         </table>
-
-                        <div class="stock-card-footer">
-                            <span>Dicetak: ${this.getFormattedDateOnly()}</span>
-                            <span>Stok akhir: ${(Number(item.qty) || 0).toLocaleString('id-ID')} ${satuan}</span>
-                        </div>
+                        ${signatureBlock}
                     </div>`;
+                };
+
+                const labelArea = document.getElementById('label-print-area');
+                labelArea.innerHTML = chunks.map((chunkRows, idx) => buildPage(chunkRows, idx)).join('');
 
                 document.body.classList.add('printing-label');
                 this.$nextTick(() => {
                     window.print();
                     document.body.classList.remove('printing-label');
                     labelArea.innerHTML = '';
+                    if (dynamicStyle) dynamicStyle.textContent = '';
                 });
+            },
+            exportSparepartExcelByDate() {
+                if (!this.spLogDateStart && !this.spLogDateEnd) {
+                    return alert('Silakan pilih tanggal mulai dan/atau tanggal akhir terlebih dahulu!');
+                }
+                if (this.spLogDateStart && this.spLogDateEnd && this.spLogDateStart > this.spLogDateEnd) {
+                    return alert('Tanggal mulai tidak boleh lebih besar dari tanggal akhir!');
+                }
+
+                const filteredLogs = this.logs.filter(l => {
+                    if (String(l.gudang || '').trim().toLowerCase() !== 'sparepart') return false;
+                    const lDate = new Date(l.isoDate || l.id);
+                    if (this.spLogDateStart && lDate < new Date(this.spLogDateStart)) return false;
+                    if (this.spLogDateEnd) {
+                        const endDate = new Date(this.spLogDateEnd);
+                        endDate.setHours(23, 59, 59, 999);
+                        if (lDate > endDate) return false;
+                    }
+                    const barang = String(this.spLogBarang || '').trim().toLowerCase();
+                    if (barang && !String(l.nama || '').trim().toLowerCase().includes(barang)) return false;
+                    const ket = String(this.spLogKeperluan || '').trim().toLowerCase();
+                    const logKet = String(l.supplier || l.keperluan || l.user || '').trim().toLowerCase();
+                    if (ket && !logKet.includes(ket)) return false;
+                    return true;
+                });
+
+                const logsIn = filteredLogs.filter(l => String(l.type || '').toUpperCase() === 'IN');
+                const logsOut = filteredLogs.filter(l => String(l.type || '').toUpperCase() === 'OUT');
+                const makeRows = logs => logs.map((l, i) => ({
+                    No: i + 1,
+                    Tanggal: l.tgl || '-',
+                    'Nama Barang': l.nama || '-',
+                    Qty: Number(l.qty) || 0,
+                    'Qty Awal': l.qtyAwal ?? '-',
+                    'Qty Akhir': l.qtyAkhir ?? '-',
+                    Kepentingan: l.keperluan || '-',
+                    'Supplier/Pengambil': l.supplier || l.user || '-'
+                }));
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(makeRows(logsIn)), 'Barang Masuk');
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(makeRows(logsOut)), 'Barang Keluar');
+                const start = this.spLogDateStart || 'awal';
+                const end = this.spLogDateEnd || 'akhir';
+                XLSX.writeFile(wb, `Laporan_Sparepart_${start}_sd_${end}.xlsx`);
             },
             exportToExcel() {
                 const wb = XLSX.utils.book_new();
@@ -3391,6 +4219,387 @@
                 const logsSheet = XLSX.utils.json_to_sheet(filteredLogs);
                 XLSX.utils.book_append_sheet(wb, logsSheet, "Pergerakan Stok Filtered");
                 XLSX.writeFile(wb, `Laporan_Pergerakan_Stok_${this.dashFilterDateStart}_sd_${this.dashFilterDateEnd}.xlsx`);
+            },
+            printDailyLogReport(scope) {
+                // scope: 'all' (dashboard - both gudang) | 'Sparepart' | 'Sisa Project'
+                let dateStart, dateEnd, barangFilter = '', keperluanFilter = '';
+                if (scope === 'Sparepart') {
+                    dateStart = this.spLogDateStart; dateEnd = this.spLogDateEnd;
+                    barangFilter = this.spLogBarang || ''; keperluanFilter = this.spLogKeperluan || '';
+                } else if (scope === 'Sisa Project') {
+                    dateStart = this.spjLogDateStart; dateEnd = this.spjLogDateEnd;
+                    barangFilter = this.spjLogBarang || ''; keperluanFilter = this.spjLogKeperluan || '';
+                } else {
+                    dateStart = this.dashFilterDateStart; dateEnd = this.dashFilterDateEnd;
+                }
+                const inRange = (l) => {
+                    const lDate = new Date(l.isoDate || l.id);
+                    if (dateStart && lDate < new Date(dateStart)) return false;
+                    if (dateEnd) {
+                        const endDate = new Date(dateEnd);
+                        endDate.setHours(23, 59, 59, 999);
+                        if (lDate > endDate) return false;
+                    }
+                    if (barangFilter && !String(l.nama || '').toLowerCase().includes(barangFilter.toLowerCase())) return false;
+                    if (keperluanFilter) {
+                        const hay = String(l.supplier || l.keperluan || l.user || '').toLowerCase();
+                        if (!hay.includes(keperluanFilter.toLowerCase())) return false;
+                    }
+                    return true;
+                };
+                const buildTable = (logs, type) => {
+                    if (logs.length === 0) {
+                        return `<tr><td colspan="7" style="border:1px solid #000; padding:14px; text-align:center; font-style:italic; color:#64748b;">Tidak ada data ${type === 'IN' ? 'barang masuk' : 'barang keluar'} pada periode ini.</td></tr>`;
+                    }
+                    return logs.map((log, i) => {
+                        const isOpname = (log.adjustmentType === 'OPNAME') || String(log.keperluan || '').includes('PENYESUAIAN STOCK OPNAME');
+                        const bg = isOpname ? 'background:#fef3c7;' : '';
+                        return `<tr style="${bg}">
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${i + 1}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${log.tgl || '-'}</td>
+                            <td style="border:1px solid #000; padding:5px;">${(log.nama || '-').toUpperCase()}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:700;">${type === 'IN' ? '+' : '-'}${log.qty || 0}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center;">${log.qtyAwal ?? '-'}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:700;">${log.qtyAkhir ?? '-'}</td>
+                            <td style="border:1px solid #000; padding:5px;">${type === 'IN' ? (log.supplier || log.keperluan || '-') : `${(log.user || '-')} (${log.keperluan || '-'})`}${isOpname ? ' <b>[OPNAME]</b>' : ''}</td>
+                        </tr>`;
+                    }).join('');
+                };
+                const renderGudangSection = (gudangName) => {
+                    const inLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'IN' && inRange(l)).sort((a,b) => new Date(a.isoDate||a.id) - new Date(b.isoDate||b.id));
+                    const outLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'OUT' && inRange(l)).sort((a,b) => new Date(a.isoDate||a.id) - new Date(b.isoDate||b.id));
+                    return `
+                        <div style="margin-top:6mm; page-break-inside:avoid;">
+                            <div style="font-size:11pt; font-weight:800; border-bottom:2px solid #065f46; color:#065f46; padding-bottom:3px; margin-bottom:4px; text-transform:uppercase;">Gudang ${gudangName} &mdash; Barang Masuk (Inbound) &middot; ${inLogs.length} Transaksi</div>
+                            <table style="width:100%; border-collapse:collapse; font-size:9pt; font-family:Arial, sans-serif; margin-bottom:8mm;">
+                                <thead>
+                                    <tr style="background:#d1fae5;">
+                                        <th style="border:1px solid #000; padding:5px;">No</th>
+                                        <th style="border:1px solid #000; padding:5px;">Tanggal</th>
+                                        <th style="border:1px solid #000; padding:5px;">Nama Barang</th>
+                                        <th style="border:1px solid #000; padding:5px;">Qty Masuk</th>
+                                        <th style="border:1px solid #000; padding:5px;">Qty Awal</th>
+                                        <th style="border:1px solid #000; padding:5px;">Qty Akhir</th>
+                                        <th style="border:1px solid #000; padding:5px;">Supplier / Kepentingan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${buildTable(inLogs, 'IN')}</tbody>
+                            </table>
+                            <div style="font-size:11pt; font-weight:800; border-bottom:2px solid #b45309; color:#b45309; padding-bottom:3px; margin-bottom:4px; text-transform:uppercase;">Gudang ${gudangName} &mdash; Barang Keluar (Outbound) &middot; ${outLogs.length} Transaksi</div>
+                            <table style="width:100%; border-collapse:collapse; font-size:9pt; font-family:Arial, sans-serif; margin-bottom:8mm;">
+                                <thead>
+                                    <tr style="background:#fef3c7;">
+                                        <th style="border:1px solid #000; padding:5px;">No</th>
+                                        <th style="border:1px solid #000; padding:5px;">Tanggal</th>
+                                        <th style="border:1px solid #000; padding:5px;">Nama Barang</th>
+                                        <th style="border:1px solid #000; padding:5px;">Qty Keluar</th>
+                                        <th style="border:1px solid #000; padding:5px;">Qty Awal</th>
+                                        <th style="border:1px solid #000; padding:5px;">Qty Akhir</th>
+                                        <th style="border:1px solid #000; padding:5px;">Pengambil (Kepentingan)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${buildTable(outLogs, 'OUT')}</tbody>
+                            </table>
+                        </div>`;
+                };
+                const sections = scope === 'all'
+                    ? renderGudangSection('Sparepart') + renderGudangSection('Sisa Project')
+                    : renderGudangSection(scope);
+                const printedDate = this.getFormattedDateOnly();
+                const rangeText = (dateStart || dateEnd)
+                    ? `${dateStart || '(awal)'} s/d ${dateEnd || '(akhir)'}`
+                    : 'SEMUA PERIODE';
+                const scopeTitle = scope === 'all' ? 'Semua Gudang' : `Gudang ${scope}`;
+                const AGROFARM_LOGO = 'https://customer-assets-eiarnc6j.emergentagent.net/job_pensive-babbage-6/artifacts/u0i9y95c_WhatsApp%20Image%202026-08-11%20at%2014.22.45.jpeg';
+                const labelArea = document.getElementById('label-print-area');
+                labelArea.innerHTML = `
+                    <div class="stock-card-print" style="font-family: Arial, sans-serif; color:#000;">
+                        <div style="display:flex; align-items:center; gap:14px; border-bottom:2px solid #000; padding-bottom:6mm; margin-bottom:6mm;">
+                            <img src="${AGROFARM_LOGO}" alt="Agrofarm" style="height:18mm; width:auto; object-fit:contain;">
+                            <div style="flex:1; text-align:center;">
+                                <div style="font-size:16pt; font-weight:800; letter-spacing:.5px;">LAPORAN PERGERAKAN STOK</div>
+                                <div style="font-size:10pt; font-weight:600;">AGROFARM NUSA RAYA &mdash; Sistem Inventory Spare Part</div>
+                            </div>
+                            <div style="text-align:right; font-size:9pt;">
+                                <div><b>Tanggal Cetak</b></div>
+                                <div>${printedDate}</div>
+                            </div>
+                        </div>
+                        <table style="width:100%; font-size:10pt; margin-bottom:8mm;">
+                            <tr><td style="width:140px; font-weight:700; padding:2px 0;">Cakupan</td><td style="padding:2px 0;">: ${scopeTitle}</td></tr>
+                            <tr><td style="font-weight:700; padding:2px 0;">Periode</td><td style="padding:2px 0;">: ${rangeText}</td></tr>
+                            ${barangFilter ? `<tr><td style="font-weight:700; padding:2px 0;">Filter Barang</td><td style="padding:2px 0;">: ${barangFilter}</td></tr>` : ''}
+                            ${keperluanFilter ? `<tr><td style="font-weight:700; padding:2px 0;">Filter Kepentingan/Supplier</td><td style="padding:2px 0;">: ${keperluanFilter}</td></tr>` : ''}
+                        </table>
+                        ${sections}
+                        <div style="margin-top:14mm; display:flex; justify-content:space-around; font-size:10pt;">
+                            <div style="text-align:center; width:200px;">Petugas Gudang<br><br><br><br>____________________</div>
+                            <div style="text-align:center; width:200px;">Kepala Gudang<br><br><br><br>____________________</div>
+                            <div style="text-align:center; width:200px;">Diketahui,<br><br><br><br>____________________</div>
+                        </div>
+                    </div>`;
+                document.body.classList.add('printing-label');
+                this.$nextTick(() => {
+                    window.print();
+                    document.body.classList.remove('printing-label');
+                    labelArea.innerHTML = '';
+                });
+            },
+            /* ============ STOCK OPNAME METHODS ============ */
+            initOpnameDraft(gudang) {
+                const g = gudang || this.opnameDraft.gudang || 'Sparepart';
+                const source = g === 'Sisa Project' ? this.sisaProjects : this.spareparts;
+                this.opnameDraft = {
+                    gudang: g,
+                    tanggal: this.opnameDraft.tanggal || new Date().toISOString().slice(0,10),
+                    petugas: this.opnameDraft.petugas || '',
+                    keterangan: this.opnameDraft.keterangan || '',
+                    items: source.map(s => ({
+                        barcode: s.barcode || '',
+                        kode: s.kode || '',
+                        nama: s.nama || '',
+                        satuan: s.satuan || 'Pcs',
+                        lokasi: s.lokasi || '-',
+                        qtySystem: Number(s.qty) || 0,
+                        qtyFisik: '',
+                        catatan: ''
+                    }))
+                };
+                this.opnameSearch = '';
+                this.opnameFilterMode = 'all';
+                this.$nextTick(() => this.refreshIcons());
+            },
+            setOpnameGudang(g) {
+                if (this.opnameDraft.items && this.opnameDraft.items.some(x => x.qtyFisik !== '' && x.qtyFisik !== null)) {
+                    if (!confirm('Ganti gudang akan menghapus input opname yang sudah ada. Lanjutkan?')) return;
+                }
+                this.initOpnameDraft(g);
+            },
+            resetOpnameDraft() {
+                if (!confirm('Reset semua input hasil hitung fisik pada draft opname ini?')) return;
+                this.opnameDraft.items.forEach(it => { it.qtyFisik = ''; it.catatan = ''; });
+            },
+            fillOpnameEqualSystem() {
+                if (!confirm('Isi semua Qty Fisik = Qty Sistem (untuk item yang belum diisi)?')) return;
+                this.opnameDraft.items.forEach(it => {
+                    if (it.qtyFisik === '' || it.qtyFisik === null || it.qtyFisik === undefined) {
+                        it.qtyFisik = it.qtySystem;
+                    }
+                });
+            },
+            downloadOpnameTemplate() {
+                const rows = this.opnameDraft.items.map(it => ({
+                    Barcode: it.barcode || '',
+                    Kode: it.kode || '',
+                    'Nama Barang': it.nama,
+                    Satuan: it.satuan,
+                    Lokasi: it.lokasi,
+                    'Qty Sistem': it.qtySystem,
+                    'Qty Fisik': '',
+                    Catatan: ''
+                }));
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), `Opname_${this.opnameDraft.gudang}`);
+                XLSX.writeFile(wb, `Template_Opname_${this.opnameDraft.gudang.replace(/\s+/g,'_')}_${this.opnameDraft.tanggal}.xlsx`);
+            },
+            importOpnameExcel(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[sheetName];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                        if (!rows.length) { alert('File Excel kosong!'); return; }
+                        let matched = 0, unmatched = 0;
+                        rows.forEach(row => {
+                            const nama = String(row['Nama Barang'] || row['nama'] || '').trim();
+                            const kode = String(row['Kode'] || row['kode'] || row['SKU'] || '').trim();
+                            const barcode = String(row['Barcode'] || row['barcode'] || '').trim();
+                            const qtyFisik = row['Qty Fisik'] === '' || row['Qty Fisik'] === undefined || row['Qty Fisik'] === null ? '' : Number(row['Qty Fisik']);
+                            const catatan = String(row['Catatan'] || row['catatan'] || '').trim();
+                            const target = this.opnameDraft.items.find(x =>
+                                (barcode && String(x.barcode).toLowerCase() === barcode.toLowerCase()) ||
+                                (kode && String(x.kode).toLowerCase() === kode.toLowerCase()) ||
+                                (nama && String(x.nama).toLowerCase() === nama.toLowerCase())
+                            );
+                            if (target) {
+                                target.qtyFisik = qtyFisik;
+                                target.catatan = catatan;
+                                matched++;
+                            } else {
+                                unmatched++;
+                            }
+                        });
+                        alert(`Import selesai.\nBerhasil dicocokkan: ${matched}\nTidak ditemukan di gudang: ${unmatched}\n\nSilakan cek preview & submit untuk memproses penyesuaian.`);
+                    } catch (err) {
+                        console.error(err);
+                        alert('Gagal membaca file Excel. Pastikan format kolom sesuai template.');
+                    } finally {
+                        event.target.value = '';
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            },
+            openOpnameConfirm() {
+                if (!this.opnameDraft.petugas || !this.opnameDraft.petugas.trim()) return alert('Nama Petugas Opname wajib diisi.');
+                if (!this.opnameDraft.tanggal) return alert('Tanggal opname wajib diisi.');
+                const filled = this.opnameDraftItemsWithSelisih.filter(x => x.qtyFisikNum !== null);
+                if (filled.length === 0) return alert('Belum ada item yang diisi Qty Fisik. Isi minimal 1 item.');
+                this.showOpnameConfirmModal = true;
+                this.$nextTick(() => this.refreshIcons());
+            },
+            submitOpname() {
+                const draft = this.opnameDraft;
+                const filled = this.opnameDraftItemsWithSelisih.filter(x => x.qtyFisikNum !== null);
+                if (filled.length === 0) { this.showOpnameConfirmModal = false; return; }
+                const isoNow = new Date(draft.tanggal + 'T' + new Date().toTimeString().slice(0,8)).toISOString();
+                const dateOnly = this.getFormattedDateOnly(new Date(isoNow));
+                const opnameId = 'OPN-' + Date.now();
+                const nomor = 'OPN/' + new Date(isoNow).getFullYear() + '/' + String(this.opnameHistory.length + 1).padStart(4, '0');
+                const source = draft.gudang === 'Sisa Project' ? this.sisaProjects : this.spareparts;
+                const detailRecords = [];
+                filled.forEach(row => {
+                    const target = source.find(s =>
+                        (row.barcode && s.barcode === row.barcode) ||
+                        (row.kode && s.kode === row.kode) ||
+                        (String(s.nama || '').toLowerCase() === String(row.nama || '').toLowerCase())
+                    );
+                    if (!target) return;
+                    const qtyAwal = Number(target.qty) || 0;
+                    const qtyFisik = Number(row.qtyFisikNum);
+                    const selisih = qtyFisik - qtyAwal;
+                    target.qty = qtyFisik;
+                    // Sinkron ke masterCatalog.currentStock
+                    const masterKey = String(row.nama || '').trim().toLowerCase();
+                    const masterItem = this.masterCatalog.find(m =>
+                        String(m.nama || '').trim().toLowerCase() === masterKey ||
+                        (row.kode && m.kode && String(m.kode).trim().toLowerCase() === String(row.kode).trim().toLowerCase())
+                    );
+                    if (masterItem) masterItem.currentStock = qtyFisik;
+                    // Log penyesuaian
+                    if (selisih !== 0) {
+                        this.logs.unshift({
+                            id: Date.now() + Math.random(),
+                            isoDate: isoNow,
+                            gudang: draft.gudang,
+                            type: selisih > 0 ? 'IN' : 'OUT',
+                            adjustmentType: 'OPNAME',
+                            opnameId: opnameId,
+                            opnameNomor: nomor,
+                            nama: target.nama,
+                            qty: Math.abs(selisih),
+                            qtyAwal: qtyAwal,
+                            qtyAkhir: qtyFisik,
+                            tgl: dateOnly,
+                            user: draft.petugas.toUpperCase(),
+                            supplier: selisih > 0 ? `PENYESUAIAN OPNAME (${nomor})` : '',
+                            keperluan: `PENYESUAIAN STOCK OPNAME - ${nomor}` + (row.catatan ? ` | ${row.catatan}` : '')
+                        });
+                    }
+                    detailRecords.push({
+                        barcode: row.barcode,
+                        kode: row.kode,
+                        nama: row.nama,
+                        satuan: row.satuan,
+                        lokasi: row.lokasi,
+                        qtySystem: qtyAwal,
+                        qtyFisik: qtyFisik,
+                        selisih: selisih,
+                        catatan: row.catatan || ''
+                    });
+                });
+                const record = {
+                    id: opnameId,
+                    nomor: nomor,
+                    isoDate: isoNow,
+                    tgl: dateOnly,
+                    gudang: draft.gudang,
+                    petugas: draft.petugas.toUpperCase(),
+                    keterangan: draft.keterangan || '',
+                    totalItem: detailRecords.length,
+                    totalSelisih: detailRecords.filter(d => d.selisih !== 0).length,
+                    totalMatch: detailRecords.filter(d => d.selisih === 0).length,
+                    items: detailRecords
+                };
+                this.opnameHistory.unshift(record);
+                this.showOpnameConfirmModal = false;
+                alert(`Stock Opname ${nomor} berhasil disimpan.\nItem diproses: ${detailRecords.length}\nAda selisih: ${record.totalSelisih}\nCocok: ${record.totalMatch}\n\nStok di gudang & master data sudah disesuaikan otomatis.`);
+                this.initOpnameDraft(draft.gudang);
+                this.activeTab = 'opname_history';
+            },
+            printBeritaAcara(op) {
+                if (!op) return;
+                const detailRows = op.items.map((it, i) => `
+                    <tr>
+                        <td style="text-align:center;">${i + 1}</td>
+                        <td>${it.nama || '-'}</td>
+                        <td style="text-align:center;">${it.satuan || ''}</td>
+                        <td style="text-align:center;">${it.lokasi || '-'}</td>
+                        <td style="text-align:center;">${Number(it.qtySystem).toLocaleString('id-ID')}</td>
+                        <td style="text-align:center;">${Number(it.qtyFisik).toLocaleString('id-ID')}</td>
+                        <td style="text-align:center; font-weight:bold; color:${it.selisih === 0 ? '#000' : (it.selisih > 0 ? '#065f46' : '#991b1b')};">${it.selisih > 0 ? '+' : ''}${it.selisih}</td>
+                        <td>${it.catatan || '-'}</td>
+                    </tr>`).join('');
+                const labelArea = document.getElementById('label-print-area');
+                labelArea.innerHTML = `
+                    <div style="font-family: Arial, sans-serif; color:#000; padding: 8mm;">
+                        <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 14px;">
+                            <div style="font-size:16pt; font-weight:800; letter-spacing:1px;">BERITA ACARA STOCK OPNAME</div>
+                            <div style="font-size:10pt; margin-top:2px;">Agrofarm Nusa Raya &mdash; Sistem Inventory Spare Part</div>
+                        </div>
+                        <table style="width:100%; font-size:10pt; margin-bottom:12px;">
+                            <tr><td style="width:130px; font-weight:700;">No. Dokumen</td><td>: ${op.nomor}</td><td style="width:130px; font-weight:700;">Tanggal</td><td>: ${op.tgl}</td></tr>
+                            <tr><td style="font-weight:700;">Gudang</td><td>: ${op.gudang}</td><td style="font-weight:700;">Petugas</td><td>: ${op.petugas}</td></tr>
+                            <tr><td style="font-weight:700;">Total Item</td><td>: ${op.totalItem}</td><td style="font-weight:700;">Total Selisih</td><td>: ${op.totalSelisih} item</td></tr>
+                            <tr><td style="font-weight:700; vertical-align:top;">Keterangan</td><td colspan="3">: ${op.keterangan || '-'}</td></tr>
+                        </table>
+                        <table style="width:100%; border-collapse:collapse; font-size:9pt;">
+                            <thead>
+                                <tr style="background:#e5e7eb;">
+                                    <th style="border:1px solid #000; padding:5px;">No</th>
+                                    <th style="border:1px solid #000; padding:5px;">Nama Barang</th>
+                                    <th style="border:1px solid #000; padding:5px;">Satuan</th>
+                                    <th style="border:1px solid #000; padding:5px;">Lokasi</th>
+                                    <th style="border:1px solid #000; padding:5px;">Qty Sistem</th>
+                                    <th style="border:1px solid #000; padding:5px;">Qty Fisik</th>
+                                    <th style="border:1px solid #000; padding:5px;">Selisih</th>
+                                    <th style="border:1px solid #000; padding:5px;">Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody>${op.items.map((it, i) => `<tr><td style="border:1px solid #000; padding:4px 6px; text-align:center;">${i+1}</td><td style="border:1px solid #000; padding:4px 6px;">${it.nama || '-'}</td><td style="border:1px solid #000; padding:4px 6px; text-align:center;">${it.satuan || ''}</td><td style="border:1px solid #000; padding:4px 6px; text-align:center;">${it.lokasi || '-'}</td><td style="border:1px solid #000; padding:4px 6px; text-align:center;">${Number(it.qtySystem).toLocaleString('id-ID')}</td><td style="border:1px solid #000; padding:4px 6px; text-align:center;">${Number(it.qtyFisik).toLocaleString('id-ID')}</td><td style="border:1px solid #000; padding:4px 6px; text-align:center; font-weight:bold; color:${it.selisih === 0 ? '#000' : (it.selisih > 0 ? '#065f46' : '#991b1b')};">${it.selisih > 0 ? '+' : ''}${it.selisih}</td><td style="border:1px solid #000; padding:4px 6px;">${it.catatan || '-'}</td></tr>`).join('')}</tbody>
+                        </table>
+                        <div style="display:flex; justify-content:space-around; margin-top:36px; font-size:10pt;">
+                            <div style="text-align:center; width:180px;">Petugas Opname<br><br><br><br>____________________<br>(${op.petugas})</div>
+                            <div style="text-align:center; width:180px;">Kepala Gudang<br><br><br><br>____________________</div>
+                            <div style="text-align:center; width:180px;">Diketahui Oleh<br><br><br><br>____________________</div>
+                        </div>
+                    </div>`;
+                document.body.classList.add('printing-label');
+                this.$nextTick(() => {
+                    window.print();
+                    document.body.classList.remove('printing-label');
+                    labelArea.innerHTML = '';
+                });
+            },
+            exportOpnameHistoryExcel(op) {
+                if (!op) return;
+                const rows = op.items.map((it, i) => ({
+                    No: i + 1,
+                    'Nama Barang': it.nama,
+                    Satuan: it.satuan,
+                    Lokasi: it.lokasi,
+                    'Qty Sistem': it.qtySystem,
+                    'Qty Fisik': it.qtyFisik,
+                    Selisih: it.selisih,
+                    Catatan: it.catatan || ''
+                }));
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Detail Opname');
+                XLSX.writeFile(wb, `${op.nomor.replace(/\//g,'_')}_${op.gudang.replace(/\s+/g,'_')}.xlsx`);
             }
         }
     }).mount('#app');
