@@ -820,7 +820,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     </div>
                     <span class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30 font-mono">{{ pendingApprovalLogs.length }}</span>
                 </button>
-                <button v-if="canManageAccounts" @click="activeTab = 'settings'; loadUserAccounts()" :class="activeTab === 'settings' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs transition-all">
+                <button v-if="canManageAccounts" @click="activeTab = 'settings'; loadUserAccounts(); loadSecuritySettings()" :class="activeTab === 'settings' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs transition-all">
                     <i data-lucide="settings" class="w-4 h-4 text-emerald-400"></i>
                     <span>Pengaturan</span>
                 </button>
@@ -2806,7 +2806,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
                     <div>
                         <h2 class="font-black text-slate-800 text-sm uppercase">Pengaturan Akun</h2>
-                        <p class="text-[10px] text-slate-500 mt-1">Super Admin dapat membuat akun Admin/Viewer dan mengatur status akun.</p>
+                        <p class="text-[10px] text-slate-500 mt-1">Super Admin dapat membuat akun, mengatur status, dan membatasi jumlah perangkat aktif.</p>
                     </div>
                     <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-black">SUPER ADMIN</span>
                 </div>
@@ -2817,7 +2817,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Password Awal</label>
-                        <input v-model="newAccount.password" type="password" minlength="6" placeholder="Minimal 6 karakter" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                        <div class="relative">
+                            <input v-model="newAccount.password" :type="showNewAccountPassword ? 'text' : 'password'" minlength="6" placeholder="Minimal 6 karakter" class="w-full p-2.5 pr-10 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                            <button type="button" @click="showNewAccountPassword = !showNewAccountPassword" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-700" :title="showNewAccountPassword ? 'Sembunyikan password' : 'Tampilkan password'">
+                                <i :data-lucide="showNewAccountPassword ? 'eye-off' : 'eye'" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Role</label>
@@ -2833,6 +2838,39 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 </div>
                 <p v-if="accountMessage" class="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">{{ accountMessage }}</p>
                 <p v-if="accountError" class="mt-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">{{ accountError }}</p>
+            </div>
+
+            <div class="portal-card p-6 rounded-xl">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+                    <div>
+                        <h2 class="font-black text-slate-800 text-sm uppercase">Batas Akses Perangkat</h2>
+                        <p class="text-[10px] text-slate-500 mt-1">Atur jumlah perangkat yang boleh aktif bersamaan untuk setiap role.</p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-black">KEAMANAN</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Super Admin (device)</label>
+                        <input v-model.number="securitySettings.max_super_admin_devices" type="number" min="1" max="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Admin (device)</label>
+                        <input v-model.number="securitySettings.max_admin_devices" type="number" min="1" max="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Viewer (device)</label>
+                        <input v-model.number="securitySettings.max_viewer_devices" type="number" min="1" max="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Auto Logout (jam)</label>
+                        <input v-model.number="securitySettings.session_timeout_hours" type="number" min="1" max="720" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    </div>
+                </div>
+                <div class="flex items-center justify-between gap-3 mt-4">
+                    <p class="text-[10px] text-slate-500">Default: Super Admin 1, Admin 5, Viewer 10, auto logout setelah tidak dibuka 24 jam.</p>
+                    <button @click="saveSecuritySettings" :disabled="securitySettingsSaving" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-lg text-xs font-bold">{{ securitySettingsSaving ? 'Menyimpan...' : 'Simpan Pengaturan' }}</button>
+                </div>
+                <p v-if="securitySettingsMessage" class="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">{{ securitySettingsMessage }}</p>
             </div>
 
             <div class="portal-card rounded-xl overflow-hidden">
@@ -2857,8 +2895,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <span :class="account.active === false ? 'bg-red-100 text-red-700 border-red-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" class="px-2 py-1 rounded border text-[10px] font-bold">{{ account.active === false ? 'Nonaktif' : 'Aktif' }}</span>
                                 </td>
                                 <td class="p-3 text-center">
-                                    <button v-if="account.id !== authUser?.id" @click="toggleAccountActive(account)" class="text-[10px] font-bold underline" :class="account.active === false ? 'text-emerald-700' : 'text-rose-600'">{{ account.active === false ? 'Aktifkan' : 'Nonaktifkan' }}</button>
-                                    <span v-else class="text-[10px] text-slate-400">Akun saat ini</span>
+                                    <div class="flex items-center justify-center gap-3 flex-wrap">
+                                        <button @click="openPasswordChange(account)" class="text-[10px] font-bold underline text-amber-700 hover:text-amber-800">Ganti Password</button>
+                                        <button v-if="account.id !== authUser?.id" @click="toggleAccountActive(account)" class="text-[10px] font-bold underline" :class="account.active === false ? 'text-emerald-700' : 'text-rose-600'">{{ account.active === false ? 'Aktifkan' : 'Nonaktifkan' }}</button>
+                                        <span v-else class="text-[10px] text-slate-400">Akun saat ini</span>
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="userAccounts.length === 0"><td colspan="4" class="p-8 text-center text-slate-400">Belum ada data akun.</td></tr>
@@ -2868,6 +2909,31 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             </div>
         </div>
     </main>
+
+    <!-- MODAL GANTI PASSWORD AKUN (SUPER ADMIN) -->
+    <div v-if="showPasswordChangeModal && canManageAccounts" class="fixed inset-0 z-[100] bg-slate-900/50 flex items-center justify-center p-4 no-print" @click.self="closePasswordChange">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
+            <div class="flex items-center justify-between mb-5">
+                <div>
+                    <h3 class="font-black text-slate-800 text-sm uppercase">Ganti Password</h3>
+                    <p class="text-[10px] text-slate-500 mt-1">{{ passwordChange.email }}</p>
+                </div>
+                <button type="button" @click="closePasswordChange" class="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+            <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Password Baru</label>
+            <div class="relative">
+                <input v-model="passwordChange.password" :type="showChangedPassword ? 'text' : 'password'" minlength="6" autocomplete="new-password" placeholder="Minimal 6 karakter" class="w-full p-3 pr-10 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                <button type="button" @click="showChangedPassword = !showChangedPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-700" :title="showChangedPassword ? 'Sembunyikan password' : 'Tampilkan password'">
+                    <i :data-lucide="showChangedPassword ? 'eye-off' : 'eye'" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-2">Password lama tidak ditampilkan. Yang dapat ditampilkan adalah password baru yang sedang dimasukkan.</p>
+            <div class="flex justify-end gap-2 mt-5">
+                <button type="button" @click="closePasswordChange" class="px-4 py-2 rounded-lg text-xs font-bold border border-slate-200 text-slate-600">Batal</button>
+                <button type="button" @click="changeUserPassword" :disabled="passwordChangeSaving" class="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white disabled:opacity-50">{{ passwordChangeSaving ? 'Menyimpan...' : 'Simpan Password' }}</button>
+            </div>
+        </div>
+    </div>
     <!-- SEARCH DROPDOWN: TELEPORT KE BODY AGAR TIDAK TERPOTONG overflow-y-auto MODAL -->
     <teleport to="body">
         <div v-if="masterDropdownKey"
@@ -3435,8 +3501,23 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 loginForm: { email: '', password: '' },
                 userAccounts: [],
                 newAccount: { email: '', password: '', role: 'admin' },
+                showNewAccountPassword: false,
+                passwordChange: { userId: '', email: '', password: '' },
+                showPasswordChangeModal: false,
+                showChangedPassword: false,
+                passwordChangeSaving: false,
                 accountMessage: '',
                 accountError: '',
+                securitySettings: {
+                    max_super_admin_devices: 1,
+                    max_admin_devices: 5,
+                    max_viewer_devices: 10,
+                    session_timeout_hours: 24
+                },
+                securitySettingsSaving: false,
+                securitySettingsMessage: '',
+                deviceId: '',
+                deviceHeartbeatTimer: null,
                 supabaseAuthListener: null,
                 supabaseConnected: false,
                 isHydratingFromSupabase: true,
@@ -4075,6 +4156,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             if (this.isAuthenticated) {
                 await this.loadFromSupabase();
                 this.subscribeSupabaseRealtime();
+                this.startDeviceHeartbeat();
             }
             window.addEventListener('resize', this.repositionMasterDropdown);
             window.addEventListener('scroll', this.repositionMasterDropdown, true);
@@ -4085,6 +4167,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
         beforeUnmount() {
             if (this.supabaseAuthListener?.subscription) this.supabaseAuthListener.subscription.unsubscribe();
             this.unsubscribeSupabaseRealtime();
+            this.stopDeviceHeartbeat();
             clearTimeout(this._planningAutocompleteTimer);
             clearTimeout(this._planningFilterTimer);
             window.removeEventListener('resize', this.repositionMasterDropdown);
@@ -4224,6 +4307,117 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     this.masterPage = this.masterPageCount;
                 }
             },
+            getDeviceId() {
+                if (this.deviceId) return this.deviceId;
+                const key = 'agrofarm_inventory_device_id';
+                try {
+                    let id = localStorage.getItem(key);
+                    if (!id) {
+                        if (window.crypto?.randomUUID) id = window.crypto.randomUUID();
+                        else id = 'device-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+                        localStorage.setItem(key, id);
+                    }
+                    this.deviceId = id;
+                } catch (_) {
+                    this.deviceId = 'device-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+                }
+                return this.deviceId;
+            },
+            async registerDeviceSession() {
+                const client = this.getSupabaseClient();
+                if (!client || !this.authUser?.id) return { ok: true };
+                try {
+                    const { data, error } = await client.rpc('register_device_session', { p_device_id: this.getDeviceId() });
+                    if (error) throw error;
+                    return data || { ok: false, message: 'Perangkat tidak dapat didaftarkan.' };
+                } catch (err) {
+                    console.error('Registrasi device gagal:', err);
+                    // Jika RPC belum dipasang, jangan mengunci login lama secara diam-diam.
+                    if (String(err?.message || '').toLowerCase().includes('register_device_session')) {
+                        return { ok: true, setupRequired: true };
+                    }
+                    return { ok: false, message: err?.message || 'Perangkat tidak dapat didaftarkan.' };
+                }
+            },
+            async touchDeviceSession() {
+                if (!this.isAuthenticated || !this.authUser?.id) return true;
+                const client = this.getSupabaseClient();
+                if (!client) return true;
+                try {
+                    const { data, error } = await client.rpc('touch_device_session', { p_device_id: this.getDeviceId() });
+                    if (error) throw error;
+                    if (data?.ok === false) {
+                        await this.logout(data.message || 'Sesi perangkat sudah berakhir. Silakan login kembali.');
+                        return false;
+                    }
+                    if (data?.timeout_hours) this.securitySettings.session_timeout_hours = Number(data.timeout_hours) || 24;
+                    return true;
+                } catch (err) {
+                    console.error('Pemeriksaan device session gagal:', err);
+                    return true;
+                }
+            },
+            startDeviceHeartbeat() {
+                this.stopDeviceHeartbeat();
+                this.getDeviceId();
+                this.deviceHeartbeatTimer = window.setInterval(() => {
+                    this.touchDeviceSession();
+                }, 5 * 60 * 1000);
+            },
+            stopDeviceHeartbeat() {
+                if (this.deviceHeartbeatTimer) {
+                    clearInterval(this.deviceHeartbeatTimer);
+                    this.deviceHeartbeatTimer = null;
+                }
+            },
+            async loadSecuritySettings() {
+                if (!this.canManageAccounts) return;
+                const client = this.getSupabaseClient();
+                if (!client) return;
+                try {
+                    const { data, error } = await client.rpc('get_security_settings');
+                    if (error) throw error;
+                    if (data) this.securitySettings = {
+                        max_super_admin_devices: Number(data.max_super_admin_devices) || 1,
+                        max_admin_devices: Number(data.max_admin_devices) || 5,
+                        max_viewer_devices: Number(data.max_viewer_devices) || 10,
+                        session_timeout_hours: Number(data.session_timeout_hours) || 24
+                    };
+                } catch (err) {
+                    console.error('Gagal memuat pengaturan keamanan:', err);
+                }
+            },
+            async saveSecuritySettings() {
+                if (!this.canManageAccounts) return;
+                const client = this.getSupabaseClient();
+                if (!client) return;
+                const maxSuper = Math.max(1, Math.min(100, Number(this.securitySettings.max_super_admin_devices) || 1));
+                const maxAdmin = Math.max(1, Math.min(100, Number(this.securitySettings.max_admin_devices) || 5));
+                const maxViewer = Math.max(1, Math.min(100, Number(this.securitySettings.max_viewer_devices) || 10));
+                const timeout = Math.max(1, Math.min(720, Number(this.securitySettings.session_timeout_hours) || 24));
+                this.securitySettingsSaving = true;
+                this.securitySettingsMessage = '';
+                try {
+                    const { error } = await client.rpc('save_security_settings', {
+                        p_max_super_admin_devices: maxSuper,
+                        p_max_admin_devices: maxAdmin,
+                        p_max_viewer_devices: maxViewer,
+                        p_session_timeout_hours: timeout
+                    });
+                    if (error) throw error;
+                    this.securitySettings = {
+                        max_super_admin_devices: maxSuper,
+                        max_admin_devices: maxAdmin,
+                        max_viewer_devices: maxViewer,
+                        session_timeout_hours: timeout
+                    };
+                    this.securitySettingsMessage = 'Pengaturan keamanan berhasil disimpan.';
+                } catch (err) {
+                    this.securitySettingsMessage = 'Gagal menyimpan: ' + (err?.message || 'Terjadi kesalahan.');
+                } finally {
+                    this.securitySettingsSaving = false;
+                }
+            },
             async initAuth() {
                 const client = this.getSupabaseClient();
                 if (!client) {
@@ -4274,13 +4468,25 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     } else {
                         this.authRole = data?.role || 'viewer';
                         this.authError = '';
+                        const deviceResult = await this.registerDeviceSession();
+                        if (deviceResult?.ok === false) {
+                            const message = deviceResult.message || 'Batas perangkat untuk akun ini sudah tercapai.';
+                            await client.auth.signOut();
+                            this.authError = message;
+                            this.authRole = 'viewer';
+                            this.isAuthenticated = false;
+                            this.stopDeviceHeartbeat();
+                            return;
+                        }
                     }
                 } catch (err) {
                     console.error('Gagal mengambil role:', err);
                     this.authRole = 'viewer';
                 } finally {
                     this.authReady = true;
+                    if (this.isAuthenticated) this.startDeviceHeartbeat();
                     this.subscribeSupabaseRealtime();
+                    if (this.canManageAccounts) this.loadSecuritySettings();
                     this.$nextTick(() => this.refreshIcons());
                 }
             },
@@ -4305,12 +4511,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     this.authLoading = false;
                 }
             },
-            async logout() {
+            async logout(reason = '') {
                 const client = this.getSupabaseClient();
-                if (client) await client.auth.signOut();
+                if (client && this.authUser?.id) {
+                    try { await client.rpc('release_device_session', { p_device_id: this.getDeviceId() }); } catch (_) {}
+                    await client.auth.signOut();
+                }
+                this.stopDeviceHeartbeat();
                 this.unsubscribeSupabaseRealtime();
                 this.activeTab = 'dashboard';
                 this.userAccounts = [];
+                if (reason) this.authError = reason;
             },
             async loadUserAccounts() {
                 if (!this.canManageAccounts) return;
@@ -4354,6 +4565,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         });
                     }
                     this.newAccount = { email: '', password: '', role: 'admin' };
+                    this.showNewAccountPassword = false;
                     this.accountMessage = 'Akun berhasil dibuat. Jika email confirmation aktif, akun perlu melakukan konfirmasi email terlebih dahulu.';
                     await this.loadUserAccounts();
                 } catch (err) {
@@ -4364,6 +4576,49 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     }
                 } finally {
                     this.authLoading = false;
+                }
+            },
+            openPasswordChange(account) {
+                if (!this.canManageAccounts || !account) return;
+                this.passwordChange = { userId: account.id, email: account.email || account.id, password: '' };
+                this.showChangedPassword = false;
+                this.showPasswordChangeModal = true;
+                this.$nextTick(() => { if (window.lucide) window.lucide.createIcons(); });
+            },
+            closePasswordChange() {
+                this.showPasswordChangeModal = false;
+                this.showChangedPassword = false;
+                this.passwordChange = { userId: '', email: '', password: '' };
+            },
+            async changeUserPassword() {
+                if (!this.canManageAccounts) return alert('Hanya Super Admin yang dapat mengganti password.');
+                const password = this.passwordChange.password;
+                if (!this.passwordChange.userId || !password || password.length < 6) return alert('Password baru minimal 6 karakter wajib diisi.');
+                const client = this.getSupabaseClient();
+                if (!client) return;
+                this.passwordChangeSaving = true;
+                this.accountError = '';
+                this.accountMessage = '';
+                try {
+                    const { data: sessionData, error: sessionError } = await client.auth.getSession();
+                    if (sessionError || !sessionData?.session?.access_token) throw new Error('Sesi Super Admin tidak ditemukan. Silakan login kembali.');
+                    const response = await fetch(`${window.SUPABASE_URL}/functions/v1/admin-change-password`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${sessionData.session.access_token}`
+                        },
+                        body: JSON.stringify({ user_id: this.passwordChange.userId, password })
+                    });
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(result?.error || 'Gagal mengganti password.');
+                    this.accountMessage = `Password akun ${this.passwordChange.email} berhasil diganti.`;
+                    this.closePasswordChange();
+                } catch (err) {
+                    console.error('Gagal mengganti password:', err);
+                    this.accountError = err?.message || 'Password gagal diganti.';
+                } finally {
+                    this.passwordChangeSaving = false;
                 }
             },
             async saveAccountSettings(account) {
@@ -4599,7 +4854,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (!window.__inventorySupabaseClient) {
                     window.__inventorySupabaseClient = window.supabase.createClient(url, key, {
                         auth: {
-                            persistSession: false,
+                            // Session tetap bertahan saat halaman di-refresh.
+                            // Masa aktif aplikasi dikendalikan oleh last_seen + batas sesi 24 jam.
+                            persistSession: true,
                             autoRefreshToken: true,
                             detectSessionInUrl: true
                         }
