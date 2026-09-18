@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Inventory Spare Part Agrofarm Nusa Raya — PLANNING V5 20260916</title>
+    <title>Sistem Inventory Spare Part Agrofarm Nusa Raya</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -811,7 +811,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <i data-lucide="boxes" class="w-4 h-4 text-emerald-400"></i>
                         <span>Gudang Sisa Project</span>
                     </div>
-                    <span class="bg-emerald-900/80 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700 font-mono">{{ sisaProjects.length }}</span>
+                    <span class="bg-emerald-900/80 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700 font-mono">{{ totalSisaProjectQty }}</span>
                 </button>
                 <button v-if="canApprove" @click="activeTab = 'approval'" :class="activeTab === 'approval' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center justify-between text-xs transition-all">
                     <div class="flex items-center gap-3">
@@ -872,7 +872,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 <div class="portal-card p-5 rounded-xl flex items-center justify-between">
                     <div>
                         <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Stok Sisa Project</p>
-                        <h3 class="text-2xl font-black text-slate-800 mt-1">{{ sisaProjects.length }} <span class="text-xs font-normal text-slate-400">Item</span></h3>
+                        <h3 class="text-2xl font-black text-slate-800 mt-1">{{ totalSisaProjectQty }} <span class="text-xs font-normal text-slate-400">Qty</span></h3>
                     </div>
                     <div class="p-3 bg-teal-50 text-teal-700 rounded-xl border border-teal-100">
                         <i data-lucide="package-check" class="w-6 h-6"></i>
@@ -1204,9 +1204,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
                     <input v-model="searchMaster" @input="masterPage = 1" @focus="masterPage = 1" type="search" autocomplete="off" spellcheck="false" placeholder="Cari Nama Barang di Master..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 shadow-sm" style="pointer-events:auto !important; position:relative; z-index:100 !important;">
                 </div>
-                <span class="text-xs text-slate-500 font-semibold bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 flex items-center gap-1.5">
-                    <i data-lucide="arrow-down-a-z" class="w-4 h-4 text-emerald-600"></i> Sorted A-Z
-                </span>
+                <div class="flex items-center gap-2">
+                    <label class="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">Short Stok</label>
+                    <select v-model="masterSort" @change="masterPage = 1" class="p-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 focus:outline-none focus:border-emerald-500">
+                        <option value="nama_asc">Nama A-Z</option>
+                        <option value="stock_asc">Stok: Terkecil → Terbesar</option>
+                        <option value="stock_desc">Stok: Terbesar → Terkecil</option>
+                    </select>
+                </div>
             </div>
             <div class="portal-card rounded-xl overflow-hidden">
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
@@ -3277,6 +3282,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 dashFilterDateEnd: new Date().toISOString().slice(0, 10),
                 dashSearchBarang: '',
                 searchMaster: '',
+                masterSort: 'nama_asc',
                 masterAutocompleteQuery: '',
                 masterDropdownKey: '',
                 masterDropdownItem: null,
@@ -3434,8 +3440,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 supabaseAuthListener: null,
                 supabaseConnected: false,
                 isHydratingFromSupabase: true,
+                supabaseRealtimeChannel: null,
+                supabaseRealtimeTimer: null,
+                supabaseLastUpdatedAt: '',
 
                 supabaseSaveTimer: null,
+                supabaseSavePromise: null,
                 supabaseSaveInProgress: false,
                 supabaseSaveQueued: false
             }
@@ -3676,10 +3686,24 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             filteredMasterCatalog() {
                 const keyword = this.searchMaster.trim().toLowerCase();
-                if (!keyword) return this.masterCatalog;
-                return this.masterCatalog.filter(i =>
-                    String(i.nama || '').toLowerCase().includes(keyword)
-                );
+                let rows = keyword
+                    ? this.masterCatalog.filter(i => String(i.nama || '').toLowerCase().includes(keyword))
+                    : this.masterCatalog.slice();
+                // Urutan stok harus mengikuti angka yang BENAR-BENAR ditampilkan
+                // pada kolom Qty / Stock Awal. Jangan campurkan currentStock dengan
+                // stockAwal karena bisa membuat 3 muncul sebelum 1 saat sorting.
+                const stockValue = item => {
+                    const value = Number(item?.stockAwal ?? item?.currentStock ?? 0);
+                    return Number.isFinite(value) ? value : 0;
+                };
+                if (this.masterSort === 'stock_asc') {
+                    rows.sort((a, b) => stockValue(a) - stockValue(b) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id', { sensitivity: 'base' }));
+                } else if (this.masterSort === 'stock_desc') {
+                    rows.sort((a, b) => stockValue(b) - stockValue(a) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id', { sensitivity: 'base' }));
+                } else {
+                    rows.sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id', { sensitivity: 'base' }));
+                }
+                return rows;
             },
             masterPageCount() {
                 return Math.max(1, Math.ceil(this.filteredMasterCatalog.length / this.masterPageSize));
@@ -3741,20 +3765,29 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             totalSparepartQty() {
                 // Satu angka stok untuk Dashboard + Sidebar: jumlah Qty aktual
                 // dari seluruh barang yang tercatat di Gudang Spare Part.
-                return (this.spareparts || []).reduce((sum, item) => {
+                return (this.masterCatalog || []).reduce((sum, item) => {
+                    const qty = Math.max(0, Math.round(Number(item?.currentStock ?? item?.stockAwal) || 0));
+                    return sum + qty;
+                }, 0);
+            },
+            totalSisaProjectQty() {
+                // Dashboard + Sidebar harus menampilkan Qty stok aktual, bukan jumlah baris/item.
+                return (this.sisaProjects || []).reduce((sum, item) => {
                     const qty = Math.max(0, Number(item?.qty) || 0);
                     return sum + qty;
                 }, 0);
             },
             purchasePendingCount() {
+                // Satu antrean = satu Purchase Request yang masih memiliki sisa qty.
                 return (this.monitoringItems || []).filter(order =>
                     order && order.status !== 'Diterima Semua' && order.status !== 'Cancel' && (Number(order.qtyRemaining) || 0) > 0
                 ).length;
             },
             totalHargaSparepart() {
-                return (this.spareparts || []).reduce((sum, item) => {
-                    const harga = Number(this.getMasterHarga(item.nama, item.harga)) || 0;
-                    return sum + (harga * Math.max(0, Number(item.qty) || 0));
+                return (this.masterCatalog || []).reduce((sum, item) => {
+                    const harga = Math.max(0, Number(item?.harga) || 0);
+                    const qty = Math.max(0, Math.round(Number(item?.currentStock ?? item?.stockAwal) || 0));
+                    return sum + (harga * qty);
                 }, 0);
             },
             monitoringTotalHarga() {
@@ -3774,8 +3807,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             filteredSpareparts() {
                 const q = String(this.spLogBarang || '').trim().toLowerCase();
-                if (!q) return this.spareparts;
-                return this.spareparts.filter(item => String(item.nama || '').toLowerCase().includes(q));
+                // Data Master adalah satu-satunya sumber stok Spare Part yang ditampilkan.
+                const source = (this.masterCatalog || []).map(master => ({
+                    ...master,
+                    qty: Math.max(0, Math.round(Number(master.currentStock ?? master.stockAwal) || 0)),
+                    harga: Math.max(0, Number(master.harga) || 0),
+                    minStock: Math.max(0, Number(master.minStock) || 0),
+                    satuan: master.satuan || 'PCS',
+                    lokasi: master.lokasi || '-'
+                }));
+                if (!q) return source;
+                return source.filter(item => String(item.nama || '').toLowerCase().includes(q) || String(item.kode || '').toLowerCase().includes(q));
             },
             paginatedSpareparts() {
                 const total = this.filteredSpareparts.length;
@@ -3927,10 +3969,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             lowStockItems() {
                 const rows = [];
-                this.spareparts.forEach(s => {
-                    const min = Number(s.minStock) || 0;
-                    if (min > 0 && Number(s.qty) <= min) {
-                        rows.push({ gudang: 'Sparepart', nama: s.nama, qty: Number(s.qty) || 0, minStock: min, satuan: s.satuan || 'Pcs', lokasi: s.lokasi || '-' });
+                (this.masterCatalog || []).forEach(s => {
+                    const min = Math.max(0, Number(s.minStock) || 0);
+                    const qty = Math.max(0, Math.round(Number(s.currentStock ?? s.stockAwal) || 0));
+                    if (min > 0 && qty <= min) {
+                        rows.push({ gudang: 'Sparepart', nama: s.nama, qty, minStock: min, satuan: s.satuan || 'Pcs', lokasi: s.lokasi || '-' });
                     }
                 });
                 this.sisaProjects.forEach(s => {
@@ -4029,7 +4072,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             this.dashFilterDateEnd = today;
             this.refreshIcons();
             await this.initAuth();
-            if (this.isAuthenticated) await this.loadFromSupabase();
+            if (this.isAuthenticated) {
+                await this.loadFromSupabase();
+                this.subscribeSupabaseRealtime();
+            }
             window.addEventListener('resize', this.repositionMasterDropdown);
             window.addEventListener('scroll', this.repositionMasterDropdown, true);
             window.addEventListener('resize', this.repositionSparepartOutDropdown);
@@ -4038,6 +4084,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
         },
         beforeUnmount() {
             if (this.supabaseAuthListener?.subscription) this.supabaseAuthListener.subscription.unsubscribe();
+            this.unsubscribeSupabaseRealtime();
             clearTimeout(this._planningAutocompleteTimer);
             clearTimeout(this._planningFilterTimer);
             window.removeEventListener('resize', this.repositionMasterDropdown);
@@ -4210,6 +4257,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.authUser = session?.user || null;
                 this.isAuthenticated = !!session?.user;
                 if (!session?.user) {
+                    this.unsubscribeSupabaseRealtime();
                     this.authRole = 'viewer';
                     this.authReady = true;
                     return;
@@ -4232,6 +4280,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     this.authRole = 'viewer';
                 } finally {
                     this.authReady = true;
+                    this.subscribeSupabaseRealtime();
                     this.$nextTick(() => this.refreshIcons());
                 }
             },
@@ -4248,6 +4297,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     if (error) throw error;
                     this.loginForm.password = '';
                     await this.loadFromSupabase();
+                    this.subscribeSupabaseRealtime();
                 } catch (err) {
                     console.error('Login gagal:', err);
                     this.authError = err?.message || 'Email atau password salah.';
@@ -4258,6 +4308,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             async logout() {
                 const client = this.getSupabaseClient();
                 if (client) await client.auth.signOut();
+                this.unsubscribeSupabaseRealtime();
                 this.activeTab = 'dashboard';
                 this.userAccounts = [];
             },
@@ -4581,8 +4632,109 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 }
                 this.supabaseSaveTimer = setTimeout(() => {
                     this.supabaseSaveTimer = null;
-                    this.saveToSupabase();
+                    this.supabaseSavePromise = this.saveToSupabase();
                 }, delay);
+            },
+            unsubscribeSupabaseRealtime() {
+                if (this.supabaseRealtimeChannel) {
+                    try {
+                        const client = this.getSupabaseClient();
+                        if (client) client.removeChannel(this.supabaseRealtimeChannel);
+                    } catch (err) {
+                        console.warn('Gagal melepas channel realtime Supabase:', err);
+                    }
+                    this.supabaseRealtimeChannel = null;
+                }
+                clearTimeout(this.supabaseRealtimeTimer);
+                this.supabaseRealtimeTimer = null;
+            },
+            async refreshFromSupabaseRealtime(updatedAt = '') {
+                const client = this.getSupabaseClient();
+                if (!client || this.isHydratingFromSupabase) return;
+                // Hindari memuat ulang state yang sama atau menimpa perubahan lokal yang baru disimpan.
+                if (updatedAt && this.supabaseLastUpdatedAt && String(updatedAt) <= String(this.supabaseLastUpdatedAt)) return;
+                try {
+                    const { data, error } = await client
+                        .from('inventory_state')
+                        .select('state,updated_at')
+                        .eq('id', 'main')
+                        .maybeSingle();
+                    if (error) throw error;
+                    if (!data?.state) return;
+                    if (data.updated_at && this.supabaseLastUpdatedAt && String(data.updated_at) <= String(this.supabaseLastUpdatedAt)) return;
+
+                    const state = data.state;
+                    this.isHydratingFromSupabase = true;
+                    this.masterCatalog = Array.isArray(state.masterCatalog) ? state.masterCatalog : [];
+                    this.monitoringItems = Array.isArray(state.monitoringItems) ? state.monitoringItems : [];
+                    this.monitoringHistory = Array.isArray(state.monitoringHistory) ? state.monitoringHistory : [];
+                    this.spareparts = Array.isArray(state.spareparts) ? state.spareparts : [];
+                    this.sisaProjects = Array.isArray(state.sisaProjects) ? state.sisaProjects : [];
+                    this.logs = Array.isArray(state.logs) ? state.logs : [];
+                    this.planningRequests = Array.isArray(state.planningRequests) ? state.planningRequests : [];
+                    this.planningUsages = Array.isArray(state.planningUsages) ? state.planningUsages : [];
+                    this.planningCacheReady = false;
+                    this.planningCacheBuilding = false;
+                    this.planningAutocompleteResults = [];
+                    this.opnameHistory = Array.isArray(state.opnameHistory) ? state.opnameHistory : [];
+                    this.supabaseLastUpdatedAt = data.updated_at || this.supabaseLastUpdatedAt || '';
+                    this.syncMasterAndSparepart();
+                    this.supabaseConnected = true;
+                    this.$nextTick(() => this.refreshIcons());
+                } catch (err) {
+                    console.error('Gagal sinkronisasi realtime Supabase:', err);
+                } finally {
+                    this.isHydratingFromSupabase = false;
+                }
+            },
+            startSupabaseRealtimeFallback() {
+                clearTimeout(this.supabaseRealtimeTimer);
+                const poll = async () => {
+                    if (!this.isAuthenticated || this.isHydratingFromSupabase) {
+                        this.supabaseRealtimeTimer = setTimeout(poll, 5000);
+                        return;
+                    }
+                    const client = this.getSupabaseClient();
+                    if (!client) return;
+                    try {
+                        const { data, error } = await client
+                            .from('inventory_state')
+                            .select('updated_at')
+                            .eq('id', 'main')
+                            .maybeSingle();
+                        if (!error && data?.updated_at && String(data.updated_at) > String(this.supabaseLastUpdatedAt || '')) {
+                            await this.refreshFromSupabaseRealtime(data.updated_at);
+                        }
+                    } catch (err) {
+                        console.warn('Fallback sinkronisasi Supabase gagal:', err);
+                    } finally {
+                        this.supabaseRealtimeTimer = setTimeout(poll, 5000);
+                    }
+                };
+                this.supabaseRealtimeTimer = setTimeout(poll, 5000);
+            },
+            subscribeSupabaseRealtime() {
+                const client = this.getSupabaseClient();
+                if (!client || !this.isAuthenticated) return;
+                this.unsubscribeSupabaseRealtime();
+                this.supabaseRealtimeChannel = client
+                    .channel('inventory-state-realtime')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'inventory_state', filter: 'id=eq.main' }, payload => {
+                        const updatedAt = payload?.new?.updated_at || '';
+                        this.refreshFromSupabaseRealtime(updatedAt);
+                    })
+                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inventory_state', filter: 'id=eq.main' }, payload => {
+                        const updatedAt = payload?.new?.updated_at || '';
+                        this.refreshFromSupabaseRealtime(updatedAt);
+                    })
+                    .subscribe(status => {
+                        if (status === 'SUBSCRIBED') {
+                            this.supabaseConnected = true;
+                        }
+                    });
+                // Realtime adalah jalur utama; polling updated_at menjadi fallback jika
+                // project Supabase belum mengaktifkan replication untuk inventory_state.
+                this.startSupabaseRealtimeFallback();
             },
             async loadFromSupabase() {
                 const client = this.getSupabaseClient();
@@ -4594,11 +4746,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 try {
                     const { data, error } = await client
                         .from('inventory_state')
-                        .select('state')
+                        .select('state,updated_at')
                         .eq('id', 'main')
                         .maybeSingle();
                     if (error) throw error;
                     if (data && data.state) {
+                        this.supabaseLastUpdatedAt = data.updated_at || this.supabaseLastUpdatedAt || '';
                         const state = data.state;
                         this.masterCatalog = Array.isArray(state.masterCatalog) ? state.masterCatalog : [];
                         this.monitoringItems = Array.isArray(state.monitoringItems) ? state.monitoringItems : [];
@@ -4625,24 +4778,26 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 }
             },
             async saveToSupabase() {
-                if (this.isHydratingFromSupabase) return;
+                if (this.isHydratingFromSupabase) return false;
                 const client = this.getSupabaseClient();
-                if (!client) return;
+                if (!client) return false;
 
                 // Jangan izinkan dua upsert state besar berjalan bersamaan.
                 if (this.supabaseSaveInProgress) {
                     this.supabaseSaveQueued = true;
-                    return;
+                    return this.supabaseSavePromise || Promise.resolve(false);
                 }
 
                 this.supabaseSaveInProgress = true;
                 this.supabaseSaveQueued = false;
+                let saved = false;
 
                 try {
+                    const updatedAt = new Date().toISOString();
                     const payload = {
                         id: 'main',
                         state: this.getPersistedState(),
-                        updated_at: new Date().toISOString()
+                        updated_at: updatedAt
                     };
 
                     const { error } = await client
@@ -4650,7 +4805,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         .upsert(payload, { onConflict: 'id' });
 
                     if (error) throw error;
+                    this.supabaseLastUpdatedAt = updatedAt;
                     this.supabaseConnected = true;
+                    saved = true;
                 } catch (err) {
                     this.supabaseConnected = false;
                     console.error('Gagal menyimpan data ke Supabase:', err);
@@ -4663,6 +4820,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         this.scheduleSupabaseSave(300);
                     }
                 }
+                return saved;
             },
             // Helper Fungsi Format Tanggal Tanpa Jam (DD/MM/YYYY)
             getFormattedDateOnly(dateObj = new Date()) {
@@ -4728,7 +4886,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     return true;
                 });
             },
-            editLog(log) {
+            async editLog(log) {
                 if (!log) return;
                 const isPending = this.isPendingLog(log);
                 if (isPending && !this.canInputTransaction) return alert('Hanya Admin dan Super Admin yang dapat mengedit transaksi yang belum disetujui.');
@@ -4954,6 +5112,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         if (masterItem) masterItem.currentStock = Number(stockItem.qty) || 0;
                     }
                 }
+                // Simpan langsung agar perubahan stok Purchase Order/Gudang Sisa Project
+                // segera masuk ke Supabase dan terlihat di Dashboard/perangkat lain.
+                await this.saveToSupabase();
                 alert('Log berhasil di-adjust dan saldo transaksi setelahnya sudah otomatis disesuaikan!');
             },
             resetDashFilter() {
@@ -4999,6 +5160,28 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             // Nama/SKU/Satuan/Min Stock berasal dari Master Data.
             // Qty stok berjalan adalah satu nilai yang sama di Master & Gudang.
             // ================================================================
+            syncMasterStockForSparepart(stockItem) {
+                // Transaksi Spare Part yang sudah disetujui memperbarui stok Master.
+                // Setelah itu Master tetap menjadi satu-satunya sumber stok untuk
+                // tampilan Gudang Spare Part, Dashboard, Notifikasi, dan Excel.
+                if (!stockItem) return null;
+
+                const normalize = value => String(value || '').trim().toLowerCase();
+                const kode = normalize(stockItem.kode);
+                const nama = normalize(stockItem.nama);
+
+                const master = (this.masterCatalog || []).find(m =>
+                    (kode && normalize(m.kode) === kode) ||
+                    (nama && normalize(m.nama) === nama)
+                );
+
+                if (!master) return null;
+
+                const qty = Math.max(0, Math.round(Number(stockItem.qty) || 0));
+                master.currentStock = qty;
+                master.totalHarga = Math.max(0, Number(master.harga) || 0) * qty;
+                return master;
+            },
             syncMasterAndSparepart() {
                 const norm = value => String(value || '').trim().toLowerCase();
                 const usedBarcodes = new Set(this.spareparts.map(s => String(s.barcode || '').trim()).filter(Boolean));
@@ -5045,843 +5228,24 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         };
                         this.spareparts.push(stock);
                     } else {
-                        // Jika pasangan Gudang sudah ada, jangan menimpa stok berjalan.
-                        // Metadata tetap mengikuti Master Data.
+                        // MASTER DATA adalah sumber utama untuk stok terakhir.
+                        // Setiap sinkronisasi wajib membuat Gudang Sparepart mengikuti
+                        // currentStock Master Data, termasuk ketika nilainya 0.
                         stock.kode = master.kode || stock.kode;
                         stock.nama = master.nama;
                         stock.minStock = Number(master.minStock) || 0;
                         stock.harga = masterHarga;
-                        stock.totalHarga = masterHarga * (Number(stock.qty) || 0);
+                        stock.qty = masterQty;
+                        stock.totalHarga = masterHarga * masterQty;
                         stock.satuan = master.satuan || stock.satuan || 'PCS';
                         stock.lokasi = master.lokasi || stock.lokasi || '';
-                        if (stock.stockAwal === undefined || stock.stockAwal === null) {
-                            stock.stockAwal = masterQty;
-                        }
+                        stock.stockAwal = Number(master.stockAwal ?? masterQty) || 0;
                     }
 
-                    // Master dan Gudang Sparepart menampilkan qty berjalan yang sama.
-                    master.currentStock = Math.max(0, Number(stock.qty) || 0);
                 });
 
-                // 2. Data Gudang lama yang belum ada di Master otomatis dibuatkan Master.
-                // Ini mencegah ada SKU yatim yang hanya muncul di salah satu modul.
-                this.spareparts.slice().forEach(stock => {
-                    const key = norm(stock.nama);
-                    if (!key) return;
-                    let master = stock.kode
-                        ? this.masterCatalog.find(m => String(m.kode || '').trim() === String(stock.kode).trim())
-                        : null;
-                    if (!master) {
-                        master = this.masterCatalog.find(m => !m.kode && norm(m.nama) === key);
-                    }
-                    if (!master) {
-                        const kode = stock.kode || ('SKU-' + String(this.masterCatalog.length + 1).padStart(3, '0'));
-                        master = {
-                            kode,
-                            nama: stock.nama,
-                            minStock: Number(stock.minStock) || 0,
-                            currentStock: Number(stock.qty) || 0,
-                            stockAwal: Number(stock.qty) || 0,
-                            tanggal: this.getISODateOnly(),
-                            leadTime: 0,
-                            safetyStock: 0,
-                            avgDailyUsage: 0,
-                            satuan: stock.satuan || 'PCS',
-                            harga: Number(stock.harga) || 0,
-                            lokasi: stock.lokasi || '',
-                        };
-                        this.masterCatalog.push(master);
-                    } else {
-                        master.currentStock = Number(stock.qty) || 0;
-                        master.satuan = stock.satuan || master.satuan || 'PCS';
-                    }
-                });
-
-                this.sortMasterCatalog();
-                // Sinkron harga Master ke Gudang Sisa Project dan data lama yang belum memiliki harga.
-                this.sisaProjects.forEach(stock => {
-                    const master = this.masterCatalog.find(m =>
-                        norm(m.nama) === norm(stock.nama) || (stock.kode && m.kode && String(m.kode) === String(stock.kode))
-                    );
-                    if (master) {
-                        stock.harga = Number(master.harga) || 0;
-                        stock.totalHarga = stock.harga * (Number(stock.qty) || 0);
-                    }
-                });
-                this.monitoringItems.forEach(order => {
-                    const master = this.masterCatalog.find(m => norm(m.nama) === norm(order.nama));
-                    if (master) {
-                        // Harga selalu mengikuti harga Master Data terbaru.
-                        order.harga = Number(master.harga) || 0;
-                        order.totalHarga = (Number(order.harga) || 0) * (Number(order.qtyTotal) || 0);
-                    }
-                });
-                this.monitoringHistory.forEach(history => {
-                    const master = this.masterCatalog.find(m => norm(m.nama) === norm(history.nama));
-                    if (master) history.harga = Number(master.harga) || 0;
-                });
-                this.logs.forEach(log => {
-                    const master = this.masterCatalog.find(m => norm(m.nama) === norm(log.nama));
-                    if (master) {
-                        // Riwayat juga menggunakan harga Master terbaru agar nilai dapat dihitung konsisten.
-                        log.harga = Number(master.harga) || 0;
-                        log.totalHarga = (Number(log.harga) || 0) * (Number(log.qty) || 0);
-                    }
-                });
-                this.masterPage = 1;
-            },
-            syncMasterStockForSparepart(stockItem) {
-                if (!stockItem) return;
-                const key = String(stockItem.nama || '').trim().toLowerCase();
-                if (!key) return;
-                const master = stockItem.kode
-                    ? this.masterCatalog.find(m => String(m.kode || '').trim() === String(stockItem.kode).trim())
-                    : this.masterCatalog.find(m => String(m.nama || '').trim().toLowerCase() === key);
-                const qty = Math.max(0, Number(stockItem.qty) || 0);
-                if (master) {
-                    master.currentStock = qty;
-                    master.satuan = stockItem.satuan || master.satuan || 'PCS';
-                }
-
-                // Barang Master tetap dipertahankan di Gudang Sparepart walaupun stok = 0.
-                // Hanya Qty yang menjadi 0; data barang tidak dihapus dari daftar gudang.
-            },
-            importMasterCatalog(event) {
-                const file = event.target.files?.[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-
-                reader.onload = (e) => {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, {
-                            type: 'array',
-                            cellDates: true
-                        });
-
-                        if (!workbook.SheetNames.length) {
-                            alert('File Excel tidak memiliki sheet.');
-                            event.target.value = '';
-                            return;
-                        }
-
-                        const sheetName = workbook.SheetNames[0];
-                        const sheet = workbook.Sheets[sheetName];
-
-                        // Baca seluruh sheet sebagai array agar posisi kolom tidak bergantung pada urutan tertentu.
-                        const rows = XLSX.utils.sheet_to_json(sheet, {
-                            header: 1,
-                            defval: '',
-                            raw: false
-                        });
-
-                        if (!rows || rows.length === 0) {
-                            alert('File Excel kosong.');
-                            event.target.value = '';
-                            return;
-                        }
-
-
-                        // Normalisasi header: "Nama Barang", "NAMA_BARANG", "nama-barang" akan dianggap sama.
-                        const normalize = (value) => String(value ?? '')
-                            .trim()
-                            .toLowerCase()
-                            .normalize('NFD')
-                            .replace(/[\u0300-\u036f]/g, '')
-                            .replace(/[^a-z0-9]/g, '');
-
-                        // Alias kolom Excel dibuat luas agar nama barang tidak gagal terbaca hanya karena nama header berbeda.
-                        const aliases = {
-                            nama: [
-                                'nama', 'namabarang', 'namapart', 'namasparepart',
-                                'barangnama', 'item', 'itemname',
-                                'itemdescription', 'description', 'deskripsi', 'desc',
-                                'part', 'partname', 'product', 'productname',
-                                'produk', 'namaproduk', 'material', 'namamaterial',
-                                'uraian', 'uraianbarang'
-                            ],
-                            stock: [
-                                'stock', 'stok', 'stockawal', 'stokawal',
-                                'stockakhir', 'stokakhir', 'stocktersedia', 'stoktersedia',
-                                'stocksekarang', 'stoksekarang', 'currentstock',
-                                'currentqty', 'qty', 'quantity', 'jumlah', 'saldo',
-                                'saldoawal', 'onhand', 'quantityonhand', 'qtyonhand',
-                                'available', 'stokavailable', 'stockavailable'
-                            ],
-                            satuan: [
-                                'satuan', 'unit', 'uom', 'sat', 'unitofmeasure',
-                                'measureunit', 'satuanbarang'
-                            ],
-                            kode: [
-                                'kode', 'kodesku', 'sku', 'kodebarang', 'kodepart',
-                                'partnumber', 'partno', 'itemcode', 'itemnumber',
-                                'materialcode'
-                            ],
-                            leadTime: [
-                                'leadtime', 'leadtimehari', 'waktutunggu', 'waktutungguhari'
-                            ],
-                            safetyStock: [
-                                'safetystock', 'stokpengaman', 'stockpengaman'
-                            ],
-                            avgDailyUsage: [
-                                'pemakaianharian', 'rataratapemakaianharian', 'averageusage',
-                                'averagedailyusage', 'dailyusage', 'kebutuhanharian'
-                            ],
-                            harga: ['harga', 'hargasatuan', 'hargaunit', 'unitprice', 'price', 'hrg', 'hargabeli', 'hargabarang'],
-                            lokasi: ['lokasi', 'lokasirak', 'keteranganrak', 'rak', 'rack', 'storage', 'shelflocation']
-                        };
-
-                        const findColumn = (headers, aliasList) => {
-                            const normalizedHeaders = headers.map(normalize);
-
-                            // Prioritas 1: header sama persis.
-                            for (const alias of aliasList) {
-                                const index = normalizedHeaders.indexOf(alias);
-                                if (index !== -1) return index;
-                            }
-
-                            // Prioritas 2: header mengandung alias yang cukup spesifik.
-                            // Hindari alias umum agar "Kode Barang" tidak terbaca sebagai Nama Barang.
-                            let bestIndex = -1;
-                            let bestScore = 0;
-                            for (let i = 0; i < normalizedHeaders.length; i++) {
-                                const header = normalizedHeaders[i];
-                                if (!header) continue;
-                                for (const alias of aliasList) {
-                                    if (alias.length < 4) continue;
-                                    if (header.includes(alias)) {
-                                        const score = alias.length;
-                                        if (score > bestScore) { bestScore = score; bestIndex = i; }
-                                    }
-                                }
-                            }
-                            return bestIndex;
-                        };
-
-                        // Cari header sampai 50 baris pertama. Jadi tidak harus berada di baris pertama.
-                        let headerRowIndex = -1;
-                        let nameCol = -1;
-                        let stockCol = -1;
-                        let unitCol = -1;
-                        let kodeCol = -1;
-                        let leadTimeCol = -1;
-                        let safetyStockCol = -1;
-                        let bufferStockCol = -1;
-                        let avgDailyUsageCol = -1;
-
-                        let hargaCol = -1;
-                        let lokasiCol = -1;
-
-                        const maxHeaderSearch = Math.min(rows.length, 50);
-
-                        for (let i = 0; i < maxHeaderSearch; i++) {
-                            const row = rows[i] || [];
-                            if (!row.length) continue;
-
-                            const n = findColumn(row, aliases.nama);
-                            if (n !== -1) {
-                                headerRowIndex = i;
-                                nameCol = n;
-                                stockCol = findColumn(row, aliases.stock);
-                                unitCol = findColumn(row, aliases.satuan);
-                                kodeCol = findColumn(row, aliases.kode);
-                                leadTimeCol = findColumn(row, aliases.leadTime);
-                                safetyStockCol = findColumn(row, aliases.safetyStock);
-                                bufferStockCol = findColumn(row, aliases.bufferStock);
-                                avgDailyUsageCol = findColumn(row, aliases.avgDailyUsage);
-                                hargaCol = findColumn(row, aliases.harga);
-                                lokasiCol = findColumn(row, aliases.lokasi);
-                                break;
-                            }
-                        }
-
-
-                        if (headerRowIndex === -1 || nameCol === -1) {
-                            console.error('10 baris pertama Excel:', rows.slice(0, 10));
-                            alert(
-                                'Kolom Nama Barang tidak ditemukan.\n\n' +
-                                'Pastikan Excel memiliki kolom seperti:\n' +
-                                'Nama Barang / Nama / Item / Barang / Description / Part.'
-                            );
-                            event.target.value = '';
-                            return;
-                        }
-
-                        // Parse angka dengan aman untuk format Indonesia maupun format Excel biasa.
-                        const parseNumber = (value) => {
-                            if (value === null || value === undefined || value === '') return 0;
-                            if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-
-                            let text = String(value).trim();
-                            if (!text) return 0;
-
-                            text = text.replace(/[^\d.,-]/g, '');
-                            if (!text) return 0;
-
-                            const lastComma = text.lastIndexOf(',');
-                            const lastDot = text.lastIndexOf('.');
-
-                            if (lastComma !== -1 && lastDot !== -1) {
-                                if (lastComma > lastDot) {
-                                    // Contoh Indonesia: 1.500,50
-                                    text = text.replace(/\./g, '').replace(',', '.');
-                                } else {
-                                    // Contoh internasional: 1,500.50
-                                    text = text.replace(/,/g, '');
-                                }
-                            } else if (lastComma !== -1) {
-                                const decimalPart = text.substring(lastComma + 1);
-                                if (decimalPart.length <= 2) {
-                                    text = text.replace(',', '.');
-                                } else {
-                                    text = text.replace(/,/g, '');
-                                }
-                            } else if (lastDot !== -1) {
-                                const decimalPart = text.substring(lastDot + 1);
-                                if (decimalPart.length > 2) {
-                                    text = text.replace(/\./g, '');
-                                }
-                            }
-
-                            const result = Number(text);
-                            return Number.isFinite(result) ? result : 0;
-                        };
-
-                        const importedItems = [];
-
-                        for (let i = headerRowIndex + 1; i < rows.length; i++) {
-                            const row = rows[i] || [];
-
-                            // Ambil nama dari kolom yang sudah ditemukan, bukan dari posisi tetap.
-                            const rawNama = row[nameCol];
-
-                            if (
-                                rawNama === undefined ||
-                                rawNama === null ||
-                                String(rawNama).trim() === ''
-                            ) {
-                                continue;
-                            }
-
-                            const nama = String(rawNama)
-                                .trim()
-                                .replace(/\s+/g, ' ')
-                                .toUpperCase();
-
-                            const rawStock = stockCol !== -1 ? row[stockCol] : 0;
-                            const currentStock = parseNumber(rawStock);
-
-                            const rawSatuan = unitCol !== -1 ? row[unitCol] : '';
-                            const satuan = String(rawSatuan ?? '').trim().toUpperCase() || 'PCS';
-
-                            let kode = '';
-                            if (kodeCol !== -1) {
-                                kode = String(row[kodeCol] ?? '').trim();
-                            }
-                            if (!kode) {
-                                throw new Error(`SKU/Kode Barang kosong pada baris Excel ${i + 1}. Import dibatalkan.`);
-                            }
-
-                            const leadTime = leadTimeCol !== -1 ? parseNumber(row[leadTimeCol]) : 0;
-                            const safetyStock = safetyStockCol !== -1 ? parseNumber(row[safetyStockCol]) : 0;
-                            const avgDailyUsage = avgDailyUsageCol !== -1 ? parseNumber(row[avgDailyUsageCol]) : 0;
-                            const harga = hargaCol !== -1 ? parseNumber(row[hargaCol]) : 0;
-                            const lokasi = lokasiCol !== -1 ? String(row[lokasiCol] ?? '').trim().toUpperCase() : '';
-                            const importedBuffer = bufferStockCol !== -1 ? parseNumber(row[bufferStockCol]) : 0;
-                            const minStock = bufferStockCol !== -1 ? Math.max(0, importedBuffer) : this.calculateMinimumStock(nama, leadTime, safetyStock, avgDailyUsage);
-
-                            // Duplikasi hanya berdasarkan SKU/Kode Barang.
-                            // Jika SKU sudah ada, baris tersebut dilewati.
-                            // Data dengan SKU berbeda tetap otomatis dimasukkan.
-                            const normalizedKode = kode.trim().toLowerCase();
-                            const duplicateInExisting = this.masterCatalog.some(item =>
-                                String(item.kode || '').trim().toLowerCase() === normalizedKode
-                            );
-                            const duplicateInImport = importedItems.some(item =>
-                                String(item.kode || '').trim().toLowerCase() === normalizedKode
-                            );
-                            if (duplicateInExisting) {
-                                const existing = this.masterCatalog.find(item => String(item.kode || '').trim().toLowerCase() === normalizedKode);
-                                if (existing) {
-                                    // Jika barang yang sama masuk lagi dengan harga berbeda, gunakan harga terbaru dari import.
-                                    existing.harga = Number(harga) || 0;
-                                }
-                                continue;
-                            }
-                            if (duplicateInImport) {
-                                const existingImport = importedItems.find(item => String(item.kode || '').trim().toLowerCase() === normalizedKode);
-                                if (existingImport) existingImport.harga = Number(harga) || 0;
-                                continue;
-                            }
-
-                            importedItems.push({
-                                kode,
-                                nama,
-                                minStock,
-                                currentStock,
-                                stockAwal: currentStock,
-                                tanggal: this.getISODateOnly(),
-                                leadTime,
-                                safetyStock,
-                                avgDailyUsage,
-                                harga,
-                                satuan,
-                                lokasi
-                            });
-                        }
-
-
-                        if (importedItems.length === 0) {
-                            alert(
-                                'File Excel berhasil dibaca, tetapi tidak ada data barang yang ditemukan setelah baris header.\n\n' +
-                                'Cek apakah kolom Nama Barang memang berisi data.'
-                            );
-                            event.target.value = '';
-                            return;
-                        }
-
-                        // Satu kali mutasi data, lalu urutkan sekali. Tabel hanya merender 100 baris aktif.
-                        this.masterCatalog.push(...importedItems);
-                        this.syncMasterAndSparepart();
-
-                        this.selectedMasterItems = [];
-                        this.selectAllMaster = false;
-
-                        alert(
-                            `Berhasil mengimpor ${importedItems.length} data barang!\n\n` +
-                            'Data dengan SKU berbeda otomatis dimasukkan. SKU yang sudah terdaftar dilewati.'
-                        );
-
-                        event.target.value = '';
-                    } catch (error) {
-                        console.error('ERROR IMPORT EXCEL:', error);
-                        alert(error?.message || (
-                            'Gagal membaca file Excel!\n\n' +
-                            'Pastikan file berformat .xlsx atau .xls dan tidak rusak.'
-                        ));
-                        event.target.value = '';
-                    }
-                };
-
-                reader.onerror = () => {
-                    alert('File Excel tidak dapat dibaca oleh browser.');
-                    event.target.value = '';
-                };
-
-                reader.readAsArrayBuffer(file);
-            },
-            importMonitoringExcel(event) {
-                const file = event.target.files?.[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                        if (!workbook.SheetNames.length) {
-                            alert('File Excel tidak memiliki sheet.');
-                            event.target.value = '';
-                            return;
-                        }
-
-                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const rows = XLSX.utils.sheet_to_json(sheet, {
-                            header: 1,
-                            defval: '',
-                            raw: false
-                        });
-                        if (!rows || !rows.length) {
-                            alert('File Excel kosong.');
-                            event.target.value = '';
-                            return;
-                        }
-
-                        // Konsep sama seperti Import Data Master:
-                        // header fleksibel, tidak wajib persis sama, cukup mengandung kata kunci.
-                        const normalize = (value) => String(value ?? '')
-                            .trim().toLowerCase()
-                            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                            .replace(/[^a-z0-9]/g, '');
-
-                        const aliases = {
-                            tanggal: ['tanggal', 'tgl', 'tanggalorder', 'tglorder', 'tanggalpermintaan', 'tglpermintaan', 'date', 'orderdate'],
-                            nomorPR: ['nomorpurchase request', 'nomorpurchaserequest', 'nomorpr', 'no purchase request', 'nopurchaserequest', 'no pr', 'nopr', 'prnumber', 'purchaseordernumber'],
-                            nama: ['nama', 'namabarang', 'namapart', 'namasparepart', 'barangnama', 'item', 'itemname', 'itemdescription', 'description', 'deskripsi', 'desc', 'part', 'partname', 'product', 'productname', 'produk', 'namaproduk', 'material', 'namamaterial', 'uraian', 'uraianbarang'],
-                            qty: ['qty', 'quantity', 'jumlah', 'qtyorder', 'quantityorder', 'jumlahorder', 'totalorder', 'totalqty', 'orderqty'],
-                            satuan: ['satuan', 'unit', 'uom', 'sat', 'unitofmeasure', 'satuanbarang'],
-                            keperluan: ['keperluan', 'kepentingan', 'project', 'proyek', 'purpose', 'kebutuhan', 'remark', 'remarks', 'keterangan', 'descriptionpurpose'],
-                            prioritas: ['prioritas', 'skalaprioritas', 'priority'],
-                            penerima: ['penerima', 'namapenerima', 'recipient', 'receiver', 'diterimaoleh'],
-                            pengambil: ['pengambil', 'namapengambil', 'pengambilbarang', 'requester', 'peminta', 'diambilholeh'],
-                            harga: ['harga', 'hargasatuan', 'hargaunit', 'unitprice', 'price', 'hrg', 'hargabeli', 'hargabarang'],
-                            lokasi: ['lokasi', 'lokasirak', 'keteranganrak', 'rak', 'rack', 'storage', 'shelflocation']
-                        };
-
-                        const findColumn = (headers, aliasList) => {
-                            const normalizedHeaders = headers.map(normalize);
-                            for (const alias of aliasList) {
-                                const exact = normalizedHeaders.indexOf(alias);
-                                if (exact !== -1) return exact;
-                            }
-                            let bestIndex = -1;
-                            let bestScore = 0;
-                            for (let i = 0; i < normalizedHeaders.length; i++) {
-                                const header = normalizedHeaders[i];
-                                if (!header) continue;
-                                for (const alias of aliasList) {
-                                    if (alias.length < 4) continue;
-                                    if (header.includes(alias)) {
-                                        const score = alias.length;
-                                        if (score > bestScore) {
-                                            bestScore = score;
-                                            bestIndex = i;
-                                        }
-                                    }
-                                }
-                            }
-                            return bestIndex;
-                        };
-
-                        let headerRowIndex = -1;
-                        let cols = {};
-                        const maxHeaderSearch = Math.min(rows.length, 50);
-                        for (let i = 0; i < maxHeaderSearch; i++) {
-                            const row = rows[i] || [];
-                            const namaCol = findColumn(row, aliases.nama);
-                            if (namaCol !== -1) {
-                                headerRowIndex = i;
-                                cols = {
-                                    tanggal: findColumn(row, aliases.tanggal),
-                                    nomorPR: findColumn(row, aliases.nomorPR),
-                                    nama: namaCol,
-                                    qty: findColumn(row, aliases.qty),
-                                    satuan: findColumn(row, aliases.satuan),
-                                    keperluan: findColumn(row, aliases.keperluan),
-                                    prioritas: findColumn(row, aliases.prioritas),
-                                    penerima: findColumn(row, aliases.penerima),
-                                    pengambil: findColumn(row, aliases.pengambil),
-                                    harga: findColumn(row, aliases.harga)
-                                };
-                                break;
-                            }
-                        }
-
-                        if (headerRowIndex === -1 || cols.nama === -1) {
-                            alert('Kolom Nama Barang tidak ditemukan.\n\nGunakan header yang mengandung kata seperti: Nama Barang / Nama / Item / Barang / Description / Part.');
-                            event.target.value = '';
-                            return;
-                        }
-                        if (cols.nomorPR === -1) {
-                            alert('Kolom Nomor Purchase Request tidak ditemukan. Nomor Purchase Request wajib berasal dari file/input dan tidak dibuat otomatis.');
-                            event.target.value = '';
-                            return;
-                        }
-
-                        const parseNumber = (value) => {
-                            if (value === null || value === undefined || value === '') return 0;
-                            if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-                            let text = String(value).trim().replace(/[^\d.,-]/g, '');
-                            if (!text) return 0;
-                            const lastComma = text.lastIndexOf(',');
-                            const lastDot = text.lastIndexOf('.');
-                            if (lastComma !== -1 && lastDot !== -1) {
-                                text = lastComma > lastDot ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '');
-                            } else if (lastComma !== -1) {
-                                const dec = text.substring(lastComma + 1);
-                                text = dec.length <= 2 ? text.replace(',', '.') : text.replace(/,/g, '');
-                            } else if (lastDot !== -1 && text.substring(lastDot + 1).length > 2) {
-                                text = text.replace(/\./g, '');
-                            }
-                            const result = Number(text);
-                            return Number.isFinite(result) ? result : 0;
-                        };
-
-                        const parseDateOnly = (value) => {
-                            // Prioritas utama: tanggal yang benar-benar ada di file Excel.
-                            // Jika kolom tanggal tidak ada/kosong/tidak terbaca, baru gunakan tanggal hari ini.
-                            if (value === null || value === undefined || String(value).trim() === '') return this.getISODateOnly();
-                            if (value instanceof Date && !isNaN(value.getTime())) return this.getISODateOnly(value);
-                            if (typeof value === 'number' && Number.isFinite(value)) {
-                                // Excel serial date (1900 date system).
-                                const excelDate = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
-                                return isNaN(excelDate.getTime()) ? this.getISODateOnly() : this.getISODateOnly(excelDate);
-                            }
-                            const text = String(value).trim();
-                            const m = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-                            if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-                            const ymd = text.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
-                            if (ymd) return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`;
-                            const parsed = new Date(text);
-                            return isNaN(parsed.getTime()) ? this.getISODateOnly() : this.getISODateOnly(parsed);
-                        };
-
-                        const importedItems = [];
-                        let skippedDuplicate = 0;
-                        let skippedInvalid = 0;
-
-                        const makeKey = (item) => [
-                            String(item.nomorPR || '').trim().toLowerCase().replace(/\s+/g, ' '),
-                            String(item.nama || '').trim().toLowerCase().replace(/\s+/g, ' ')
-                        ].join('|');
-
-                        for (let i = headerRowIndex + 1; i < rows.length; i++) {
-                            const row = rows[i] || [];
-                            const rawNama = row[cols.nama];
-                            if (rawNama === undefined || rawNama === null || String(rawNama).trim() === '') continue;
-
-                            const nama = String(rawNama).trim().replace(/\s+/g, ' ').toUpperCase();
-                            const nomorPR = String(row[cols.nomorPR] ?? '').trim().replace(/\s+/g, ' ');
-                            if (!nomorPR) { skippedInvalid++; continue; }
-                            const tgl = parseDateOnly(cols.tanggal !== -1 ? row[cols.tanggal] : '');
-                            const qtyTotal = Math.max(1, parseNumber(cols.qty !== -1 ? row[cols.qty] : 1) || 1);
-                            const satuan = String(cols.satuan !== -1 ? row[cols.satuan] ?? '' : '').trim().toUpperCase() || 'PCS';
-                            const keperluan = String(cols.keperluan !== -1 ? row[cols.keperluan] ?? '' : '').trim().replace(/\s+/g, ' ').toUpperCase() || '-';
-                            const prioritasRaw = String(cols.prioritas !== -1 ? row[cols.prioritas] ?? '' : '').trim();
-                            const prioritasMap = { '1':'1', '2':'2', '3':'3', 'tinggi':'1', 'sedang':'2', 'rendah':'3' };
-                            const prioritas = prioritasMap[prioritasRaw.toLowerCase()] || '';
-                            const penerima = String(cols.penerima !== -1 ? row[cols.penerima] ?? '' : '').trim().replace(/\s+/g, ' ').toUpperCase();
-                            const pengambil = String(cols.pengambil !== -1 ? row[cols.pengambil] ?? '' : '').trim().replace(/\s+/g, ' ').toUpperCase();
-                            const harga = this.getMasterHarga(nama, cols.harga !== -1 ? (parseNumber(row[cols.harga]) || 0) : 0);
-
-                            const candidate = { nomorPR, nama, tgl, keperluan, qtyTotal, penerima, pengambil, prioritas };
-                            const key = makeKey(candidate);
-                            const duplicateExisting = this.monitoringItems.some(item => makeKey({
-                                nomorPR: item.nomorPR,
-                                nama: item.nama
-                            }) === key);
-                            const duplicateImport = importedItems.some(item => makeKey(item) === key);
-
-                            if (duplicateExisting || duplicateImport) {
-                                skippedDuplicate++;
-                                continue;
-                            }
-
-                            importedItems.push({
-                                id: Date.now() + Math.random(),
-                                isoDate: new Date(tgl + 'T00:00:00').toISOString(),
-                                tgl,
-                                nomorPR,
-                                nama,
-                                keperluan,
-                                prioritas,
-                                penerima,
-                                pengambil,
-                                qtyTotal,
-                                qtyReceived: 0,
-                                qtyRemaining: qtyTotal,
-                                harga,
-                                totalHarga: harga * qtyTotal,
-                                satuan,
-                                status: 'Pending'
-                            });
-                        }
-
-                        if (!importedItems.length) {
-                            alert(`Import Monitoring selesai, tetapi tidak ada data baru yang dimasukkan.\n\nDuplikat dilewati: ${skippedDuplicate}\nBaris tidak valid/kosong: ${skippedInvalid}`);
-                            event.target.value = '';
-                            return;
-                        }
-
-                        this.monitoringItems.push(...importedItems);
-                        this.monitoringItems.sort((a, b) => new Date(b.isoDate || b.id).getTime() - new Date(a.isoDate || a.id).getTime());
-
-                        alert(
-                            `Import Monitoring berhasil!\n\n` +
-                            `Berhasil dimasukkan: ${importedItems.length} data\n` +
-                            `Duplikat dilewati: ${skippedDuplicate} data\n` +
-                            `Baris kosong/tidak terbaca: ${skippedInvalid} data\n\n` +
-                            `Data yang tidak duplikat tetap dimasukkan.`
-                        );
-                        event.target.value = '';
-                    } catch (error) {
-                        console.error('ERROR IMPORT MONITORING:', error);
-                        alert(error?.message || 'Gagal membaca file Excel Monitoring. Pastikan file .xlsx atau .xls dan tidak rusak.');
-                        event.target.value = '';
-                    }
-                };
-                reader.onerror = () => {
-                    alert('File Excel Monitoring tidak dapat dibaca oleh browser.');
-                    event.target.value = '';
-                };
-                reader.readAsArrayBuffer(file);
-            },
-            tambahMasterManual() {
-                if (!this.formMasterManual.nama) return alert('Nama Barang wajib diisi!');
-                const namaManual = this.formMasterManual.nama.trim().toUpperCase();
-                if (this.masterCatalog.some(item => String(item.nama || '').trim().toUpperCase() === namaManual)) {
-                    return alert(`Data Master untuk barang "${namaManual}" sudah ada. Penambahan dibatalkan.`);
-                }
-                const kodeManual = String(this.formMasterManual.kode || '').trim().toUpperCase() || ('SKU-' + String(this.masterCatalog.length + 1).padStart(3, '0'));
-                if (this.masterCatalog.some(item => String(item.kode || '').trim().toUpperCase() === kodeManual)) {
-                    return alert(`Nomor SKU "${kodeManual}" sudah digunakan.`);
-                }
-                this.masterCatalog.push({
-                    kode: kodeManual,
-                    harga: Number(this.formMasterManual.harga) || 0,
-                    nama: this.formMasterManual.nama.toUpperCase(),
-                    minStock: Math.max(0, Number(this.formMasterManual.minStock) || 0),
-                    currentStock: Number(this.formMasterManual.currentStock) || 0,
-                    stockAwal: Number(this.formMasterManual.currentStock) || 0,
-                    tanggal: this.formMasterManual.tanggal || this.getISODateOnly(),
-                    leadTime: Number(this.formMasterManual.leadTime) || 0,
-                    safetyStock: 0,
-                    avgDailyUsage: Number(this.formMasterManual.avgDailyUsage) || 0,
-                    satuan: (this.formMasterManual.satuan || 'Pcs').toUpperCase(),
-                    lokasi: String(this.formMasterManual.lokasi || '').trim().toUpperCase()
-                });
-                this.syncMasterAndSparepart();
-                this.formMasterManual = { kode: '', nama: '', harga: 0, minStock: 0, currentStock: 0, stockAwal: 0, tanggal: this.getISODateOnly(), leadTime: 0, avgDailyUsage: 0, satuan: 'Pcs', lokasi: '' };
-                alert('Berhasil menambah Data Master!');
-            },
-            openMasterEdit(item) {
-                if (!this.canEdit) return alert('Hanya Super Admin yang dapat mengedit Data Master.');
-                if (!item) return;
-                this.editingMaster = {
-                    ...item,
-                    originalKode: String(item.kode || ''),
-                    kode: String(item.kode || ''),
-                    nama: String(item.nama || ''),
-                    harga: Number(item.harga) || 0,
-                    currentStock: Math.max(0, Number(item.currentStock ?? item.stockAwal) || 0),
-                    stockAwal: Number(item.stockAwal ?? item.currentStock) || 0,
-                    minStock: Number(item.minStock) || 0,
-                    leadTime: Number(item.leadTime) || 0,
-                    avgDailyUsage: Number(item.avgDailyUsage) || 0,
-                    satuan: String(item.satuan || 'Pcs'),
-                    lokasi: String(item.lokasi || item.lokasiRak || item.rak || '')
-                };
-                this.showMasterEditModal = true;
-                this.$nextTick(() => this.refreshIcons());
-            },
-            closeMasterEdit() {
-                this.showMasterEditModal = false;
-                this.editingMaster = null;
-            },
-            saveMasterEdit() {
-                if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data.');
-
-                if (!this.editingMaster) return;
-                const originalKode = String(this.editingMaster.originalKode || this.editingMaster.kode || '');
-                const item = this.masterCatalog.find(m => String(m.kode || '') === originalKode);
-                if (!item) return alert('Data Master tidak ditemukan.');
-                const kodeBaru = String(this.editingMaster.kode || '').trim().toUpperCase();
-                const namaBaru = String(this.editingMaster.nama || '').trim().toUpperCase();
-                if (!kodeBaru) return alert('Nomor SKU wajib diisi.');
-                if (!namaBaru) return alert('Nama Barang wajib diisi.');
-                const duplicateKode = this.masterCatalog.find(m => m !== item && String(m.kode || '').trim().toLowerCase() === kodeBaru.toLowerCase());
-                if (duplicateKode) return alert(`Nomor SKU "${kodeBaru}" sudah digunakan oleh ${duplicateKode.nama || 'barang lain'}.`);
-                const duplicate = this.masterCatalog.find(m => m !== item && String(m.nama || '').trim().toLowerCase() === namaBaru.toLowerCase());
-                if (duplicate) return alert(`Nama barang "${namaBaru}" sudah digunakan oleh ${duplicate.kode}.`);
-
-                const hargaBaru = Math.max(0, Number(this.editingMaster.harga) || 0);
-                const qtyBaru = Math.max(0, Number(this.editingMaster.currentStock) || 0);
-                const namaLama = String(item.nama || '').trim().toLowerCase();
-                const kodeLama = item.kode;
-                Object.assign(item, {
-                    kode: kodeBaru,
-                    nama: namaBaru,
-                    harga: hargaBaru,
-                    currentStock: qtyBaru,
-                    minStock: Math.max(0, Number(this.editingMaster.minStock) || 0),
-                    tanggal: this.editingMaster.tanggal || item.tanggal || this.getISODateOnly(),
-                    leadTime: Number(this.editingMaster.leadTime) || 0,
-                    safetyStock: Number(item.safetyStock) || 0,
-                    avgDailyUsage: Number(this.editingMaster.avgDailyUsage) || 0,
-                    satuan: String(this.editingMaster.satuan || 'Pcs').toUpperCase(),
-                    lokasi: String(this.editingMaster.lokasi || '').trim().toUpperCase()
-                });
-                // Harga dan qty Master menjadi data terbaru untuk pasangan gudang.
-                const stock = this.spareparts.find(s => String(s.nama || '').trim().toLowerCase() === namaLama || s.kode === kodeLama || s.kode === kodeBaru);
-                if (stock) {
-                    stock.kode = kodeBaru;
-                    stock.nama = namaBaru;
-                    stock.harga = hargaBaru;
-                    stock.totalHarga = hargaBaru * qtyBaru;
-                    stock.harga = hargaBaru;
-                    stock.minStock = Number(item.minStock) || 0;
-                    stock.satuan = item.satuan;
-                    if (qtyBaru <= 0) this.spareparts = this.spareparts.filter(s => s !== stock);
-                }
-                item.stockAwal = Number(item.stockAwal ?? qtyBaru) || qtyBaru;
-                this.syncMasterAndSparepart();
-                this.closeMasterEdit();
-                alert(`Data Master ${item.kode} berhasil diperbarui. Nomor SKU, harga, dan qty terbaru sudah disinkronkan.`);
-            },
-            deleteMaster(kode) {
-                if (!this.canDeleteMaster) return alert('Akun Viewer hanya dapat melihat data.');
-
-                const item = this.masterCatalog.find(i => i.kode === kode);
-                if (!item) return;
-
-                if (confirm(`Yakin ingin menghapus barang "${item.nama}"?`)) {
-                    const deletedName = String(item.nama || '').trim().toLowerCase();
-                    this.masterCatalog = this.masterCatalog.filter(i => i.kode !== kode);
-                    this.spareparts = this.spareparts.filter(s =>
-                        String(s.nama || '').trim().toLowerCase() !== deletedName && s.kode !== kode
-                    );
-                    this.selectedMasterItems = this.selectedMasterItems.filter(k => k !== kode);
-                    this.selectAllMaster = false;
-                    this.normalizeMasterPage();
-                }
-            },
-            toggleSelectAllMaster() {
-                if (this.selectAllMaster) {
-                    this.selectedMasterItems = this.filteredMasterCatalog.map(item => item.kode);
-                } else {
-                    this.selectedMasterItems = [];
-                }
-            },
-            deleteSelectedMaster() {
-                if (!this.canDeleteMaster) return alert('Akun Viewer hanya dapat melihat data.');
-
-                const selected = this.selectedMasterItems || [];
-
-                if (!selected.length) {
-                    return alert('Pilih minimal satu barang terlebih dahulu.');
-                }
-
-                const selectedItems = this.masterCatalog.filter(item => selected.includes(item.kode));
-                const preview = selectedItems.slice(0, 5).map(item => item.nama).join('\n');
-                const more = selectedItems.length > 5
-                    ? `\n... dan ${selectedItems.length - 5} barang lainnya`
-                    : '';
-
-                if (!confirm(`Yakin ingin menghapus ${selectedItems.length} barang?\n\n${preview}${more}`)) {
-                    return;
-                }
-
-                const deletedNames = new Set(selectedItems.map(item => String(item.nama || '').trim().toLowerCase()));
-                this.masterCatalog = this.masterCatalog.filter(item => !selected.includes(item.kode));
-                this.spareparts = this.spareparts.filter(stock =>
-                    !selected.includes(stock.kode) && !deletedNames.has(String(stock.nama || '').trim().toLowerCase())
-                );
-                this.selectedMasterItems = [];
-                this.selectAllMaster = false;
-                this.normalizeMasterPage();
-
-                alert(`${selectedItems.length} barang berhasil dihapus.`);
-            },
-            openMonitoringInputModal() {
-                if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
-                this.formOrderMulti = {
-                    tanggal: this.getISODateOnly(),
-                    nomorPR: '',
-                    pemesan: '',
-                    prioritas: '',
-                    keperluan: '',
-                    itemsToProcess: [{ nama: '', orderQty: 1, orderSatuan: 'Pcs', harga: 0 }]
-                };
-                this.showMonitoringInputModal = true;
-            },
-            addManualItemToMonitoring() {
-                this.formOrderMulti.itemsToProcess.push({
-                    nama: '',
-                    orderQty: 1,
-                    orderSatuan: 'Pcs',
-                    harga: 0
-                });
+                // Data yang hanya ada di Gudang Sparepart tidak boleh membuat atau menimpa Data Master.
+                // Master Data tetap menjadi sumber data otoritatif untuk stok Spare Part.
             },
             onPurchaseRequestHeaderInput() {
                 const pr = String(this.formOrderMulti.nomorPR || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -6043,7 +5407,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.showMonitoringInputModal = false;
                 alert('Order berhasil dimasukkan ke Monitoring!');
             },
-            editMonitoringOrder(order) {
+            async editMonitoringOrder(order) {
                 if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
                 if (!order) return;
                 const normalizePR = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -6092,13 +5456,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         h.keperluan = order.keperluan;
                     }
                 });
+                // Simpan langsung supaya perubahan Purchase Order/Monitoring
+                // langsung tersinkron ke Dashboard dan perangkat/tab lain.
+                await this.saveToSupabase();
                 alert(`Purchase Request ${order.nama} berhasil diperbarui.`);
             },
-            cancelOrder(order) {
+            async cancelOrder(order) {
                 if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data.');
 
                 if (confirm(`Yakin ingin membatalkan/cancel order ${order.nama}?`)) {
                     order.status = 'Cancel';
+                    await this.saveToSupabase();
                     alert(`Order ${order.nama} berhasil dicancel.`);
                 }
             },
@@ -6475,7 +5843,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             removeSisaProjectOutItem(idx) {
                 this.formSisaProjectMultiOut.selectedItems.splice(idx, 1);
             },
-            submitSisaProjectMultiOut() {
+            async submitSisaProjectMultiOut() {
                 if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
                 if (!this.formSisaProjectMultiOut.penyerah || !this.formSisaProjectMultiOut.penyerah.trim()) return alert('Nama Yang Menyerahkan wajib diisi!');
                 if (!this.formSisaProjectMultiOut.penerima || !this.formSisaProjectMultiOut.penerima.trim()) return alert('Nama Penerima wajib diisi!');
@@ -6527,6 +5895,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.showSisaProjectMultiOutModal = false;
                 this.closeMasterDropdown();
                 this.formSisaProjectMultiOut = { user: '', tanggal: this.getISODateOnly(), nomorPR: '', penyerah: '', penerima: '', keperluan: '', selectedItems: [this.createSisaProjectMultiOutItem()] };
+                await this.saveToSupabase();
                 alert('Pengeluaran Sisa Project dicatat dan menunggu persetujuan Super Admin. Stok belum berubah.');
             },
             openSingleOutModal(item) {
@@ -6589,6 +5958,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 });
                 this.showSingleOutModal = false;
                 this.singleOutForm = { item: null, tanggal: '', gudang: '', jenis: 'Pengeluaran / OUTBOUND', nama: '', qty: 1, harga: 0, satuan: 'Pcs', supplier: '', pengambil: '', penerima: '', keperluan: '' };
+                await this.saveToSupabase();
                 alert('Pengeluaran barang dicatat dan menunggu persetujuan Super Admin. Stok belum berubah.');
             },
             printLogSection(elementId) {
@@ -7207,8 +6577,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     'Kode Barang': item.kode || '',
                     'Nama Barang': item.nama || '',
                     'Tanggal Input': item.tanggal || '',
-                    'Stok Awal': item.stockAwal ?? item.currentStock ?? 0,
-                    'Stok Saat Ini': item.currentStock ?? 0,
+                    'Stok Awal': String(Math.max(0, Math.round(Number(item.stockAwal ?? item.currentStock ?? 0) || 0))),
+                    'Stok Saat Ini': String(Math.max(0, Math.round(Number(item.currentStock ?? item.stockAwal ?? 0) || 0))),
                     'Harga Satuan': Number(item.harga) || 0,
                     'Buffer Stok': Number(item.minStock) || 0,
                     'Lead Time (Hari)': Number(item.leadTime) || 0,
@@ -7218,12 +6588,58 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Data Master');
                 XLSX.writeFile(wb, `Data_Master_Agrofarm_${this.getFormattedDateOnly().replace(/\//g,'-')}.xlsx`);
             },
-            exportToExcel() {
+            async waitForSupabaseSave() {
+                // Tidak memakai polling/timer tambahan. Jika ada save yang masih
+                // terjadwal, jalankan sekarang dan tunggu Promise-nya selesai.
+                if (this.supabaseSaveTimer) {
+                    clearTimeout(this.supabaseSaveTimer);
+                    this.supabaseSaveTimer = null;
+                    this.supabaseSavePromise = this.saveToSupabase();
+                }
+
+                if (this.supabaseSavePromise) {
+                    const saved = await this.supabaseSavePromise;
+                    if (saved === false) throw new Error('Penyimpanan data ke Supabase gagal. Export dibatalkan agar tidak mengambil data lama.');
+                }
+
+                // Jika ada perubahan baru yang masuk saat request sebelumnya berjalan,
+                // jalankan save berikutnya sekarang agar export selalu menunggu state terakhir.
+                if (this.supabaseSaveTimer || this.supabaseSaveQueued || this.supabaseSaveInProgress) {
+                    if (this.supabaseSaveTimer) {
+                        clearTimeout(this.supabaseSaveTimer);
+                        this.supabaseSaveTimer = null;
+                        this.supabaseSavePromise = this.saveToSupabase();
+                    }
+                    if (this.supabaseSavePromise) {
+                        const saved = await this.supabaseSavePromise;
+                        if (saved === false) throw new Error('Penyimpanan data ke Supabase gagal. Export dibatalkan agar tidak mengambil data lama.');
+                    }
+                }
+            },
+            async exportToExcel() {
                 if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat export Excel.');
+                // Gunakan data yang SAMA PERSIS dengan yang sedang ditampilkan
+                // pada tabel Gudang Spare Part. Jangan mengambil snapshot/sumber stok lain.
+                const sparepartDisplayRows = Array.isArray(this.filteredSpareparts) ? this.filteredSpareparts.map(item => ({ ...item })) : [];
                 const wb = XLSX.utils.book_new();
                 const masterSheet = XLSX.utils.json_to_sheet(this.masterCatalog.map(item => ({...item, minStock:Number(item.minStock)||0})));
                 XLSX.utils.book_append_sheet(wb, masterSheet, "Master Catalog");
-                const spSheet = XLSX.utils.json_to_sheet(this.spareparts);
+                // Ambil langsung hasil computed Gudang Spare Part yang sedang tampil.
+                // Dengan demikian qty/nama/satuan/lokasi/harga tidak dihitung ulang dari sumber lain.
+                const sparepartRows = sparepartDisplayRows.map(item => ({
+                    barcode: item.barcode || '',
+                    kode: item.kode || '',
+                    nama: item.nama || '',
+                    qty: Math.max(0, Math.round(Number(item.qty) || 0)),
+                    minStock: Math.max(0, Math.round(Number(item.minStock) || 0)),
+                    satuan: item.satuan || 'PCS',
+                    lokasi: item.lokasi || '',
+                    harga: Number(item.harga) || 0,
+                    totalHarga: (Number(item.harga) || 0) * Math.max(0, Math.round(Number(item.qty) || 0))
+                }));
+                const spSheet = XLSX.utils.json_to_sheet(sparepartRows);
+                Object.keys(spSheet).filter(k => k[0] !== '!' && /^E[2-9]\d*$/.test(k)).forEach(k => { spSheet[k].z = '0'; });
+                Object.keys(spSheet).filter(k => k[0] !== '!' && /^F[2-9]\d*$/.test(k)).forEach(k => { spSheet[k].z = '0'; });
                 XLSX.utils.book_append_sheet(wb, spSheet, "Stok Sparepart");
                 const spjSheet = XLSX.utils.json_to_sheet(this.sisaProjects);
                 XLSX.utils.book_append_sheet(wb, spjSheet, "Stok Sisa Project");
@@ -7416,11 +6832,21 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             /* ============ STOCK OPNAME METHODS ============ */
             async exportStockGudangExcel(gudang) {
                 if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat export Excel.');
+                // SUMBER DATA EXPORT = DATA MASTER YANG SEDANG DITAMPILKAN.
+                // Tidak mengambil snapshot stok lain, tidak sync/reload, dan tidak menghitung ulang dari spareparts.
                 const namaGudang = String(gudang || '').trim().toLowerCase();
                 const isSparepart = namaGudang === 'sparepart' || namaGudang === 'spare part';
                 const judulGudang = isSparepart ? 'SPARE PART' : 'SISA PROJECT';
                 const showPrice = isSparepart ? this.showPrices : false;
-                const source = isSparepart ? (this.spareparts || []) : (this.sisaProjects || []);
+                const source = isSparepart
+                    ? (Array.isArray(this.filteredMasterCatalog) ? this.filteredMasterCatalog.map(item => ({
+                        ...item,
+                        // PERSIS seperti kolom Qty / Stock Awal pada tabel Data Master.
+                        qty: Math.max(0, Math.round(Number(item.stockAwal ?? item.currentStock ?? 0) || 0)),
+                        satuan: item.satuan || 'Pcs',
+                        lokasi: item.lokasi || item.lokasiRak || item.rak || ''
+                    })) : [])
+                    : (this.sisaProjects || []);
                 if (typeof ExcelJS === 'undefined') return alert('Library Excel belum siap. Silakan refresh halaman.');
                 const items = source.filter(item => (Number(item.qty) || 0) > 0).slice().sort((a,b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id', {sensitivity:'base'}));
                 const wb = new ExcelJS.Workbook(); wb.creator='Agrofarm Nusa Raya'; wb.created=new Date();
@@ -7437,7 +6863,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const dateCell=ws.getCell(`${dateStart}1`); dateCell.value=`Tanggal Cetak\n${this.getFormattedDateOnly()}`; dateCell.font={name:'Arial',size:9,bold:true}; dateCell.alignment={horizontal:'right',vertical:'middle',wrapText:true};
                 const headers=showPrice?['No','Kode / SKU','Nama Barang','Satuan','Stok Saat Ini','Lokasi Rak','Harga Satuan','Harga Total']:['No','Kode / SKU','Nama Barang','Satuan','Stok Saat Ini','Lokasi Rak'];
                 const header=ws.addRow(headers); const border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}; header.eachCell(c=>{c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});
-                let totalHarga=0; items.forEach((item,idx)=>{const qty=Number(item.qty)||0; const harga=Number(this.getMasterHarga(item.nama,item.harga))||0; const total=harga*qty; totalHarga+=total; const row=[idx+1,item.kode||item.barcode||item.sku||'',item.nama||'',item.satuan||'Pcs',qty,item.lokasi||item.lokasiRak||item.rak||'']; if(showPrice)row.push(harga,total); const r=ws.addRow(row); r.eachCell(c=>{c.font={name:'Arial',size:9};c.border=border;c.alignment={vertical:'middle',wrapText:true};}); r.getCell(1).alignment={horizontal:'center'};r.getCell(4).alignment={horizontal:'center'};r.getCell(5).alignment={horizontal:'center'};if(showPrice){r.getCell(7).numFmt='#,##0';r.getCell(8).numFmt='#,##0';}});
+                let totalHarga=0; items.forEach((item,idx)=>{const qty=Math.max(0,Math.round(Number(item.qty)||0)); const harga=Number(this.getMasterHarga(item.nama,item.harga))||0; const total=harga*qty; totalHarga+=total; const row=[idx+1,item.kode||item.barcode||item.sku||'',item.nama||'',item.satuan||'Pcs',String(qty),item.lokasi||item.lokasiRak||item.rak||'']; if(showPrice)row.push(harga,total); const r=ws.addRow(row); r.eachCell(c=>{c.font={name:'Arial',size:9};c.border=border;c.alignment={vertical:'middle',wrapText:true};}); r.getCell(1).alignment={horizontal:'center'};r.getCell(4).alignment={horizontal:'center'};r.getCell(5).alignment={horizontal:'center'};if(showPrice){r.getCell(7).numFmt='#,##0';r.getCell(8).numFmt='#,##0';}});
                 if(!items.length){const row=showPrice?['','','Tidak ada stok tersedia di '+judulGudang+'.','','','','','']:['','','Tidak ada stok tersedia di '+judulGudang+'.','','',''];const r=ws.addRow(row);ws.mergeCells(`C${r.number}:${endCol}${r.number}`);r.getCell(3).alignment={horizontal:'center'};}
                 if(showPrice&&items.length){const r=ws.addRow(['','','TOTAL HARGA STOCK','','','','',totalHarga]);ws.mergeCells(`A${r.number}:G${r.number}`);r.getCell(1).font={name:'Arial',size:9,bold:true};r.getCell(1).alignment={horizontal:'right'};r.getCell(8).font={name:'Arial',size:9,bold:true};r.getCell(8).numFmt='#,##0';r.eachCell(c=>c.border=border);}
                 const last=ws.lastRow.number; ws.autoFilter={from:'A4',to:`${endCol}${last}`}; ws.freezePanes={xSplit:0,ySplit:4}; ws.printArea=`A1:${endCol}${last}`;
@@ -7445,7 +6871,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             printStockGudang(gudang) {
                 if (!this.canPrint) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat mencetak.');
-                const namaGudang=String(gudang||'').trim().toLowerCase(); const isSparepart=namaGudang==='sparepart'||namaGudang==='spare part'; const judulGudang=isSparepart?'SPARE PART':'SISA PROJECT'; const showPrice=isSparepart?this.showPrices:false; const source=isSparepart?this.spareparts:this.sisaProjects;
+                // Pastikan laporan cetak menggunakan stok terakhir dari Master Data.
+                this.syncMasterAndSparepart();
+                const namaGudang=String(gudang||'').trim().toLowerCase(); const isSparepart=namaGudang==='sparepart'||namaGudang==='spare part'; const judulGudang=isSparepart?'SPARE PART':'SISA PROJECT'; const showPrice=isSparepart?this.showPrices:false; const source=isSparepart?(this.masterCatalog||[]).map(m=>({...m,qty:Math.max(0,Math.round(Number(m.currentStock??m.stockAwal)||0)),harga:Math.max(0,Number(m.harga)||0),satuan:m.satuan||'PCS',lokasi:m.lokasi||''})):this.sisaProjects;
                 const items=(Array.isArray(source)?source:[]).filter(item=>(Number(item.qty)||0)>0).slice().sort((a,b)=>String(a.nama||'').localeCompare(String(b.nama||''),'id',{sensitivity:'base'})); const printedDate=this.getFormattedDateOnly?this.getFormattedDateOnly():new Date().toLocaleDateString('id-ID');
                 const rows=items.map((item,idx)=>{const qty=Number(item.qty)||0;const harga=Number(this.getMasterHarga(item.nama,item.harga))||0;const total=harga*qty;return `<tr><td>${idx+1}</td><td>${item.kode||item.barcode||item.sku||'-'}</td><td class="nama">${item.nama||'-'}</td><td>${item.satuan||'Pcs'}</td><td class="qty">${qty.toLocaleString('id-ID')}</td><td>${item.lokasi||item.lokasiRak||item.rak||'-'}</td>${showPrice?`<td class="angka">Rp ${this.formatRupiah(harga)}</td><td class="angka">Rp ${this.formatRupiah(total)}</td>`:''}</tr>`;}).join('');
                 const totalHarga=items.reduce((sum,item)=>sum+((Number(this.getMasterHarga(item.nama,item.harga))||0)*(Number(item.qty)||0)),0); const colSpan=showPrice?8:6; const emptyRow=`<tr><td colspan="${colSpan}" class="kosong">Tidak ada stok tersedia di ${judulGudang}.</td></tr>`; const totalRow=showPrice&&items.length?`<tr><td colspan="7" style="border:1px solid #000;padding:7px;text-align:right;font-weight:800;">TOTAL HARGA STOCK</td><td style="border:1px solid #000;padding:7px;text-align:right;font-weight:800;">Rp ${this.formatRupiah(totalHarga)}</td></tr>`:'';
@@ -7455,7 +6883,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             initOpnameDraft(gudang) {
                 const g = gudang || this.opnameDraft.gudang || 'Sparepart';
-                const source = (g === 'Sisa Project' ? this.sisaProjects : this.spareparts) || [];
+                this.syncMasterAndSparepart();
+                // Untuk Spare Part, Qty Sistem harus sama persis dengan stok yang tampil di Data Master.
+                // Data Master menampilkan: stockAwal jika tersedia, lalu currentStock sebagai fallback.
+                const source = (g === 'Sisa Project' ? this.sisaProjects : this.masterCatalog) || [];
                 this.opnameDraft = {
                     gudang: g,
                     tanggal: this.opnameDraft.tanggal || new Date().toISOString().slice(0,10),
@@ -7466,8 +6897,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         kode: s.kode || '',
                         nama: s.nama || '',
                         satuan: s.satuan || 'Pcs',
-                        lokasi: s.lokasi || '-',
-                        qtySystem: Number(s.qty) || 0,
+                        lokasi: s.lokasi || s.lokasiRak || s.rak || '-',
+                        qtySystem: g === 'Sisa Project' ? (Number(s.qty) || 0) : (Number(s.stockAwal ?? s.currentStock ?? 0) || 0),
                         qtyFisik: '',
                         catatan: ''
                     }))
@@ -7518,36 +6949,68 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 reader.onload = (e) => {
                     try {
                         const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const sheetName = workbook.SheetNames[0];
-                        const sheet = workbook.Sheets[sheetName];
-                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-                        if (!rows.length) { alert('File Excel kosong!'); return; }
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        if (!workbook.SheetNames.length) {
+                            alert('File Excel tidak memiliki sheet.');
+                            return;
+                        }
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+                        if (!rows.length) {
+                            alert('File Excel kosong!');
+                            return;
+                        }
+
+                        // Import hanya mengisi Qty Fisik/Catatan pada item opname yang sudah ada.
+                        // Pencocokan dibuat fleksibel agar Excel hasil template tetap terbaca meskipun
+                        // format nomor SKU/barcode terbaca sebagai angka oleh Excel.
+                        const norm = (v) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, '');
+                        const findValue = (row, keys) => {
+                            const actual = Object.keys(row);
+                            const key = actual.find(k => keys.some(x => norm(k) === norm(x)));
+                            return key !== undefined ? row[key] : '';
+                        };
+                        const toQty = (v) => {
+                            if (v === '' || v === null || v === undefined) return '';
+                            if (typeof v === 'number') return Number.isFinite(v) ? v : '';
+                            const cleaned = String(v).trim().replace(/,/g, '').replace(/\./g, '');
+                            const n = Number(cleaned);
+                            return Number.isFinite(n) ? n : '';
+                        };
+
                         let matched = 0, unmatched = 0;
                         rows.forEach(row => {
-                            const nama = String(row['Nama Barang'] || row['nama'] || '').trim();
-                            const kode = String(row['Nomor SKU'] || row['nomor SKU'] || row['Kode'] || row['kode'] || row['SKU'] || '').trim();
-                            const barcode = String(row['Barcode'] || row['barcode'] || '').trim();
-                            const qtyFisik = row['Qty Fisik'] === '' || row['Qty Fisik'] === undefined || row['Qty Fisik'] === null ? '' : Number(row['Qty Fisik']);
-                            const catatan = String(row['Catatan'] || row['catatan'] || '').trim();
-                            const lokasi = String(row['Rak/Lokasi'] || row['Lokasi'] || row['lokasi'] || row['Rak'] || row['rak'] || '').trim();
+                            const nama = String(findValue(row, ['Nama Barang', 'nama']) || '').trim();
+                            const kode = String(findValue(row, ['Nomor SKU', 'nomor SKU', 'Kode', 'kode', 'SKU']) || '').trim();
+                            const barcode = String(findValue(row, ['Barcode', 'barcode']) || '').trim();
+                            const qtyRaw = findValue(row, ['Qty Fisik', 'qty fisik', 'QtyFisik', 'Stok Fisik', 'Stock Fisik', 'Stok Aktual', 'Stock Aktual', 'Qty Aktual', 'Qty Actual', 'Jumlah Fisik', 'Stok', 'Stock', 'Qty']);
+                            const qtyFisik = toQty(qtyRaw);
+                            const catatan = String(findValue(row, ['Catatan', 'catatan']) || '').trim();
+                            const lokasi = String(findValue(row, ['Rak/Lokasi', 'Lokasi', 'lokasi', 'Rak', 'rak']) || '').trim();
+
                             const target = this.opnameDraft.items.find(x =>
-                                (barcode && String(x.barcode).toLowerCase() === barcode.toLowerCase()) ||
-                                (kode && String(x.kode).toLowerCase() === kode.toLowerCase()) ||
-                                (nama && String(x.nama).toLowerCase() === nama.toLowerCase())
+                                (barcode && norm(x.barcode) === norm(barcode)) ||
+                                (kode && norm(x.kode) === norm(kode)) ||
+                                (nama && norm(x.nama) === norm(nama))
                             );
+
                             if (target) {
-                                target.qtyFisik = qtyFisik;
+                                // Satu baris Excel langsung dipetakan ke baris barang yang sama di tabel.
+                                // Qty pada kolom fisik/aktual di Excel otomatis menjadi Qty Fisik.
+                                if (qtyFisik !== '') target.qtyFisik = qtyFisik;
                                 if (lokasi) target.lokasi = lokasi;
-                                target.catatan = catatan;
+                                if (catatan) target.catatan = catatan;
                                 matched++;
                             } else {
                                 unmatched++;
                             }
                         });
-                        alert(`Import selesai.\nBerhasil dicocokkan: ${matched}\nTidak ditemukan di gudang: ${unmatched}\n\nSilakan cek preview & submit untuk memproses penyesuaian.`);
+
+                        this.$nextTick(() => this.refreshIcons());
+                        const filledQty = this.opnameDraft.items.filter(x => x.qtyFisik !== '' && x.qtyFisik !== null && x.qtyFisik !== undefined).length;
+                        alert(`Import selesai.\nBerhasil dicocokkan: ${matched}\nTidak ditemukan di gudang: ${unmatched}\nQty Fisik terisi: ${filledQty}\n\nData Excel yang cocok otomatis dimasukkan ke baris barang yang sesuai di tabel Stock Opname.`);
                     } catch (err) {
-                        console.error(err);
+                        console.error('Import Stock Opname gagal:', err);
                         alert('Gagal membaca file Excel. Pastikan format kolom sesuai template.');
                     } finally {
                         event.target.value = '';
