@@ -417,6 +417,25 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 #app { width: 100%; max-width: 100%; min-width: 0 !important; }
 #app > main { min-width: 0 !important; width: auto; max-width: 100%; }
 
+/* LAPTOP/DESKTOP: sidebar selalu diam di kiri saat halaman utama di-scroll. */
+@media screen and (min-width: 768px) {
+    #app > aside.agrofarm-sidebar {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        z-index: 10000 !important;
+    }
+
+    #app > main {
+        margin-left: 288px !important;
+        width: calc(100% - 288px) !important;
+        max-width: calc(100% - 288px) !important;
+    }
+}
+
 /* Tablet: sidebar tetap terlihat, tetapi tidak mengambil terlalu banyak ruang. */
 @media screen and (min-width: 768px) and (max-width: 1100px) {
     #app > aside.agrofarm-sidebar {
@@ -425,6 +444,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
         max-width: 230px !important;
     }
     #app > main {
+        margin-left: 230px !important;
         width: calc(100% - 230px) !important;
         max-width: calc(100% - 230px) !important;
         padding: 18px !important;
@@ -452,21 +472,35 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
         height: 100dvh !important;
         max-height: 100dvh !important;
         z-index: 10000 !important;
-        transform: translateX(-105%) !important;
+        transform: translateX(0) !important;
         transition: transform .22s ease !important;
         box-shadow: 12px 0 30px rgba(0,0,0,.22) !important;
     }
 
     body.sidebar-mobile-open #app > aside.agrofarm-sidebar {
-        transform: translateX(0) !important;
+        transform: translateX(-105%) !important;
     }
 
     #app > main {
         display: block !important;
+        margin-left: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
         padding: 14px !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Dashboard baru terlihat setelah sidebar ditutup. */
+    body:not(.sidebar-mobile-open) #app > main {
+        visibility: hidden !important;
+        pointer-events: none !important;
+        overflow: hidden !important;
+    }
+
+    body.sidebar-mobile-open #app > main {
+        visibility: visible !important;
+        pointer-events: auto !important;
         overflow-x: hidden !important;
     }
 
@@ -514,14 +548,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
     #mobile-sidebar-toggle svg { width: 22px; height: 22px; }
 
     #mobile-sidebar-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15,23,42,.48);
-        z-index: 9999;
-        display: none;
+        display: none !important;
     }
-
-    body.sidebar-mobile-open #mobile-sidebar-overlay { display: block; }
 
     body.sidebar-mobile-open #mobile-sidebar-toggle {
         left: min(calc(86vw + 12px), 322px);
@@ -704,7 +732,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
         </div>
     </div>
     <!-- SIDEBAR LEFT NAVIGATION -->
-    <aside class="agrofarm-sidebar w-full md:w-72 bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white flex-shrink-0 border-r border-emerald-800/50 flex flex-col no-print sticky top-0 md:h-screen z-40">
+    <aside v-if="isAuthenticated" class="agrofarm-sidebar w-full md:w-72 bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white flex-shrink-0 border-r border-emerald-800/50 flex flex-col no-print sticky top-0 md:h-screen z-40">
         <div class="agrofarm-sidebar-scroll flex-1 min-h-0">
             <!-- BRAND HEADER -->
             <div class="p-5 border-b border-emerald-800/60 flex items-center gap-3">
@@ -737,7 +765,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <i data-lucide="clipboard-list" class="w-4 h-4 text-emerald-400"></i>
                         <span>Purchase Request</span>
                     </div>
-                    <span class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30 font-mono">{{ monitoringItems.length }}</span>
+                    <span class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30 font-mono">{{ purchasePendingCount }}</span>
                 </button>
                 <!-- GROUP PLANNING: berdiri sendiri, tidak masuk Purchase Request -->
                 <div v-if="canPlanning" class="mt-7 pt-4 border-t-2 border-emerald-800/70">
@@ -772,7 +800,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <i data-lucide="wrench" class="w-4 h-4 text-emerald-400"></i>
                         <span>Gudang Spare Part</span>
                     </div>
-                    <span class="bg-emerald-900/80 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700 font-mono">{{ spareparts.length }}</span>
+                    <span class="bg-emerald-900/80 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700 font-mono">{{ totalSparepartQty }}</span>
                 </button>
                 <button @click="activeTab = 'barcode_scan'; focusBarcodeTabInput()" :class="activeTab === 'barcode_scan' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center justify-between text-xs transition-all">
                     <span class="flex items-center gap-3"><i data-lucide="scan-barcode" class="w-4 h-4"></i> Scan Barcode</span>
@@ -835,7 +863,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 <div class="portal-card p-5 rounded-xl flex items-center justify-between">
                     <div>
                         <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Stok Sparepart</p>
-                        <h3 class="text-2xl font-black text-slate-800 mt-1">{{ spareparts.length }} <span class="text-xs font-normal text-slate-400">SKU</span></h3>
+                        <h3 class="text-2xl font-black text-slate-800 mt-1">{{ totalSparepartQty }} <span class="text-xs font-normal text-slate-400">Qty</span></h3>
                     </div>
                     <div class="p-3 bg-blue-50 text-blue-700 rounded-xl border border-blue-100">
                         <i data-lucide="wrench" class="w-6 h-6"></i>
@@ -853,7 +881,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 <div class="portal-card p-5 rounded-xl flex items-center justify-between">
                     <div>
                         <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Purchase Pending</p>
-                        <h3 class="text-2xl font-black text-amber-600 mt-1">{{ monitoringItems.length }} <span class="text-xs font-normal text-amber-600/70">Antrean</span></h3>
+                        <h3 class="text-2xl font-black text-amber-600 mt-1">{{ purchasePendingCount }} <span class="text-xs font-normal text-amber-600/70">Antrean</span></h3>
                     </div>
                     <div class="p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100">
                         <i data-lucide="clock" class="w-6 h-6"></i>
@@ -943,10 +971,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
                                         <th class="p-2 text-center">Qty</th>
-                                        <th class="p-2 text-right">Harga Satuan</th>
                                         <th class="p-2">Supplier / Kepentingan</th>
-                                        <th class="p-2 text-center">Status Approval</th>
-                                        <th class="p-2 text-center no-print">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -966,7 +991,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         </td>
                                     </tr>
                                     <tr v-if="filteredSparepartLogsIn.length === 0">
-                                        <td colspan="7" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang masuk sparepart pada periode ini.</td>
+                                        <td colspan="4" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang masuk sparepart pada periode ini.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -986,10 +1011,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
                                         <th class="p-2 text-center">Qty</th>
-                                        <th class="p-2 text-right">Harga Satuan</th>
                                         <th class="p-2">Penerima / Kepentingan</th>
-                                        <th class="p-2 text-center">Status Approval</th>
-                                        <th class="p-2 text-center no-print">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -1009,7 +1031,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         </td>
                                     </tr>
                                     <tr v-if="filteredSparepartLogsOut.length === 0">
-                                        <td colspan="7" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang keluar sparepart pada periode ini.</td>
+                                        <td colspan="4" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang keluar sparepart pada periode ini.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1038,10 +1060,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
                                         <th class="p-2 text-center">Qty</th>
-                                        <th class="p-2 text-right">Harga Satuan</th>
                                         <th class="p-2">Asal / Kepentingan</th>
-                                        <th class="p-2 text-center">Status Approval</th>
-                                        <th class="p-2 text-center no-print">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -1061,7 +1080,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         </td>
                                     </tr>
                                     <tr v-if="filteredProjectLogsIn.length === 0">
-                                        <td colspan="6" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang masuk sisa project pada periode ini.</td>
+                                        <td colspan="4" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang masuk sisa project pada periode ini.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1081,10 +1100,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
                                         <th class="p-2 text-center">Qty</th>
-                                        <th class="p-2 text-right">Harga Satuan</th>
                                         <th class="p-2">Penerima / Kepentingan</th>
-                                        <th class="p-2 text-center">Status Approval</th>
-                                        <th class="p-2 text-center no-print">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -1104,7 +1120,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         </td>
                                     </tr>
                                     <tr v-if="filteredProjectLogsOut.length === 0">
-                                        <td colspan="6" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang keluar sisa project pada periode ini.</td>
+                                        <td colspan="4" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang keluar sisa project pada periode ini.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1424,8 +1440,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            <tr v-for="(order, idx) in filteredMonitoringItems.slice((purchaseRequestPage - 1) * 10, purchaseRequestPage * 10)" :key="order.id" class="hover:bg-slate-50">
-                                <td class="p-3 text-center font-bold text-slate-400">{{ ((purchaseRequestPage - 1) * 10) + idx + 1 }}</td>
+                            <tr v-for="(order, idx) in filteredMonitoringItems.slice((purchaseRequestPage - 1) * purchaseRequestPageSize, purchaseRequestPage * purchaseRequestPageSize)" :key="order.id" class="hover:bg-slate-50">
+                                <td class="p-3 text-center font-bold text-slate-400">{{ ((purchaseRequestPage - 1) * purchaseRequestPageSize) + idx + 1 }}</td>
                                 <!-- REVISI 1 (MONITORING): Jam dihilangkan, hanya menampilkan tanggal -->
                                 <td class="p-3 text-center font-mono text-slate-600 font-bold">
                                     <div>{{ order.tgl }}</div>
@@ -1476,12 +1492,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         </tfoot>
                     </table>
                 </div>
-                <div v-if="filteredMonitoringItems.length > 10" class="p-4 border-t border-slate-100 bg-white flex items-center justify-between gap-3 no-print">
-                    <p class="text-[10px] text-slate-500">Menampilkan {{ ((purchaseRequestPage - 1) * 10) + 1 }}–{{ Math.min(purchaseRequestPage * 10, filteredMonitoringItems.length) }} dari {{ filteredMonitoringItems.length }} data</p>
+                <div v-if="filteredMonitoringItems.length > purchaseRequestPageSize" class="p-4 border-t border-slate-100 bg-white flex items-center justify-between gap-3 no-print">
+                    <p class="text-[10px] text-slate-500">Menampilkan {{ ((purchaseRequestPage - 1) * purchaseRequestPageSize) + 1 }}–{{ Math.min(purchaseRequestPage * purchaseRequestPageSize, filteredMonitoringItems.length) }} dari {{ filteredMonitoringItems.length }} data</p>
                     <div class="flex items-center gap-2">
                         <button type="button" @click="purchaseRequestPage = Math.max(1, purchaseRequestPage - 1)" :disabled="purchaseRequestPage <= 1" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Sebelumnya</button>
-                        <span class="px-2 text-[10px] font-black text-slate-600">Halaman {{ Math.min(purchaseRequestPage, Math.ceil(filteredMonitoringItems.length / 10)) }} / {{ Math.ceil(filteredMonitoringItems.length / 10) }}</span>
-                        <button type="button" @click="purchaseRequestPage = Math.min(Math.ceil(filteredMonitoringItems.length / 10), purchaseRequestPage + 1)" :disabled="purchaseRequestPage >= Math.ceil(filteredMonitoringItems.length / 10)" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Berikutnya</button>
+                        <span class="px-2 text-[10px] font-black text-slate-600">Halaman {{ Math.min(purchaseRequestPage, Math.ceil(filteredMonitoringItems.length / purchaseRequestPageSize)) }} / {{ Math.ceil(filteredMonitoringItems.length / purchaseRequestPageSize) }}</span>
+                        <button type="button" @click="purchaseRequestPage = Math.min(Math.ceil(filteredMonitoringItems.length / purchaseRequestPageSize), purchaseRequestPage + 1)" :disabled="purchaseRequestPage >= Math.ceil(filteredMonitoringItems.length / 10)" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Berikutnya</button>
                     </div>
                 </div>
             </div>
@@ -1509,8 +1525,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="(h, idx) in monitoringHistoryIn" :key="h.id" class="hover:bg-emerald-50/30">
-                                    <td class="p-2.5 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                <tr v-for="(h, idx) in monitoringHistoryIn.slice((purchaseRequestHistoryPage - 1) * purchaseRequestHistoryPageSize, purchaseRequestHistoryPage * purchaseRequestHistoryPageSize)" :key="h.id" class="hover:bg-emerald-50/30">
+                                    <td class="p-2.5 text-center font-bold text-slate-400">{{ ((purchaseRequestHistoryPage - 1) * purchaseRequestHistoryPageSize) + idx + 1 }}</td>
                                     <td class="p-2.5 text-center font-mono text-slate-600 font-bold text-[10px]">
                                         <div>{{ (monitoringItems.find(o => o.id === h.monitoringOrderId)?.tgl) || h.tgl || '-' }}</div>
                                         <div class="text-[9px] text-emerald-700 font-black mt-1">No. PR: {{ h.nomorPR || monitoringItems.find(o => o.id === h.monitoringOrderId)?.nomorPR || '-' }}</div>
@@ -1532,6 +1548,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <tr v-if="monitoringHistoryIn.length === 0"><td colspan="9" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada riwayat penerimaan order.</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                    <div v-if="monitoringHistoryIn.length > purchaseRequestHistoryPageSize" class="p-4 border-t border-slate-100 bg-white flex items-center justify-between gap-3 no-print">
+                        <p class="text-[10px] text-slate-500">Menampilkan {{ ((purchaseRequestHistoryPage - 1) * purchaseRequestHistoryPageSize) + 1 }}–{{ Math.min(purchaseRequestHistoryPage * purchaseRequestHistoryPageSize, monitoringHistoryIn.length) }} dari {{ monitoringHistoryIn.length }} data</p>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="purchaseRequestHistoryPage = Math.max(1, purchaseRequestHistoryPage - 1)" :disabled="purchaseRequestHistoryPage <= 1" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Sebelumnya</button>
+                            <span class="px-2 text-[10px] font-black text-slate-600">Halaman {{ Math.min(purchaseRequestHistoryPage, Math.ceil(monitoringHistoryIn.length / purchaseRequestHistoryPageSize)) }} / {{ Math.ceil(monitoringHistoryIn.length / purchaseRequestHistoryPageSize) }}</span>
+                            <button type="button" @click="purchaseRequestHistoryPage = Math.min(Math.ceil(monitoringHistoryIn.length / purchaseRequestHistoryPageSize), purchaseRequestHistoryPage + 1)" :disabled="purchaseRequestHistoryPage >= Math.ceil(monitoringHistoryIn.length / purchaseRequestHistoryPageSize)" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Berikutnya</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2084,7 +2108,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             </div>
             <div class="portal-card p-4 rounded-xl space-y-2 no-print">
                 <span class="text-xs font-bold text-slate-700 uppercase">Filter Log Sparepart:</span>
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input v-model="spLogBarang" @input="sparepartPage = 1" @click.stop @mousedown.stop @input.stop type="search" autocomplete="off" spellcheck="false" placeholder="Cari Barang..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase" style="pointer-events:auto !important; position:relative; z-index:20 !important;">
                     <input v-model="spLogKeperluan" @click.stop @mousedown.stop @input.stop type="search" autocomplete="off" spellcheck="false" placeholder="Cari Kepentingan / Supplier..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase" style="pointer-events:auto !important; position:relative; z-index:20 !important;">
                     <input v-model.number="spLogHargaMin" type="number" min="0" placeholder="Harga Min" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
@@ -2193,6 +2217,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </tbody>
                         </table>
                     </div>
+                    <div class="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between gap-3 bg-amber-50/60 rounded-lg px-3 py-2">
+                        <div>
+                            <div class="text-[9px] font-black text-amber-800 uppercase">Total Harga Pengeluaran Gudang Sisa Project</div>
+                            <div class="text-[9px] text-slate-500 mt-0.5">Nilai dihitung dari seluruh pengeluaran Sisa Project yang tercatat.</div>
+                        </div>
+                        <div v-if="showPrices" class="text-sm font-black text-amber-700 whitespace-nowrap">Rp {{ formatRupiah(totalHargaPengeluaranSisaProject) }}</div>
+                        <div v-else class="text-[10px] font-bold text-slate-400 whitespace-nowrap">Harga disembunyikan</div>
+                    </div>
                 </div>
             </div>
             <div class="portal-card rounded-2xl border-2 border-blue-200 bg-blue-50/60 p-4 no-print shadow-sm">
@@ -2251,7 +2283,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <th class="p-3 text-center sparepart-action">Aksi Pengeluaran</th>
                                 <th class="p-3 text-center sparepart-card">Kartu Stock</th>
                                 <th v-if="showPrices" class="p-3.5 text-right">Harga Satuan</th>
-                                <th v-if="showPrices" class="p-3.5 text-right">Nilai Stock</th>
+                                <th v-if="showPrices" class="p-3.5 text-right">Harga Total</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -2285,6 +2317,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <tr v-if="filteredSpareparts.length === 0"><td :colspan="showPrices ? 8 : 6" class="p-10 text-center text-slate-400 font-medium">Stok Sparepart kosong.</td></tr>
                         </tbody>
                     </table>
+                </div>
+                <div v-if="showPrices" class="px-4 py-3 border-t border-slate-100 bg-slate-50/60 flex justify-end">
+                    <div class="text-right">
+                        <span class="text-[10px] font-bold uppercase text-slate-500">Total Harga Stock</span>
+                        <div class="text-base font-black text-emerald-700">Rp {{ formatRupiah(totalHargaSparepart) }}</div>
+                    </div>
                 </div>
                 <div v-if="sparepartPageCount > 1" class="px-4 py-3 border-t border-slate-100 bg-white flex items-center justify-between gap-3">
                     <span class="text-[10px] font-semibold text-slate-500">Menampilkan {{ sparepartPageStart }}–{{ sparepartPageEnd }} dari {{ filteredSpareparts.length }} item</span>
@@ -2408,8 +2446,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
                     <input v-model="spjLogBarang" @input="sisaProjectPage = 1" type="text" placeholder="Cari Barang..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
                     <input v-model="spjLogKeperluan" type="text" placeholder="Cari Kepentingan / Supplier..." class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase">
-                    <input v-model.number="spjLogHargaMin" type="number" min="0" placeholder="Harga Min" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                    <input v-model.number="spjLogHargaMax" type="number" min="0" placeholder="Harga Max" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                 </div>
             </div>
             <div id="sisa-log-print" class="grid grid-cols-1 lg:grid-cols-2 gap-6 print-area">
@@ -2427,7 +2463,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">No</th>
                                     <th class="p-2">Nama Barang</th>
                                     <th class="p-2 text-center">Qty Masuk</th>
-                                    <th class="p-2 text-right">Harga Satuan</th>
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
                                     <th class="p-2">Asal / Kepentingan</th>
@@ -2443,7 +2478,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
                                     <td class="p-2 text-center font-bold text-emerald-600">+{{ log.qty }}</td>
-                                    <td class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
@@ -2467,7 +2501,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-amber-600">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                         <span class="font-bold text-xs uppercase text-amber-900 flex items-center gap-1.5">
-                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-amber-600"></i> Log Barang Keluar Sisa Project (Outbound)
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-amber-600"></i> Log Pengeluaran Sisa Project
                         </span>
                         <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">{{ filteredProjectLogsOut.length }} Keluar</span>
                     </div>
@@ -2478,7 +2512,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">No</th>
                                     <th class="p-2">Nama Barang</th>
                                     <th class="p-2 text-center">Qty Out</th>
-                                    <th class="p-2 text-right">Harga Satuan</th>
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
                                     <th class="p-2">Penerima / Kepentingan</th>
@@ -2494,7 +2527,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
                                     <td class="p-2 text-center font-bold text-amber-600">-{{ log.qty }}</td>
-                                    <td class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.user }} ({{ log.keperluan || '-' }})</td>
@@ -2516,18 +2548,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     </div>
                 </div>
             </div>
-            <div class="portal-card rounded-2xl p-4 bg-emerald-50 border border-emerald-200">
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Nilai Sisa Project</p>
-                        <p class="text-[11px] text-emerald-700 mt-1">Potensi nilai penghematan berdasarkan stok sisa dan harga Master Data terbaru.</p>
-                    </div>
-                    <div class="text-right whitespace-nowrap">
-                        <p class="text-lg font-black text-emerald-800">Rp {{ formatRupiah(totalNilaiSisaProject) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="portal-card rounded-xl overflow-hidden no-print">
+<div class="portal-card rounded-xl overflow-hidden no-print">
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                     <div class="flex items-center gap-2">
                         <i data-lucide="boxes" class="w-4 h-4 text-teal-600"></i>
@@ -2548,8 +2569,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <th class="p-3.5 text-center">Lokasi Rak</th>
                                 <th class="p-3.5">Nama Barang</th>
                                 <th class="p-3.5 text-center">Stok Available</th>
-                                <th class="p-3.5 text-right">Harga Satuan</th>
-                                <th class="p-3.5 text-right">Total Nilai</th>
                                 <th class="p-3.5 text-center">Aksi Pengeluaran</th>
                                 <th class="p-3.5 text-center">Kartu Stock</th>
                             </tr>
@@ -2567,8 +2586,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         {{ item.qty }} {{ item.satuan || 'Pcs' }}
                                     </span>
                                 </td>
-                                <td class="p-3.5 text-right font-bold text-slate-700 whitespace-nowrap">Rp {{ formatRupiah(getMasterHarga(item.nama, item.harga)) }}</td>
-                                <td class="p-3.5 text-right font-black text-emerald-700 whitespace-nowrap">Rp {{ formatRupiah(getMasterHarga(item.nama, item.harga) * (Number(item.qty) || 0)) }}</td>
                                 <td class="p-3.5 text-center">
                                     <button @click="openSingleOutModal(item)" :disabled="item.qty <= 0" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase shadow-sm border border-amber-500">
                                         Keluar
@@ -2580,7 +2597,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </button>
                                 </td>
                             </tr>
-                            <tr v-if="filteredSisaProjects.length === 0"><td colspan="8" class="p-10 text-center text-slate-400 font-medium">Stok Sisa Project kosong.</td></tr>
+                            <tr v-if="filteredSisaProjects.length === 0"><td colspan="6" class="p-10 text-center text-slate-400 font-medium">Stok Sisa Project kosong.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -3312,6 +3329,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 approvalStatusFilter: 'all',
                 approvalPage: 1,
                 purchaseRequestPage: 1,
+                purchaseRequestPageSize: 20,
+                purchaseRequestHistoryPage: 1,
+                purchaseRequestHistoryPageSize: 20,
                 showSingleOutModal: false,
                 singleOutForm: { item: null, tanggal: '', gudang: '', jenis: 'Pengeluaran / OUTBOUND', nama: '', qty: 1, harga: 0, satuan: 'Pcs', supplier: '', pengambil: '', penerima: '', keperluan: '' },
                 approvalForm: { log: null, tanggal: '', nomorPR: '', gudang: '', jenis: '', nama: '', qty: 0, harga: 0, satuan: '', supplier: '', pengambil: '', penerima: '', keperluan: '' },
@@ -3718,6 +3738,25 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     return db - da;
                 });
             },
+            totalSparepartQty() {
+                // Satu angka stok untuk Dashboard + Sidebar: jumlah Qty aktual
+                // dari seluruh barang yang tercatat di Gudang Spare Part.
+                return (this.spareparts || []).reduce((sum, item) => {
+                    const qty = Math.max(0, Number(item?.qty) || 0);
+                    return sum + qty;
+                }, 0);
+            },
+            purchasePendingCount() {
+                return (this.monitoringItems || []).filter(order =>
+                    order && order.status !== 'Diterima Semua' && order.status !== 'Cancel' && (Number(order.qtyRemaining) || 0) > 0
+                ).length;
+            },
+            totalHargaSparepart() {
+                return (this.spareparts || []).reduce((sum, item) => {
+                    const harga = Number(this.getMasterHarga(item.nama, item.harga)) || 0;
+                    return sum + (harga * Math.max(0, Number(item.qty) || 0));
+                }, 0);
+            },
             monitoringTotalHarga() {
                 return this.filteredMonitoringItems.reduce((sum, o) => {
                     const harga = this.getMasterHarga(o.nama, o.harga);
@@ -3777,12 +3816,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             sisaProjectPageEnd() {
                 return Math.min(this.sisaProjectPage * this.sisaProjectPageSize, this.filteredSisaProjects.length);
             },
-            totalNilaiSisaProject() {
-                return this.sisaProjects.reduce((sum, item) => {
-                    const harga = this.getMasterHarga(item.nama, item.harga);
-                    return sum + (harga * (Number(item.qty) || 0));
-                }, 0);
-            },
             sparepartOutDropdownOptions() {
                 const keyword = String(this.sparepartOutDropdownQuery || '').trim().toLowerCase();
                 const out = [];
@@ -3825,10 +3858,16 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 return this.filterLogs('Sparepart', 'OUT', this.spLogDateStart, this.spLogDateEnd, this.spLogBarang, this.spLogKeperluan, this.spLogHargaMin, this.spLogHargaMax);
             },
             projectLogsIn() {
-                return this.filterLogs('Sisa Project', 'IN', this.spjLogDateStart, this.spjLogDateEnd, this.spjLogBarang, this.spjLogKeperluan, this.spjLogHargaMin, this.spjLogHargaMax);
+                return this.filterLogs('Sisa Project', 'IN', this.spjLogDateStart, this.spjLogDateEnd, this.spjLogBarang, this.spjLogKeperluan, '', '');
             },
             projectLogsOut() {
-                return this.filterLogs('Sisa Project', 'OUT', this.spjLogDateStart, this.spjLogDateEnd, this.spjLogBarang, this.spjLogKeperluan, this.spjLogHargaMin, this.spjLogHargaMax);
+                return this.filterLogs('Sisa Project', 'OUT', this.spjLogDateStart, this.spjLogDateEnd, this.spjLogBarang, this.spjLogKeperluan, '', '');
+            },
+            totalHargaPengeluaranSisaProject() {
+                return (this.projectLogsOut || []).reduce((sum, log) => {
+                    const harga = Number(log.harga != null ? log.harga : this.getMasterHarga(log.nama)) || 0;
+                    return sum + (harga * (Number(log.qty) || 0));
+                }, 0);
             },
             filteredSparepartLogsIn() {
                 const useSparepartFilter = this.activeTab === 'sparepart';
@@ -4979,7 +5018,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     const key = norm(master.nama);
                     if (!key) return;
 
-                    let stock = this.spareparts.find(s => norm(s.nama) === key || (master.kode && s.kode === master.kode));
+                    let stock = master.kode
+                        ? this.spareparts.find(s => String(s.kode || '').trim() === String(master.kode).trim())
+                        : null;
+                    if (!stock) {
+                        stock = this.spareparts.find(s => !s.kode && norm(s.nama) === key);
+                    }
                     const masterQty = Math.max(0, Number(master.currentStock ?? master.stockAwal) || 0);
                     const masterHarga = Math.max(0, Number(master.harga) || 0);
 
@@ -5024,7 +5068,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.spareparts.slice().forEach(stock => {
                     const key = norm(stock.nama);
                     if (!key) return;
-                    let master = this.masterCatalog.find(m => norm(m.nama) === key || (stock.kode && m.kode === stock.kode));
+                    let master = stock.kode
+                        ? this.masterCatalog.find(m => String(m.kode || '').trim() === String(stock.kode).trim())
+                        : null;
+                    if (!master) {
+                        master = this.masterCatalog.find(m => !m.kode && norm(m.nama) === key);
+                    }
                     if (!master) {
                         const kode = stock.kode || ('SKU-' + String(this.masterCatalog.length + 1).padStart(3, '0'));
                         master = {
@@ -5085,10 +5134,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (!stockItem) return;
                 const key = String(stockItem.nama || '').trim().toLowerCase();
                 if (!key) return;
-                const master = this.masterCatalog.find(m =>
-                    String(m.nama || '').trim().toLowerCase() === key ||
-                    (stockItem.kode && m.kode === stockItem.kode)
-                );
+                const master = stockItem.kode
+                    ? this.masterCatalog.find(m => String(m.kode || '').trim() === String(stockItem.kode).trim())
+                    : this.masterCatalog.find(m => String(m.nama || '').trim().toLowerCase() === key);
                 const qty = Math.max(0, Number(stockItem.qty) || 0);
                 if (master) {
                     master.currentStock = qty;
@@ -7251,9 +7299,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     if (priceMax !== '' && logHarga > Number(priceMax)) return false;
                     return true;
                 };
-                const buildTable = (logs, type) => {
+                const buildTable = (logs, type, showPrice) => {
                     if (logs.length === 0) {
-                        return `<tr><td colspan="7" style="border:1px solid #000; padding:14px; text-align:center; font-style:italic; color:#64748b;">Tidak ada data ${type === 'IN' ? 'barang masuk' : 'barang keluar'} pada periode ini.</td></tr>`;
+                        return `<tr><td colspan="${showPrice ? 9 : 7}" style="border:1px solid #000; padding:14px; text-align:center; font-style:italic; color:#64748b;">Tidak ada data ${type === 'IN' ? 'barang masuk' : 'barang keluar'} pada periode ini.</td></tr>`;
                     }
                     return logs.map((log, i) => {
                         const isOpname = (log.adjustmentType === 'OPNAME') || String(log.keperluan || '').includes('PENYESUAIAN STOCK OPNAME');
@@ -7266,11 +7314,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <td style="border:1px solid #000; padding:5px; text-align:center;">${log.qtyAwal ?? '-'}</td>
                             <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:700;">${log.qtyAkhir ?? '-'}</td>
                             <td style="border:1px solid #000; padding:5px;">${type === 'IN' ? (log.supplier || log.keperluan || '-') : `${(log.penerima || log.user || '-')} (${log.keperluan || '-'})`}${isOpname ? ' <b>[OPNAME]</b>' : ''}</td>
-                            
+                            ${showPrice ? `<td style="border:1px solid #000; padding:5px; text-align:right;">Rp ${this.formatRupiah(Number(log.harga != null ? log.harga : this.getMasterHarga(log.nama)) || 0)}</td><td style="border:1px solid #000; padding:5px; text-align:right;">Rp ${this.formatRupiah((Number(log.harga != null ? log.harga : this.getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0))}</td>` : ''}
                         </tr>`;
                     }).join('');
                 };
                 const renderGudangSection = (gudangName) => {
+                    const sectionShowPrice = gudangName.toLowerCase() === 'sparepart' ? this.showPrices : false;
                     const inLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'IN' && inRange(l)).sort((a,b) => new Date(a.isoDate||a.id) - new Date(b.isoDate||b.id));
                     const outLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'OUT' && inRange(l)).sort((a,b) => new Date(a.isoDate||a.id) - new Date(b.isoDate||b.id));
                     return `
@@ -7286,10 +7335,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th style="border:1px solid #000; padding:5px;">Qty Awal</th>
                                         <th style="border:1px solid #000; padding:5px;">Qty Akhir</th>
                                         <th style="border:1px solid #000; padding:5px;">Supplier / Kepentingan</th>
-
+                                        ${sectionShowPrice ? '<th style="border:1px solid #000; padding:5px;">Harga Satuan</th><th style="border:1px solid #000; padding:5px;">Harga Total</th>' : ''}
                                     </tr>
                                 </thead>
-                                <tbody>${buildTable(inLogs, 'IN')}</tbody>
+                                <tbody>${buildTable(inLogs, 'IN', sectionShowPrice)}</tbody>
                             </table>
                             <div style="font-size:11pt; font-weight:800; border-bottom:2px solid #b45309; color:#b45309; padding-bottom:3px; margin-bottom:4px; text-transform:uppercase;">Gudang ${gudangName} &mdash; Barang Keluar (Outbound) &middot; ${outLogs.length} Transaksi</div>
                             <table style="width:100%; border-collapse:collapse; font-size:9pt; font-family:Arial, sans-serif; margin-bottom:8mm;">
@@ -7302,10 +7351,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th style="border:1px solid #000; padding:5px;">Qty Awal</th>
                                         <th style="border:1px solid #000; padding:5px;">Qty Akhir</th>
                                         <th style="border:1px solid #000; padding:5px;">Penerima (Kepentingan)</th>
-
+                                        ${sectionShowPrice ? '<th style="border:1px solid #000; padding:5px;">Harga Satuan</th><th style="border:1px solid #000; padding:5px;">Harga Total</th>' : ''}
                                     </tr>
                                 </thead>
-                                <tbody>${buildTable(outLogs, 'OUT')}</tbody>
+                                <tbody>${buildTable(outLogs, 'OUT', sectionShowPrice)}</tbody>
                             </table>
                         </div>`;
                 };
@@ -7370,139 +7419,39 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const namaGudang = String(gudang || '').trim().toLowerCase();
                 const isSparepart = namaGudang === 'sparepart' || namaGudang === 'spare part';
                 const judulGudang = isSparepart ? 'SPARE PART' : 'SISA PROJECT';
+                const showPrice = isSparepart ? this.showPrices : false;
                 const source = isSparepart ? (this.spareparts || []) : (this.sisaProjects || []);
                 if (typeof ExcelJS === 'undefined') return alert('Library Excel belum siap. Silakan refresh halaman.');
                 const items = source.filter(item => (Number(item.qty) || 0) > 0).slice().sort((a,b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id', {sensitivity:'base'}));
-                const wb = new ExcelJS.Workbook();
-                wb.creator = 'Agrofarm Nusa Raya'; wb.created = new Date();
-                const ws = wb.addWorksheet('Stock Gudang', { pageSetup: { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0, margins:{left:.25,right:.25,top:.35,bottom:.35,header:.1,footer:.1} } });
-                ws.views=[{showGridLines:false}];
-                ws.columns=[{width:6},{width:18},{width:36},{width:13},{width:16},{width:20},{width:16},{width:18}];
-                const logoId=wb.addImage({base64:'data:image/png;base64,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',extension:'png'}); ws.addImage(logoId,{tl:{col:.15,row:.2},ext:{width:145,height:36}});
-                ws.mergeCells('A1:F1'); ws.mergeCells('A2:F2'); ws.mergeCells('A3:F3'); ws.mergeCells('G1:H3');
-                ws.getCell('A1').value='DAFTAR STOCK GUDANG'; ws.getCell('A2').value='AGROFARM NUSA RAYA — SISTEM INVENTORY SPARE PART'; ws.getCell('A3').value=`GUDANG ${judulGudang}`; ws.getCell('G1').value=`Tanggal Cetak\n${this.getFormattedDateOnly()}`;
-                ws.getCell('A1').font={name:'Arial',size:16,bold:true}; ws.getCell('A2').font={name:'Arial',size:10,bold:true}; ws.getCell('A3').font={name:'Arial',size:11,bold:true}; ws.getCell('G1').font={name:'Arial',size:9,bold:true};
-                ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'}; ws.getCell('A2').alignment={horizontal:'center',vertical:'middle'}; ws.getCell('A3').alignment={horizontal:'center',vertical:'middle'}; ws.getCell('G1').alignment={horizontal:'right',vertical:'middle',wrapText:true};
-                const header=ws.addRow(['No','Kode / SKU','Nama Barang','Satuan','Stok Saat Ini','Lokasi Rak']); header.height=24;
-                const border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
-                header.eachCell(c=>{c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});
-                items.forEach((item,idx)=>{const qty=Number(item.qty)||0;const harga=Number(this.getMasterHarga(item.nama,item.harga))||0;const r=ws.addRow([idx+1,item.kode||item.barcode||item.sku||'',item.nama||'',item.satuan||'Pcs',qty,item.lokasi||item.lokasiRak||item.rak||'']);r.eachCell(c=>{c.font={name:'Arial',size:9};c.border=border;c.alignment={vertical:'middle',wrapText:true};});r.getCell(1).alignment={horizontal:'center'};r.getCell(4).alignment={horizontal:'center'};r.getCell(5).alignment={horizontal:'center'};});
-                if(!items.length){const r=ws.addRow(['','','Tidak ada stok tersedia di '+judulGudang+'.','','','']);ws.mergeCells(`C${r.number}:F${r.number}`);r.getCell(3).alignment={horizontal:'center'};}
-                const last=ws.lastRow.number; ws.autoFilter={from:'A4',to:`F${last}`}; ws.freezePanes={xSplit:0,ySplit:4}; ws.printArea=`A1:F${last}`;
-                const buffer=await wb.xlsx.writeBuffer(); const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`Stock_Gudang_${judulGudang.replace(/\s+/g,'_')}_${this.getFormattedDateOnly().replace(/\//g,'-')}.xlsx`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+                const wb = new ExcelJS.Workbook(); wb.creator='Agrofarm Nusa Raya'; wb.created=new Date();
+                const ws=wb.addWorksheet('Stock Gudang',{pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.25,right:.25,top:.35,bottom:.35,header:.1,footer:.1}}}); ws.views=[{showGridLines:false}];
+                const endCol=showPrice?'H':'F';
+                const titleEnd=showPrice?'F':'D';
+                const dateStart=showPrice?'G':'E';
+                ws.columns=showPrice?[{width:6},{width:18},{width:36},{width:13},{width:16},{width:20},{width:18},{width:20}]:[{width:6},{width:18},{width:36},{width:13},{width:16},{width:20}];
+                const logoId=wb.addImage({base64:AGROFARM_EXCEL_LOGO_BASE64,extension:'png'}); ws.addImage(logoId,{tl:{col:.15,row:.2},ext:{width:145,height:36}});
+                ws.mergeCells(`A1:${titleEnd}1`); ws.mergeCells(`A2:${titleEnd}2`); ws.mergeCells(`A3:${titleEnd}3`); ws.mergeCells(`${dateStart}1:${endCol}3`);
+                ws.getCell('A1').value='DAFTAR STOCK GUDANG'; ws.getCell('A2').value='AGROFARM NUSA RAYA — SISTEM INVENTORY SPARE PART'; ws.getCell('A3').value=`GUDANG ${judulGudang}`;
+                ws.getCell('A1').font={name:'Arial',size:16,bold:true}; ws.getCell('A2').font={name:'Arial',size:10,bold:true}; ws.getCell('A3').font={name:'Arial',size:11,bold:true};
+                ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'}; ws.getCell('A2').alignment={horizontal:'center',vertical:'middle'}; ws.getCell('A3').alignment={horizontal:'center',vertical:'middle'};
+                const dateCell=ws.getCell(`${dateStart}1`); dateCell.value=`Tanggal Cetak\n${this.getFormattedDateOnly()}`; dateCell.font={name:'Arial',size:9,bold:true}; dateCell.alignment={horizontal:'right',vertical:'middle',wrapText:true};
+                const headers=showPrice?['No','Kode / SKU','Nama Barang','Satuan','Stok Saat Ini','Lokasi Rak','Harga Satuan','Harga Total']:['No','Kode / SKU','Nama Barang','Satuan','Stok Saat Ini','Lokasi Rak'];
+                const header=ws.addRow(headers); const border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}; header.eachCell(c=>{c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});
+                let totalHarga=0; items.forEach((item,idx)=>{const qty=Number(item.qty)||0; const harga=Number(this.getMasterHarga(item.nama,item.harga))||0; const total=harga*qty; totalHarga+=total; const row=[idx+1,item.kode||item.barcode||item.sku||'',item.nama||'',item.satuan||'Pcs',qty,item.lokasi||item.lokasiRak||item.rak||'']; if(showPrice)row.push(harga,total); const r=ws.addRow(row); r.eachCell(c=>{c.font={name:'Arial',size:9};c.border=border;c.alignment={vertical:'middle',wrapText:true};}); r.getCell(1).alignment={horizontal:'center'};r.getCell(4).alignment={horizontal:'center'};r.getCell(5).alignment={horizontal:'center'};if(showPrice){r.getCell(7).numFmt='#,##0';r.getCell(8).numFmt='#,##0';}});
+                if(!items.length){const row=showPrice?['','','Tidak ada stok tersedia di '+judulGudang+'.','','','','','']:['','','Tidak ada stok tersedia di '+judulGudang+'.','','',''];const r=ws.addRow(row);ws.mergeCells(`C${r.number}:${endCol}${r.number}`);r.getCell(3).alignment={horizontal:'center'};}
+                if(showPrice&&items.length){const r=ws.addRow(['','','TOTAL HARGA STOCK','','','','',totalHarga]);ws.mergeCells(`A${r.number}:G${r.number}`);r.getCell(1).font={name:'Arial',size:9,bold:true};r.getCell(1).alignment={horizontal:'right'};r.getCell(8).font={name:'Arial',size:9,bold:true};r.getCell(8).numFmt='#,##0';r.eachCell(c=>c.border=border);}
+                const last=ws.lastRow.number; ws.autoFilter={from:'A4',to:`${endCol}${last}`}; ws.freezePanes={xSplit:0,ySplit:4}; ws.printArea=`A1:${endCol}${last}`;
+                const buffer=await wb.xlsx.writeBuffer(); const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const url=URL.createObjectURL(blob); const a=document.createElement('a');a.href=url;a.download=`Stock_Gudang_${judulGudang.replace(/\s+/g,'_')}_${this.getFormattedDateOnly().replace(/\//g,'-')}.xlsx`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
             },
             printStockGudang(gudang) {
                 if (!this.canPrint) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat mencetak.');
-                const namaGudang = String(gudang || '').trim().toLowerCase();
-                const isSparepart = namaGudang === 'sparepart' || namaGudang === 'spare part';
-                const judulGudang = isSparepart ? 'SPARE PART' : 'SISA PROJECT';
-                const source = isSparepart ? this.spareparts : this.sisaProjects;
-
-                // Ambil stok TERKINI langsung dari data stok gudang.
-                const items = (Array.isArray(source) ? source : [])
-                    .filter(item => (Number(item.qty) || 0) > 0)
-                    .slice()
-                    .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id', { sensitivity: 'base' }));
-
-                const printedDate = this.getFormattedDateOnly ? this.getFormattedDateOnly() : new Date().toLocaleDateString('id-ID');
-
-                const rows = items.map((item, idx) => {
-                    const qty = Number(item.qty) || 0;
-                    const kode = item.kode || item.barcode || item.sku || '-';
-                    const nama = item.nama || '-';
-                    const satuan = item.satuan || 'Pcs';
-                    const lokasi = item.lokasi || item.lokasiRak || item.rak || '-';
-
-                    return `
-                        <tr>
-                            <td>${idx + 1}</td>
-                            <td>${kode}</td>
-                            <td class="nama">${nama}</td>
-                            <td>${satuan}</td>
-                            <td class="qty">${qty.toLocaleString('id-ID')}</td>
-                            <td>${lokasi}</td>
-                        </tr>`;
-                }).join('');
-
-                const colSpan = 6;
-                const emptyRow = `<tr><td colspan="${colSpan}" class="kosong">Tidak ada stok tersedia di ${judulGudang}.</td></tr>`;
-
-                const labelArea = document.getElementById('label-print-area');
-                if (!labelArea) {
-                    alert('Area cetak stock tidak ditemukan.');
-                    return;
-                }
-
-                labelArea.innerHTML = `
-                    <div class="stock-print-document">
-                        <div class="stock-print-header">
-                            <div style="display:flex; align-items:center; gap:12px;">
-                                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTg04Fvw4tFQIaOv_YisutC8tIMsbS2eM10wP2eWOotwA&s=10" alt="Agrofarm" style="height:35mm; width:auto; max-width:70mm; object-fit:contain;">
-                                <div>
-                                <div class="stock-print-title">DAFTAR STOCK GUDANG</div>
-                                <div class="stock-print-subtitle">AGROFARM NUSA RAYA — SISTEM INVENTORY SPARE PART</div>
-                                <div class="stock-print-warehouse">GUDANG ${judulGudang}</div>
-                                </div>
-                            </div>
-                            <div class="stock-print-date">
-                                <b>Tanggal Cetak</b><br>${printedDate}
-                            </div>
-                        </div>
-
-                        <table class="stock-print-table">
-                            <thead>
-                                <tr>
-                                    <th>No</th>
-                                    <th>Kode / SKU</th>
-                                    <th>Nama Barang</th>
-                                    <th>Satuan</th>
-                                    <th>Stok Saat Ini</th>
-                                    <th>Lokasi Rak</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${rows || emptyRow}
-                            </tbody>
-                        </table>
-
-                        <div class="stock-print-note">
-                            Keterangan: laporan ini menampilkan jumlah stok yang tersedia pada saat tombol Cetak Stock ditekan.
-                        </div>
-
-                        <div class="stock-print-sign">
-                            <div>Dibuat<br><br><br>____________________</div>
-                            <div>Disetujui<br><br><br>____________________</div>
-                            <div>Diketahui<br><br><br>____________________</div>
-                        </div>
-                    </div>`;
-
-                document.body.classList.add('printing-label');
-
-                // Tunggu DOM benar-benar ter-render sebelum membuka dialog print.
-                this.$nextTick(() => {
-                    requestAnimationFrame(() => {
-                        const logoImg = labelArea.querySelector('.stock-print-header img');
-                        const doPrint = () => {
-                            setTimeout(() => {
-                                window.print();
-                            }, 350);
-                        };
-                        if (logoImg && !logoImg.complete) {
-                            logoImg.onload = doPrint;
-                            logoImg.onerror = doPrint;
-                        } else {
-                            doPrint();
-                        }
-                    });
-                });
-
-                // Bersihkan setelah dialog print ditutup, tanpa menghapus data stok.
-                const cleanup = () => {
-                    document.body.classList.remove('printing-label');
-                    labelArea.innerHTML = '';
-                    window.removeEventListener('afterprint', cleanup);
-                };
-                window.addEventListener('afterprint', cleanup);
+                const namaGudang=String(gudang||'').trim().toLowerCase(); const isSparepart=namaGudang==='sparepart'||namaGudang==='spare part'; const judulGudang=isSparepart?'SPARE PART':'SISA PROJECT'; const showPrice=isSparepart?this.showPrices:false; const source=isSparepart?this.spareparts:this.sisaProjects;
+                const items=(Array.isArray(source)?source:[]).filter(item=>(Number(item.qty)||0)>0).slice().sort((a,b)=>String(a.nama||'').localeCompare(String(b.nama||''),'id',{sensitivity:'base'})); const printedDate=this.getFormattedDateOnly?this.getFormattedDateOnly():new Date().toLocaleDateString('id-ID');
+                const rows=items.map((item,idx)=>{const qty=Number(item.qty)||0;const harga=Number(this.getMasterHarga(item.nama,item.harga))||0;const total=harga*qty;return `<tr><td>${idx+1}</td><td>${item.kode||item.barcode||item.sku||'-'}</td><td class="nama">${item.nama||'-'}</td><td>${item.satuan||'Pcs'}</td><td class="qty">${qty.toLocaleString('id-ID')}</td><td>${item.lokasi||item.lokasiRak||item.rak||'-'}</td>${showPrice?`<td class="angka">Rp ${this.formatRupiah(harga)}</td><td class="angka">Rp ${this.formatRupiah(total)}</td>`:''}</tr>`;}).join('');
+                const totalHarga=items.reduce((sum,item)=>sum+((Number(this.getMasterHarga(item.nama,item.harga))||0)*(Number(item.qty)||0)),0); const colSpan=showPrice?8:6; const emptyRow=`<tr><td colspan="${colSpan}" class="kosong">Tidak ada stok tersedia di ${judulGudang}.</td></tr>`; const totalRow=showPrice&&items.length?`<tr><td colspan="7" style="border:1px solid #000;padding:7px;text-align:right;font-weight:800;">TOTAL HARGA STOCK</td><td style="border:1px solid #000;padding:7px;text-align:right;font-weight:800;">Rp ${this.formatRupiah(totalHarga)}</td></tr>`:'';
+                const labelArea=document.getElementById('label-print-area'); if(!labelArea){alert('Area cetak stock tidak ditemukan.');return;}
+                labelArea.innerHTML=`<div class="stock-print-document"><div class="stock-print-header"><div style="display:flex;align-items:center;gap:12px;"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTg04Fvw4tFQIaOv_YisutC8tIMsbS2eM10wP2eWOotwA&s=10" alt="Agrofarm" style="height:35mm;width:auto;max-width:70mm;object-fit:contain;"><div><div class="stock-print-title">DAFTAR STOCK GUDANG</div><div class="stock-print-subtitle">AGROFARM NUSA RAYA — SISTEM INVENTORY SPARE PART</div><div class="stock-print-warehouse">GUDANG ${judulGudang}</div></div></div><div class="stock-print-date"><b>Tanggal Cetak</b><br>${printedDate}</div></div><table class="stock-print-table"><thead><tr><th>No</th><th>Kode / SKU</th><th>Nama Barang</th><th>Satuan</th><th>Stok Saat Ini</th><th>Lokasi Rak</th>${showPrice?'<th>Harga Satuan</th><th>Harga Total</th>':''}</tr></thead><tbody>${rows||emptyRow}${totalRow}</tbody></table><div class="stock-print-note">Keterangan: laporan ini menampilkan jumlah stok yang tersedia pada saat tombol Cetak Stock ditekan.</div><div class="stock-print-sign"><div>Dibuat<br><br><br>____________________</div><div>Disetujui<br><br><br>____________________</div><div>Diketahui<br><br><br>____________________</div></div></div>`;
+                document.body.classList.add('printing-label'); this.$nextTick(()=>{requestAnimationFrame(()=>{const logoImg=labelArea.querySelector('.stock-print-header img');const doPrint=()=>setTimeout(()=>window.print(),350);if(logoImg&&!logoImg.complete){logoImg.onload=doPrint;logoImg.onerror=doPrint;}else{doPrint();}});}); const cleanup=()=>{document.body.classList.remove('printing-label');labelArea.innerHTML='';window.removeEventListener('afterprint',cleanup);}; window.addEventListener('afterprint',cleanup);
             },
             initOpnameDraft(gudang) {
                 const g = gudang || this.opnameDraft.gudang || 'Sparepart';
