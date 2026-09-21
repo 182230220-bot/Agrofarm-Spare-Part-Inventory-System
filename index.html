@@ -4342,7 +4342,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             async touchDeviceSession() {
                 if (!this.isAuthenticated || !this.authUser?.id) return true;
                 const client = this.getSupabaseClient();
-                if (!client) return true;
+                if (!client) return false;
                 try {
                     const { data, error } = await client.rpc('touch_device_session', { p_device_id: this.getDeviceId() });
                     if (error) throw error;
@@ -4354,15 +4354,55 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     return true;
                 } catch (err) {
                     console.error('Pemeriksaan device session gagal:', err);
-                    return true;
+                    // Fail closed: jangan biarkan sesi aktif jika status device tidak dapat diverifikasi.
+                    await this.logout('Sesi perangkat tidak dapat diverifikasi. Silakan login kembali.');
+                    return false;
+                }
+            },
+            async ensureFreshAuthorization(requiredRole = null) {
+                const client = this.getSupabaseClient();
+                if (!client || !this.isAuthenticated || !this.authUser?.id) {
+                    return { ok: false, message: 'Sesi login tidak valid. Silakan login kembali.' };
+                }
+                try {
+                    const { data: sessionData, error: sessionError } = await client.auth.getSession();
+                    if (sessionError || !sessionData?.session?.user?.id) {
+                        return { ok: false, message: 'Sesi login sudah berakhir. Silakan login kembali.' };
+                    }
+                    const userId = sessionData.session.user.id;
+                    const { data: profile, error: profileError } = await client
+                        .from('profiles')
+                        .select('role,active')
+                        .eq('id', userId)
+                        .maybeSingle();
+                    if (profileError) throw profileError;
+                    if (!profile || profile.active === false) {
+                        await this.logout('Akun tidak aktif atau profil tidak ditemukan.');
+                        return { ok: false, message: 'Akun tidak aktif atau profil tidak ditemukan.' };
+                    }
+                    const role = String(profile.role || 'viewer').trim().toLowerCase();
+                    const normalizedRequired = requiredRole ? String(requiredRole).trim().toLowerCase() : null;
+                    if (normalizedRequired && role !== normalizedRequired) {
+                        return { ok: false, message: 'Anda tidak memiliki hak akses untuk tindakan ini.' };
+                    }
+                    if (role === 'viewer' && requiredRole !== 'viewer') {
+                        return { ok: false, message: 'Viewer tidak memiliki hak untuk mengubah data.' };
+                    }
+                    this.authUser = sessionData.session.user;
+                    this.authRole = role;
+                    return { ok: true, role, session: sessionData.session };
+                } catch (err) {
+                    console.error('Verifikasi otorisasi gagal:', err);
+                    return { ok: false, message: 'Otorisasi tidak dapat diverifikasi. Silakan login kembali.' };
                 }
             },
             startDeviceHeartbeat() {
                 this.stopDeviceHeartbeat();
                 this.getDeviceId();
+                this.touchDeviceSession();
                 this.deviceHeartbeatTimer = window.setInterval(() => {
-                    this.touchDeviceSession();
-                }, 5 * 60 * 1000);
+                    if (this.isAuthenticated) this.touchDeviceSession();
+                }, 30 * 1000);
             },
             stopDeviceHeartbeat() {
                 if (this.deviceHeartbeatTimer) {
@@ -4388,7 +4428,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 }
             },
             async saveSecuritySettings() {
-                if (!this.canManageAccounts) return;
+                const authz = await this.ensureFreshAuthorization('super_admin');
+                if (!authz.ok) return alert(authz.message);
                 const client = this.getSupabaseClient();
                 if (!client) return;
                 const maxSuper = Math.max(1, Math.min(100, Number(this.securitySettings.max_super_admin_devices) || 1));
@@ -4622,7 +4663,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 }
             },
             async saveAccountSettings(account) {
-                if (!this.canManageAccounts || !account || account.id === this.authUser?.id) return;
+                const authz = await this.ensureFreshAuthorization('super_admin');
+                if (!authz.ok || !account || account.id === this.authUser?.id) return;
                 const client = this.getSupabaseClient();
                 const { error } = await client.from('profiles').update({
                     role: account.role,
@@ -4639,10 +4681,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 await this.saveAccountSettings(account);
             },
             async approveTransaction(log) {
-                if (!this.canApprove) return alert('Hanya Super Admin yang dapat menyetujui transaksi.');
+                const authz = await this.ensureFreshAuthorization('super_admin');
+                if (!authz.ok) return alert(authz.message);
                 if (!log || !this.isPendingLog(log)) return;
                 const client = this.getSupabaseClient();
                 try {
+                    // Ambil status terbaru sebelum memproses agar approval ganda dari tab/perangkat lain ditolak.
+                    const latest = this.logs.find(x => String(x.id) === String(log.id));
+                    if (!latest || !this.isPendingLog(latest)) {
+                        throw new Error('Transaksi sudah diproses atau statusnya telah berubah. Silakan muat ulang data.');
+                    }
+                    log = latest;
                     if (log.type === 'IN' && log.monitoringOrderId) {
                         const order = this.monitoringItems.find(o => String(o.id) === String(log.monitoringOrderId));
                         if (!order) throw new Error('Purchase Request tidak ditemukan.');
@@ -4754,7 +4803,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 }
             },
             async unapproveTransaction(log) {
-                if (!this.canApprove) return alert('Hanya Super Admin yang dapat membatalkan approval.');
+                const authz = await this.ensureFreshAuthorization('super_admin');
+                if (!authz.ok) return alert(authz.message);
                 if (!log || this.isPendingLog(log)) return;
                 if (log.adjustmentType === 'OPNAME') return alert('Gunakan menu Stock Opname untuk membatalkan approval penyesuaian opname.');
                 if (!confirm(`Batalkan approval transaksi ${log.nama || ''}? Stok akan dikembalikan ke kondisi sebelum transaksi ini disetujui.`)) return;
@@ -4790,7 +4840,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 }
             },
             async approveOpname(op) {
-                if (!this.canApprove) return alert('Hanya Super Admin yang dapat menyetujui stock opname.');
+                const authz = await this.ensureFreshAuthorization('super_admin');
+                if (!authz.ok) return alert(authz.message);
                 if (!op || String(op.approvalStatus || 'approved').toLowerCase() !== 'pending') return;
                 try {
                     const source = op.gudang === 'Sisa Project' ? this.sisaProjects : this.spareparts;
@@ -4823,7 +4874,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 }
             },
             async unapproveOpname(op) {
-                if (!this.canApprove) return alert('Hanya Super Admin yang dapat membatalkan approval stock opname.');
+                const authz = await this.ensureFreshAuthorization('super_admin');
+                if (!authz.ok) return alert(authz.message);
                 if (!op || String(op.approvalStatus || 'approved').toLowerCase() === 'pending') return;
                 if (!confirm(`Batalkan approval ${op.nomor}? Penyesuaian stok akan dikembalikan.`)) return;
                 try {
@@ -5036,6 +5088,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             async saveToSupabase() {
                 if (this.isHydratingFromSupabase) return false;
+                // Viewer tidak boleh menulis state meskipun fungsi ini dipanggil langsung dari console/browser.
+                const authz = await this.ensureFreshAuthorization();
+                if (!authz.ok || !['admin', 'super_admin'].includes(authz.role)) {
+                    console.warn('saveToSupabase ditolak:', authz.message || 'Role tidak memiliki izin tulis.');
+                    return false;
+                }
                 const client = this.getSupabaseClient();
                 if (!client) return false;
 
