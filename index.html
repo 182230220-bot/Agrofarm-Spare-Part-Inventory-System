@@ -4402,7 +4402,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.touchDeviceSession();
                 this.deviceHeartbeatTimer = window.setInterval(() => {
                     if (this.isAuthenticated) this.touchDeviceSession();
-                }, 30 * 1000);
+                }, 3 * 1000);
             },
             stopDeviceHeartbeat() {
                 if (this.deviceHeartbeatTimer) {
