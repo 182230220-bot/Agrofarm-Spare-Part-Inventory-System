@@ -818,7 +818,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <i data-lucide="badge-check" class="w-4 h-4 text-emerald-400"></i>
                         <span>Approval Transaksi</span>
                     </div>
-                    <span class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30 font-mono">{{ pendingApprovalLogs.length }}</span>
+                    <span class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30 font-mono">{{ pendingApprovalLogs.length + pendingMasterApprovalRequests.length }}</span>
                 </button>
                 <button v-if="canManageAccounts" @click="activeTab = 'settings'; loadUserAccounts(); loadSecuritySettings()" :class="activeTab === 'settings' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100/70 hover:text-white hover:bg-emerald-900/50 font-medium'" class="w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs transition-all">
                     <i data-lucide="settings" class="w-4 h-4 text-emerald-400"></i>
@@ -902,6 +902,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 sticky top-0">
                             <tr>
                                 <th class="p-2.5 text-left">Nama Barang</th>
+                                <th class="p-2.5 text-center">No. PR</th>
+                                <th class="p-2.5 text-center">Tgl. PR</th>
                                 <th class="p-2.5 text-center">Gudang</th>
                                 <th class="p-2.5 text-center">Lokasi</th>
                                 <th class="p-2.5 text-center">Stok Saat Ini</th>
@@ -912,6 +914,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <tbody class="divide-y divide-slate-100">
                             <tr v-for="(row, i) in lowStockItems" :key="i" :class="row.qty === 0 ? 'bg-red-50/60' : 'bg-amber-50/40'">
                                 <td class="p-2.5 font-bold text-slate-800 uppercase">{{ row.nama }}</td>
+                                <td class="p-2.5 text-center text-[10px] font-bold text-slate-700">{{ row.nomorPR || '-' }}</td>
+                                <td class="p-2.5 text-center text-[10px] font-mono font-bold text-slate-600">{{ row.tglPR || '-' }}</td>
                                 <td class="p-2.5 text-center text-slate-600 text-[10px] font-bold">{{ row.gudang }}</td>
                                 <td class="p-2.5 text-center text-slate-500 text-[10px] uppercase">{{ row.lokasi }}</td>
                                 <td class="p-2.5 text-center font-black" :class="row.qty === 0 ? 'text-red-700' : 'text-amber-700'">{{ row.qty }} {{ row.satuan }}</td>
@@ -971,7 +975,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
                                         <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2 text-right">Harga</th>
                                         <th class="p-2">Supplier / Kepentingan</th>
+                                        <th class="p-2 text-center no-print">Status / Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -991,7 +997,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         </td>
                                     </tr>
                                     <tr v-if="filteredSparepartLogsIn.length === 0">
-                                        <td colspan="4" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang masuk sparepart pada periode ini.</td>
+                                        <td colspan="6" class="p-6 text-center text-slate-400 italic text-[11px]">-</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1011,7 +1017,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
                                         <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2 text-right">Harga</th>
                                         <th class="p-2">Penerima / Kepentingan</th>
+                                        <th class="p-2 text-center no-print">Status / Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -1031,7 +1039,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         </td>
                                     </tr>
                                     <tr v-if="filteredSparepartLogsOut.length === 0">
-                                        <td colspan="4" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang keluar sparepart pada periode ini.</td>
+                                        <td colspan="6" class="p-6 text-center text-slate-400 italic text-[11px]">-</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1204,14 +1212,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
                     <input v-model="searchMaster" @input="masterPage = 1" @focus="masterPage = 1" type="search" autocomplete="off" spellcheck="false" placeholder="Cari Nama Barang di Master..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 shadow-sm" style="pointer-events:auto !important; position:relative; z-index:100 !important;">
                 </div>
-                <div class="flex items-center gap-2">
-                    <label class="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">Short Stok</label>
-                    <select v-model="masterSort" @change="masterPage = 1" class="p-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 focus:outline-none focus:border-emerald-500">
-                        <option value="nama_asc">Nama A-Z</option>
-                        <option value="stock_asc">Stok: Terkecil → Terbesar</option>
-                        <option value="stock_desc">Stok: Terbesar → Terkecil</option>
-                    </select>
-                </div>
             </div>
             <div class="portal-card rounded-xl overflow-hidden">
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
@@ -1240,15 +1240,15 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200/60">
                             <tr>
                                 <th class="p-3.5 text-center"><input type="checkbox" v-model="selectAllMaster" @change="toggleSelectAllMaster" class="w-4 h-4 accent-emerald-600 cursor-pointer"></th>
-                                <th class="p-3.5 text-center">No</th>
-                                <th class="p-3.5 text-center">Keterangan Rak</th>
+                                <th class="p-3.5 text-center"><button type="button" @click="setMasterSort('no')" class="inline-flex items-center gap-1 font-bold hover:text-emerald-700">No <span class="text-[9px]">{{ masterSortArrow('no') }}</span></button></th>
+                                <th class="p-3.5 text-center"><button type="button" @click="setMasterSort('rak')" class="inline-flex items-center gap-1 font-bold hover:text-emerald-700">Keterangan Rak <span class="text-[9px]">{{ masterSortArrow('rak') }}</span></button></th>
                                 <th class="p-3.5">Nomor SKU</th>
-                                <th class="p-3.5">Nama Sparepart</th>
+                                <th class="p-3.5"><button type="button" @click="setMasterSort('nama')" class="inline-flex items-center gap-1 font-bold hover:text-emerald-700">Nama Sparepart <span class="text-[9px]">{{ masterSortArrow('nama') }}</span></button></th>
                                 <th class="p-3.5 text-center">Satuan</th>
                                 <th class="p-3.5 text-center">Tanggal Input</th>
-                                <th class="p-3.5 text-center">Qty / Stock Awal</th>
-                                <th class="p-3.5 text-right">Harga Satuan</th>
-                                <th class="p-3.5 text-center">Buffer Stok</th>
+                                <th class="p-3.5 text-center"><button type="button" @click="setMasterSort('stock')" class="inline-flex items-center gap-1 font-bold hover:text-emerald-700">Qty / Stock Awal <span class="text-[9px]">{{ masterSortArrow('stock') }}</span></button></th>
+                                <th class="p-3.5 text-right"><button type="button" @click="setMasterSort('harga')" class="inline-flex items-center gap-1 font-bold hover:text-emerald-700">Harga Satuan <span class="text-[9px]">{{ masterSortArrow('harga') }}</span></button></th>
+                                <th class="p-3.5 text-center"><button type="button" @click="setMasterSort('buffer')" class="inline-flex items-center gap-1 font-bold hover:text-emerald-700">Buffer Stok <span class="text-[9px]">{{ masterSortArrow('buffer') }}</span></button></th>
                                 <th class="p-3.5 text-center min-w-[150px]">Aksi</th>
                             </tr>
                         </thead>
@@ -2157,7 +2157,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         {{ log.nama }}
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
-                                     <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ log.satuan || 'Pcs' }}</td>
+                                     <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
                                     <td class="p-2 text-center font-bold text-emerald-600">+{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
@@ -2210,7 +2210,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         {{ log.nama }}
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
-                                     <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ log.satuan || 'Pcs' }}</td>
+                                     <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
                                     <td class="p-2 text-center font-bold text-amber-600">-{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
@@ -2306,10 +2306,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <tr v-for="(item, idx) in paginatedSpareparts" :key="item.barcode || item.kode || (item.nama + '-' + idx)" class="hover:bg-slate-50 transition-colors">
                                 <td class="p-3.5 text-center font-bold text-slate-400">{{ ((sparepartPage - 1) * sparepartPageSize) + idx + 1 }}</td>
                                 <td class="p-3.5 text-center font-bold text-slate-600 uppercase">{{ item.lokasi || item.lokasiRak || item.rak || '-' }}</td>
-                                <td class="p-3.5 font-bold text-slate-800 uppercase flex items-center gap-2">
-                                    <i data-lucide="info" class="w-3.5 h-3.5 text-emerald-600"></i>
-                                    <span>{{ item.nama }}</span>
-                                </td>
+                                <td class="p-3.5 font-bold text-slate-800 uppercase">{{ item.nama }}</td>
                                  <td class="p-3.5 text-center font-bold text-slate-700 uppercase">{{ item.satuan || 'Pcs' }}</td>
                                 <td class="p-3.5 text-center">
                                     <span :class="item.qty <= item.minStock ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-slate-800 bg-slate-100 border-slate-200'" class="px-2.5 py-1 rounded-lg font-black text-xs border inline-block">
@@ -2495,7 +2492,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         {{ log.nama }}
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
-                                     <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ log.satuan || 'Pcs' }}</td>
+                                     <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
                                     <td class="p-2 text-center font-bold text-emerald-600">+{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
@@ -2546,7 +2543,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         {{ log.nama }}
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
-                                     <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ log.satuan || 'Pcs' }}</td>
+                                     <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
                                     <td class="p-2 text-center font-bold text-amber-600">-{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
@@ -2599,10 +2596,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <tr v-for="(item, idx) in paginatedSisaProjects" :key="item.barcode || item.kode || (item.nama + '-' + idx)" class="hover:bg-slate-50 transition-colors">
                                 <td class="p-3.5 text-center font-bold text-slate-400">{{ ((sisaProjectPage - 1) * sisaProjectPageSize) + idx + 1 }}</td>
                                 <td class="p-3.5 text-center font-bold text-slate-600 uppercase">{{ item.lokasi || item.lokasiRak || item.rak || '-' }}</td>
-                                <td class="p-3.5 font-bold text-slate-800 uppercase flex items-center gap-2">
-                                    <i data-lucide="info" class="w-3.5 h-3.5 text-teal-600"></i>
-                                    <span>{{ item.nama }}</span>
-                                </td>
+                                <td class="p-3.5 font-bold text-slate-800 uppercase">{{ item.nama }}</td>
                                  <td class="p-3.5 text-center font-bold text-slate-700 uppercase">{{ item.satuan || 'Pcs' }}</td>
                                 <td class="p-3.5 text-center">
                                     <span class="px-2.5 py-1 rounded-lg font-black text-xs border border-slate-200 bg-slate-100 text-slate-800 inline-block">
@@ -2640,31 +2634,32 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="portal-card rounded-xl p-5 border-l-4 border-amber-500">
                     <p class="text-[10px] font-black text-slate-500 uppercase">Belum Disetujui</p>
-                    <p class="text-3xl font-black text-amber-600 mt-1">{{ pendingApprovalLogs.length + pendingApprovalOpname.length }}</p>
-                    <p class="text-[10px] text-slate-500 mt-1">Transaksi + Stock Opname</p>
+                    <p class="text-3xl font-black text-amber-600 mt-1">{{ pendingApprovalLogs.length + pendingApprovalOpname.length + pendingMasterApprovalRequests.length }}</p>
+                    <p class="text-[10px] text-slate-500 mt-1">Transaksi + Stock Opname + Data Master</p>
                 </div>
                 <div class="portal-card rounded-xl p-5 border-l-4 border-emerald-500">
                     <p class="text-[10px] font-black text-slate-500 uppercase">Sudah Disetujui</p>
-                    <p class="text-3xl font-black text-emerald-600 mt-1">{{ approvedApprovalLogs.length + approvedApprovalOpname.length }}</p>
-                    <p class="text-[10px] text-slate-500 mt-1">Transaksi + Stock Opname</p>
+                    <p class="text-3xl font-black text-emerald-600 mt-1">{{ approvedApprovalLogs.length + approvedApprovalOpname.length + approvedMasterApprovalRequests.length }}</p>
+                    <p class="text-[10px] text-slate-500 mt-1">Transaksi + Stock Opname + Data Master</p>
                 </div>
                 <div class="portal-card rounded-xl p-5 border-l-4 border-slate-400">
                     <p class="text-[10px] font-black text-slate-500 uppercase">Total</p>
-                    <p class="text-3xl font-black text-slate-700 mt-1">{{ allTransactionLogs.length + opnameHistory.length }}</p>
-                    <p class="text-[10px] text-slate-500 mt-1">Inbound + Outbound + Opname</p>
+                    <p class="text-3xl font-black text-slate-700 mt-1">{{ allTransactionLogs.length + opnameHistory.length + masterApprovalRequests.length }}</p>
+                    <p class="text-[10px] text-slate-500 mt-1">Inbound + Outbound + Opname + Data Master</p>
                 </div>
             </div>
 
             <div class="portal-card rounded-xl overflow-hidden">
                 <div class="p-5 border-b border-slate-100 bg-slate-50/60">
                     <h2 class="font-black text-slate-800 text-sm uppercase">Approval</h2>
-                    <p class="text-[10px] text-slate-500 mt-1">Super Admin dapat menyetujui maupun membatalkan persetujuan. Admin dapat mengedit transaksi selama belum disetujui.</p>
+                    <p class="text-[10px] text-slate-500 mt-1">Super Admin dapat menyetujui maupun membatalkan persetujuan transaksi serta menyetujui perubahan Data Master dari Admin.</p>
                 </div>
 
                 <div class="p-4 border-b border-slate-100 bg-white flex flex-wrap gap-2">
                     <button @click="approvalWarehouseTab = 'Sparepart'; approvalMovementTab = 'IN'; approvalStatusFilter = 'all'" :class="approvalWarehouseTab === 'Sparepart' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-200'" class="px-4 py-2 rounded-lg border text-xs font-black">Gudang Spare Part</button>
                     <button @click="approvalWarehouseTab = 'Sisa Project'; approvalMovementTab = 'IN'; approvalStatusFilter = 'all'" :class="approvalWarehouseTab === 'Sisa Project' ? 'bg-teal-700 text-white border-teal-700' : 'bg-white text-slate-600 border-slate-200'" class="px-4 py-2 rounded-lg border text-xs font-black">Gudang Sisa Project</button>
                     <button @click="approvalWarehouseTab = 'Stock Opname'; approvalStatusFilter = 'all'" :class="approvalWarehouseTab === 'Stock Opname' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-200'" class="px-4 py-2 rounded-lg border text-xs font-black">Stock Opname</button>
+                    <button @click="approvalWarehouseTab = 'Data Master'; approvalStatusFilter = 'all'" :class="approvalWarehouseTab === 'Data Master' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'" class="px-4 py-2 rounded-lg border text-xs font-black">Data Master ({{ pendingMasterApprovalRequests.length }})</button>
                 </div>
 
                 <div v-if="approvalWarehouseTab !== 'Stock Opname'" class="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap gap-2">
@@ -2724,6 +2719,44 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     </div>
                 </div>
 
+                <div v-else-if="approvalWarehouseTab === 'Data Master'" class="p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <div class="rounded-xl bg-amber-50 border border-amber-200 p-4"><p class="text-[10px] font-black text-amber-700 uppercase">Menunggu Approval Data Master</p><p class="text-2xl font-black text-amber-700">{{ pendingMasterApprovalRequests.length }}</p></div>
+                        <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-4"><p class="text-[10px] font-black text-emerald-700 uppercase">Sudah Disetujui</p><p class="text-2xl font-black text-emerald-700">{{ approvedMasterApprovalRequests.length }}</p></div>
+                    </div>
+                    <div class="space-y-3">
+                        <div v-for="req in masterApprovalRequests.slice().sort((a,b) => (String(b.createdAt || b.id)).localeCompare(String(a.createdAt || a.id)))" :key="req.id" class="border border-slate-200 rounded-xl p-4">
+                            <div class="flex flex-wrap items-start justify-between gap-4">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <p class="font-black text-slate-800 text-xs uppercase">{{ req.before?.nama || req.targetNama || '-' }}</p>
+                                        <span class="px-2 py-0.5 rounded-full border text-[9px] font-black" :class="String(req.approvalStatus || 'pending').toLowerCase() === 'pending' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'">{{ String(req.approvalStatus || 'pending').toLowerCase() === 'pending' ? 'BELUM DISETUJUI' : 'SUDAH DISETUJUI' }}</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 mt-1">Diajukan oleh: {{ req.createdBy || '-' }} · {{ req.createdAt ? new Date(req.createdAt).toLocaleString('id-ID') : '-' }}</p>
+                                    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3">
+                                            <p class="text-[9px] font-black text-slate-500 uppercase mb-2">Data Sebelum</p>
+                                            <p class="text-[10px] text-slate-700">SKU: <b>{{ req.before?.kode || '-' }}</b></p>
+                                            <p class="text-[10px] text-slate-700">Nama: <b>{{ req.before?.nama || '-' }}</b></p>
+                                            <p class="text-[10px] text-slate-700">Satuan: <b>{{ req.before?.satuan || '-' }}</b> · Stok: <b>{{ req.before?.currentStock ?? 0 }}</b></p>
+                                        </div>
+                                        <div class="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                                            <p class="text-[9px] font-black text-blue-600 uppercase mb-2">Usulan Perubahan</p>
+                                            <p class="text-[10px] text-slate-700">SKU: <b>{{ req.after?.kode || '-' }}</b></p>
+                                            <p class="text-[10px] text-slate-700">Nama: <b>{{ req.after?.nama || '-' }}</b></p>
+                                            <p class="text-[10px] text-slate-700">Satuan: <b>{{ req.after?.satuan || '-' }}</b> · Stok: <b>{{ req.after?.currentStock ?? 0 }}</b></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <button v-if="String(req.approvalStatus || 'pending').toLowerCase() === 'pending'" @click="approveMasterEdit(req)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black">Setujui</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="masterApprovalRequests.length === 0" class="p-8 text-center text-slate-400 text-xs">Belum ada pengajuan perubahan Data Master.</div>
+                    </div>
+                </div>
+
                 <div v-else class="p-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                         <div class="rounded-xl bg-amber-50 border border-amber-200 p-4"><p class="text-[10px] font-black text-amber-700 uppercase">Menunggu Approval</p><p class="text-2xl font-black text-amber-700">{{ pendingApprovalOpname.length }}</p></div>
@@ -2772,7 +2805,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Jenis Transaksi</label><input v-model="singleOutForm.jenis" readonly class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold"></div>
                     <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Nama Barang *</label><input v-model="singleOutForm.nama" readonly class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold uppercase"></div>
                     <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Qty *</label><input v-model.number="singleOutForm.qty" type="number" min="1" :max="singleOutForm.item ? singleOutForm.item.qty : undefined" class="w-full p-2.5 bg-white border border-amber-300 rounded-lg text-xs font-bold text-center"></div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Satuan</label><input v-model="singleOutForm.satuan" placeholder="Satuan" class="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-xs font-bold uppercase"></div>
+                    <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Satuan</label><input v-model="singleOutForm.satuan" readonly placeholder="Satuan" class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold uppercase"></div>
                     <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Harga Satuan (Rp)</label><input v-model.number="singleOutForm.harga" type="number" min="0" readonly class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-right"></div>
                     <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Supplier / Asal Barang</label><input v-model="singleOutForm.supplier" class="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-xs uppercase"></div>
                     <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Nama Penerima *</label><input v-model="singleOutForm.penerima" class="w-full p-2.5 bg-white border border-amber-300 rounded-lg text-xs uppercase"></div>
@@ -3057,7 +3090,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <!-- Satuan -->
                             <div class="md:col-span-2">
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Satuan</label>
-                                <input v-model="item.orderSatuan" type="text" placeholder="Pcs/Unit" class="w-full p-2 bg-white font-semibold text-xs text-center border border-slate-300 rounded-lg uppercase outline-none focus:border-emerald-500">
+                                <input :value="getMasterSatuan(item.nama, item.orderSatuan || 'Pcs')" type="text" readonly placeholder="Satuan dari Data Master" class="w-full p-2 bg-slate-100 font-semibold text-xs text-center border border-slate-300 rounded-lg uppercase outline-none">
                             </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -3139,7 +3172,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Satuan</label>
-                                <input v-model="item.satuan" type="text" placeholder="Satuan" class="w-full p-1.5 bg-white font-semibold text-xs text-center border border-amber-300 rounded-md uppercase">
+                                <input :value="getMasterSatuan(item.nama, item.satuan || 'Pcs')" type="text" readonly placeholder="Satuan dari Data Master" class="w-full p-1.5 bg-slate-100 font-semibold text-xs text-center border border-amber-300 rounded-md uppercase">
                             </div>
                         <div v-if="showPrices" class="flex justify-end gap-4 pt-1 text-[10px] font-bold text-slate-600">
                             <span>Harga Satuan: Rp {{ formatRupiah(getMasterHarga(item.nama, item.harga)) }}</span>
@@ -3213,7 +3246,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Satuan</label>
-                                <input v-model="item.satuan" type="text" placeholder="Pcs/Meter" class="w-full p-1.5 bg-white font-semibold text-xs text-center border border-emerald-300 rounded-md uppercase">
+                                <input :value="getMasterSatuan(item.nama, item.satuan || 'Pcs')" type="text" readonly placeholder="Satuan dari Data Master" class="w-full p-1.5 bg-slate-100 font-semibold text-xs text-center border border-emerald-300 rounded-md uppercase">
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Lokasi Rak</label>
@@ -3294,7 +3327,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Satuan</label>
-                                <input v-model="item.satuan" type="text" placeholder="Satuan" class="w-full p-1.5 bg-white font-semibold text-xs text-center border border-amber-300 rounded-md uppercase">
+                                <input :value="getMasterSatuan(item.nama, item.satuan || 'Pcs')" type="text" readonly placeholder="Satuan dari Data Master" class="w-full p-1.5 bg-slate-100 font-semibold text-xs text-center border border-amber-300 rounded-md uppercase">
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Lokasi Rak</label>
@@ -3430,6 +3463,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 transactionDatePickerValue: '',
                 transactionDatePickerResolve: null,
                 masterCatalog: [],
+                masterApprovalRequests: [],
                 selectedMasterItems: [],
                 selectAllMaster: false,
                 monitoringItems: [],
@@ -3579,14 +3613,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             planningRequestPage() { if (this.planningCacheReady) this.$nextTick(() => this.refreshVisiblePlanningStocks()); },
             planningUsagePage() { if (this.planningCacheReady) this.$nextTick(() => this.refreshVisiblePlanningStocks()); },
             activeTab(newTab) {
-                // Jangan melakukan filter/index Planning besar di watcher tab.
-                // Render Planning dibuka secara lazy melalui openPlanningTab().
+                // Navigasi tab sengaja tidak menjalankan proses tambahan apa pun.
+                // Ini mencegah perpindahan menu memicu render ulang/proses async
+                // yang dapat membuat seluruh #app menjadi putih.
                 if (newTab !== 'planning_request' && newTab !== 'planning_usage') {
                     this.planningViewReady = false;
-                }
-                this.$nextTick(() => this.refreshIcons());
-                if (newTab === 'opname' && (!this.opnameDraft.items || this.opnameDraft.items.length === 0)) {
-                    this.initOpnameDraft(this.opnameDraft.gudang || 'Sparepart');
                 }
             }
         },
@@ -3631,6 +3662,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             pendingApprovalLogs() {
                 return this.allTransactionLogs.filter(log => this.isPendingLog(log) && log.adjustmentType !== 'OPNAME');
+            },
+            pendingMasterApprovalRequests() {
+                return (this.masterApprovalRequests || []).filter(req => String(req?.approvalStatus || 'pending').toLowerCase() === 'pending');
+            },
+            approvedMasterApprovalRequests() {
+                return (this.masterApprovalRequests || []).filter(req => String(req?.approvalStatus || '').toLowerCase() === 'approved');
             },
             approvedApprovalLogs() {
                 return this.allTransactionLogs.filter(log => !this.isPendingLog(log) && log.adjustmentType !== 'OPNAME');
@@ -3786,23 +3823,51 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             filteredMasterCatalog() {
                 const keyword = this.searchMaster.trim().toLowerCase();
                 let rows = keyword
-                    ? this.masterCatalog.filter(i => String(i.nama || '').toLowerCase().includes(keyword))
-                    : this.masterCatalog.slice();
-                // Urutan stok harus mengikuti angka yang BENAR-BENAR ditampilkan
-                // pada kolom Qty / Stock Awal. Jangan campurkan currentStock dengan
-                // stockAwal karena bisa membuat 3 muncul sebelum 1 saat sorting.
-                const stockValue = item => {
-                    const value = Number(item?.stockAwal ?? item?.currentStock ?? 0);
-                    return Number.isFinite(value) ? value : 0;
+                    ? this.masterCatalog.map((item, originalIndex) => ({ item, originalIndex })).filter(x => String(x.item.nama || '').toLowerCase().includes(keyword))
+                    : this.masterCatalog.map((item, originalIndex) => ({ item, originalIndex }));
+                const textValue = value => String(value || '').trim();
+                const numberValue = value => {
+                    const n = Number(value);
+                    return Number.isFinite(n) ? n : 0;
                 };
-                if (this.masterSort === 'stock_asc') {
-                    rows.sort((a, b) => stockValue(a) - stockValue(b) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id', { sensitivity: 'base' }));
-                } else if (this.masterSort === 'stock_desc') {
-                    rows.sort((a, b) => stockValue(b) - stockValue(a) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id', { sensitivity: 'base' }));
-                } else {
-                    rows.sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id', { sensitivity: 'base' }));
-                }
-                return rows;
+                const stockValue = item => numberValue(item?.stockAwal ?? item?.currentStock ?? 0);
+                const rakParts = value => {
+                    const raw = textValue(value).toUpperCase();
+                    const match = raw.match(/^([A-Z]+)\s*[-./ ]*([0-9]+(?:[.-][0-9]+)*)/);
+                    if (match) return { huruf: match[1], nomor: match[2].split(/[.-]/).map(n => Number(n) || 0) };
+                    const letters = (raw.match(/[A-Z]+/) || [''])[0];
+                    const nums = (raw.match(/\d+(?:[.-]\d+)*/ ) || ['0'])[0].split(/[.-]/).map(n => Number(n) || 0);
+                    return { huruf: letters, nomor: nums };
+                };
+                const compareRak = (a, b) => {
+                    const ra = rakParts(a);
+                    const rb = rakParts(b);
+                    const hurufCmp = ra.huruf.localeCompare(rb.huruf, 'id', { sensitivity: 'base', numeric: false });
+                    if (hurufCmp) return hurufCmp;
+                    const max = Math.max(ra.nomor.length, rb.nomor.length);
+                    for (let i = 0; i < max; i++) {
+                        const diff = (ra.nomor[i] || 0) - (rb.nomor[i] || 0);
+                        if (diff) return diff;
+                    }
+                    return textValue(a).localeCompare(textValue(b), 'id', { sensitivity: 'base', numeric: true });
+                };
+                const cmpName = (a, b) => textValue(a.nama).localeCompare(textValue(b.nama), 'id', { sensitivity: 'base', numeric: true });
+                const cmpNo = (a, b) => a.originalIndex - b.originalIndex;
+                const sortKey = this.masterSort || 'nama_asc';
+                const descending = sortKey.endsWith('_desc');
+                const key = sortKey.replace(/_(?:asc|desc)$/, '');
+                rows.sort((a, b) => {
+                    let cmp = 0;
+                    if (key === 'no') cmp = cmpNo(a, b);
+                    else if (key === 'rak') cmp = compareRak(a.item.lokasi || a.item.lokasiRak || a.item.rak || '', b.item.lokasi || b.item.lokasiRak || b.item.rak || '');
+                    else if (key === 'nama') cmp = cmpName(a.item, b.item);
+                    else if (key === 'stock') cmp = stockValue(a.item) - stockValue(b.item);
+                    else if (key === 'harga') cmp = numberValue(a.item.harga) - numberValue(b.item.harga);
+                    else if (key === 'buffer') cmp = numberValue(a.item.minStock) - numberValue(b.item.minStock);
+                    if (cmp === 0) cmp = cmpName(a.item, b.item);
+                    return descending ? -cmp : cmp;
+                });
+                return rows.map(x => x.item);
             },
             masterPageCount() {
                 return Math.max(1, Math.ceil(this.filteredMasterCatalog.length / this.masterPageSize));
@@ -4072,13 +4137,27 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     const min = Math.max(0, Number(s.minStock) || 0);
                     const qty = Math.max(0, Math.round(Number(s.currentStock ?? s.stockAwal) || 0));
                     if (min > 0 && qty <= min) {
-                        rows.push({ gudang: 'Sparepart', nama: s.nama, qty, minStock: min, satuan: s.satuan || 'Pcs', lokasi: s.lokasi || '-' });
+                        const pr = (this.monitoringItems || [])
+                            .filter(o => String(o.nama || '').trim().toLowerCase() === String(s.nama || '').trim().toLowerCase())
+                            .sort((a, b) => {
+                                const da = new Date(a.tgl || a.created_at || 0).getTime() || 0;
+                                const db = new Date(b.tgl || b.created_at || 0).getTime() || 0;
+                                return db - da;
+                            })[0];
+                        rows.push({ gudang: 'Sparepart', nama: s.nama, qty, minStock: min, satuan: s.satuan || 'Pcs', lokasi: s.lokasi || '-', nomorPR: pr?.nomorPR || '-', tglPR: pr?.tgl || '-' });
                     }
                 });
                 this.sisaProjects.forEach(s => {
                     const min = Number(s.minStock) || 0;
                     if (min > 0 && Number(s.qty) <= min) {
-                        rows.push({ gudang: 'Sisa Project', nama: s.nama, qty: Number(s.qty) || 0, minStock: min, satuan: s.satuan || 'Pcs', lokasi: s.lokasi || '-' });
+                        const pr = (this.monitoringItems || [])
+                            .filter(o => String(o.nama || '').trim().toLowerCase() === String(s.nama || '').trim().toLowerCase())
+                            .sort((a, b) => {
+                                const da = new Date(a.tgl || a.created_at || 0).getTime() || 0;
+                                const db = new Date(b.tgl || b.created_at || 0).getTime() || 0;
+                                return db - da;
+                            })[0];
+                        rows.push({ gudang: 'Sisa Project', nama: s.nama, qty: Number(s.qty) || 0, minStock: min, satuan: s.satuan || 'Pcs', lokasi: s.lokasi || '-', nomorPR: pr?.nomorPR || '-', tglPR: pr?.tgl || '-' });
                     }
                 });
                 return rows.sort((a, b) => (a.qty - a.minStock) - (b.qty - b.minStock));
@@ -4200,7 +4279,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             // Metode berikut hanya mengaktifkan tombol/form yang sudah ada.
             // Tidak mengubah struktur Supabase atau jalur sinkronisasi data.
             // ================================================================
-            tambahMasterManual() {
+            async tambahMasterManual() {
                 if (!this.canEdit) return alert('Akun tidak memiliki izin untuk mengubah Data Master.');
 
                 const nama = String(this.formMasterManual.nama || '').trim();
@@ -4241,7 +4320,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     satuan: 'Pcs', lokasi: ''
                 };
                 this.masterPage = 1;
-                alert('Data Master berhasil ditambahkan.');
+
+                // Simpan langsung ke Supabase setelah item Master ditambahkan.
+                // Jangan hanya mengandalkan watcher/debounce, supaya data baru
+                // benar-benar tersimpan sebelum form dianggap berhasil.
+                const saved = await this.saveToSupabase();
+                if (!saved) {
+                    alert('Data Master tampil di layar, tetapi gagal disimpan ke database. Silakan cek koneksi/izin akun lalu coba lagi.');
+                    return;
+                }
+
+                alert('Data Master berhasil ditambahkan dan disimpan ke database.');
             },
             async importMasterCatalog(event) {
                 if (!this.canEdit) return alert('Akun tidak memiliki izin untuk import Data Master.');
@@ -4313,9 +4402,25 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     if (event?.target) event.target.value = '';
                 }
             },
+            masterSortArrow(key) {
+                if (key === 'no') return this.masterSort === 'no_asc' ? '↑' : (this.masterSort === 'no_desc' ? '↓' : '↕');
+                if (key === 'rak') return this.masterSort === 'rak_asc' ? '↑' : (this.masterSort === 'rak_desc' ? '↓' : '↕');
+                if (key === 'nama') return this.masterSort === 'nama_asc' ? '↑' : (this.masterSort === 'nama_desc' ? '↓' : '↕');
+                if (key === 'stock') return this.masterSort === 'stock_asc' ? '↑' : (this.masterSort === 'stock_desc' ? '↓' : '↕');
+                if (key === 'harga') return this.masterSort === 'harga_asc' ? '↑' : (this.masterSort === 'harga_desc' ? '↓' : '↕');
+                if (key === 'buffer') return this.masterSort === 'buffer_asc' ? '↑' : (this.masterSort === 'buffer_desc' ? '↓' : '↕');
+                return '↕';
+            },
+            setMasterSort(key) {
+                if (typeof key !== 'string') return;
+                const ascKey = key + '_asc';
+                const descKey = key + '_desc';
+                this.masterSort = this.masterSort === ascKey ? descKey : ascKey;
+                this.masterPage = 1;
+            },
             openMasterEdit(item) {
                 if (!this.canEdit || !item) return;
-                this.editingMaster = { ...item };
+                this.editingMaster = { ...item, _originalNama: item.nama || '' };
                 this.showMasterEditModal = true;
                 this.$nextTick(() => this.refreshIcons());
             },
@@ -4323,14 +4428,15 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.showMasterEditModal = false;
                 this.editingMaster = null;
             },
-            saveMasterEdit() {
+            async saveMasterEdit() {
                 if (!this.canEdit || !this.editingMaster) return;
-                const target = this.masterCatalog.find(item => item === this.editingMaster || String(item.kode || '').trim() === String(this.editingMaster.kode || '').trim());
+                const normalize = value => String(value || '').trim().toLowerCase();
+                const target = this.masterCatalog.find(item => item === this.editingMaster || (normalize(item.kode) && normalize(item.kode) === normalize(this.editingMaster.kode)) || (normalize(item.nama) === normalize(this.editingMaster._originalNama)));
                 if (!target) return alert('Data Master tidak ditemukan.');
                 const nama = String(this.editingMaster.nama || '').trim();
                 if (!nama) return alert('Nama Barang wajib diisi.');
                 const qty = Math.max(0, Math.round(Number(this.editingMaster.currentStock) || 0));
-                Object.assign(target, {
+                const proposed = {
                     ...this.editingMaster,
                     kode: String(this.editingMaster.kode || '').trim().toUpperCase(),
                     nama: nama.toUpperCase(),
@@ -4341,9 +4447,34 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     leadTime: Math.max(0, Math.round(Number(this.editingMaster.leadTime) || 0)),
                     satuan: String(this.editingMaster.satuan || '').trim() || 'Pcs',
                     lokasi: String(this.editingMaster.lokasi || '').trim().toUpperCase()
-                });
-                target.totalHarga = target.harga * target.currentStock;
+                };
+                delete proposed._originalNama;
+                proposed.totalHarga = proposed.harga * proposed.currentStock;
+
+                if (this.authRole === 'admin') {
+                    const alreadyPending = (this.masterApprovalRequests || []).find(req => String(req.approvalStatus || 'pending').toLowerCase() === 'pending' && ((req.targetKode && normalize(req.targetKode) === normalize(target.kode)) || (req.targetNama && normalize(req.targetNama) === normalize(target.nama))));
+                    if (alreadyPending) return alert('Perubahan Data Master untuk barang ini masih menunggu persetujuan Super Admin.');
+                    this.masterApprovalRequests.push({
+                        id: 'MST-APP-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                        targetKode: target.kode || '',
+                        targetNama: target.nama || '',
+                        before: JSON.parse(JSON.stringify(target)),
+                        after: proposed,
+                        createdBy: this.authUser?.email || this.authUser?.id || 'Admin',
+                        createdAt: new Date().toISOString(),
+                        approvalStatus: 'pending'
+                    });
+                    this.closeMasterEdit();
+                    const saved = await this.saveToSupabase();
+                    if (!saved) return alert('Pengajuan perubahan Data Master dibuat di layar, tetapi gagal disimpan ke database.');
+                    alert('Perubahan Data Master dikirim ke Approval dan menunggu persetujuan Super Admin.');
+                    return;
+                }
+
+                Object.assign(target, proposed);
                 this.closeMasterEdit();
+                const saved = await this.saveToSupabase();
+                if (!saved) return alert('Data Master berubah di layar, tetapi gagal disimpan ke database.');
                 alert('Data Master berhasil diperbarui.');
             },
             addManualItemToMonitoring() {
@@ -4858,6 +4989,33 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 account.active = account.active === false;
                 await this.saveAccountSettings(account);
             },
+            async approveMasterEdit(request) {
+                const deviceOk = await this.touchDeviceSession();
+                if (!deviceOk) return;
+                const authz = await this.ensureFreshAuthorization('super_admin');
+                if (!authz.ok) return alert(authz.message);
+                if (!request || String(request.approvalStatus || 'pending').toLowerCase() !== 'pending') return;
+                const approvalAuth = await this.getSupabaseClient().rpc('authorize_inventory_approval', { p_action: 'approve' });
+                if (approvalAuth?.error || approvalAuth?.data?.ok !== true) {
+                    return alert(approvalAuth?.error?.message || approvalAuth?.data?.message || 'Approval Data Master tidak diizinkan oleh server.');
+                }
+                try {
+                    const normalize = value => String(value || '').trim().toLowerCase();
+                    const target = this.masterCatalog.find(item => (request.targetKode && normalize(item.kode) === normalize(request.targetKode)) || (request.targetNama && normalize(item.nama) === normalize(request.targetNama)));
+                    if (!target) throw new Error('Data Master yang akan diubah tidak ditemukan.');
+                    Object.assign(target, JSON.parse(JSON.stringify(request.after || {})));
+                    target.totalHarga = (Number(target.harga) || 0) * (Number(target.currentStock) || 0);
+                    request.approvalStatus = 'approved';
+                    request.approvedBy = this.authUser?.email || this.authUser?.id || 'Super Admin';
+                    request.approvedAt = new Date().toISOString();
+                    const saved = await this.saveToSupabase();
+                    if (!saved) throw new Error('Perubahan approval Data Master tidak berhasil disimpan ke server.');
+                    alert('Perubahan Data Master berhasil disetujui dan diterapkan.');
+                } catch (err) {
+                    console.error('Approval Data Master gagal:', err);
+                    alert(err?.message || 'Perubahan Data Master gagal disetujui.');
+                }
+            },
             async approveTransaction(log) {
                 const deviceOk = await this.touchDeviceSession();
                 if (!deviceOk) return;
@@ -5125,6 +5283,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const raw = Vue.toRaw || (value => value);
                 return {
                     masterCatalog: raw(this.masterCatalog),
+                    masterApprovalRequests: raw(this.masterApprovalRequests),
                     monitoringItems: raw(this.monitoringItems),
                     monitoringHistory: raw(this.monitoringHistory),
                     spareparts: raw(this.spareparts),
@@ -5137,6 +5296,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             scheduleSupabaseSave(delay = 900) {
                 if (this.isHydratingFromSupabase) return;
+                // Tandai perubahan lokal agar realtime tidak menimpa input baru
+                // dengan snapshot database yang masih lama.
+                this.supabaseLocalDirty = true;
                 clearTimeout(this.supabaseSaveTimer);
                 if (this.supabaseSaveInProgress) {
                     this.supabaseSaveQueued = true;
@@ -5163,6 +5325,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             async refreshFromSupabaseRealtime(updatedAt = '') {
                 const client = this.getSupabaseClient();
                 if (!client || this.isHydratingFromSupabase) return;
+                // Jangan pernah menimpa perubahan yang baru dibuat user ketika
+                // penyimpanan lokal masih menunggu/berjalan.
+                if (this.supabaseLocalDirty || this.supabaseSaveInProgress || this.supabaseSaveTimer) return;
                 // Hindari memuat ulang state yang sama atau menimpa perubahan lokal yang baru disimpan.
                 if (updatedAt && this.supabaseLastUpdatedAt && String(updatedAt) <= String(this.supabaseLastUpdatedAt)) return;
                 try {
@@ -5314,6 +5479,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 let saved = false;
 
                 try {
+                    // Sebelum penyimpanan, pastikan seluruh satuan transaksi/gudang
+                    // yang punya pasangan di Data Master memakai satuan dari Master.
+                    this.syncAllSatuanFromMaster();
                     const updatedAt = new Date().toISOString();
                     const payload = {
                         id: 'main',
@@ -5328,6 +5496,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     if (error) throw error;
                     this.supabaseLastUpdatedAt = updatedAt;
                     this.supabaseConnected = true;
+                    this.supabaseLocalDirty = false;
                     saved = true;
                 } catch (err) {
                     this.supabaseConnected = false;
@@ -5405,6 +5574,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         }
                     }
                     return true;
+                }).sort((a, b) => {
+                    // Urutan tabel gudang = urutan waktu input: yang pertama
+                    // diinput tetap berada di atas. createdAt dipakai untuk data baru;
+                    // data lama memakai id sebagai fallback agar tetap stabil.
+                    const ta = new Date(a.createdAt || a.inputAt || a.id || a.isoDate || 0).getTime();
+                    const tb = new Date(b.createdAt || b.inputAt || b.id || b.isoDate || 0).getTime();
+                    return ta - tb;
                 });
             },
             async editLog(log) {
@@ -5654,14 +5830,42 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const master = this.masterCatalog.find(m => String(m.nama || '').trim().toLowerCase() === key);
                 return master ? (Number(master.harga) || 0) : (Number(fallback) || 0);
             },
-            getMasterSatuan(nama, fallback = '') {
-                const key = String(nama || '').trim().toLowerCase();
+            getMasterSatuan(nama, fallback = '', kode = '') {
+                const namaKey = String(nama || '').trim().toLowerCase();
+                const kodeKey = String(kode || '').trim().toLowerCase();
                 const fallbackValue = String(fallback || '').trim();
-                if (!key) return fallbackValue;
-                const master = this.masterCatalog.find(m => String(m.nama || '').trim().toLowerCase() === key);
+                if (!namaKey && !kodeKey) return fallbackValue;
+                const master = this.masterCatalog.find(m =>
+                    (kodeKey && String(m.kode || '').trim().toLowerCase() === kodeKey) ||
+                    (namaKey && String(m.nama || '').trim().toLowerCase() === namaKey)
+                );
                 return master && String(master.satuan || '').trim()
                     ? String(master.satuan).trim()
                     : fallbackValue;
+            },
+            // SATUAN TRANSAKSI SELALU MENGIKUTI DATA MASTER.
+            // Form/gudang boleh membawa nilai sementara, tetapi saat barang sudah
+            // dikenali dari Data Master, satuan tidak boleh berbeda dari Master.
+            syncTransactionSatuan(item, nama, fallback = 'Pcs', kode = '') {
+                if (!item) return fallback;
+                const satuanMaster = this.getMasterSatuan(nama, '', kode || item.kode || item.barcode || '');
+                const satuan = String(satuanMaster || fallback || '').trim() || 'Pcs';
+                item.satuan = satuan;
+                return satuan;
+            },
+            // Sinkronisasi satuan untuk seluruh data transaksi/gudang yang sudah ada.
+            // Jika barang punya pasangan di Data Master, satuannya selalu mengikuti Master.
+            syncAllSatuanFromMaster() {
+                const resolve = (record) => {
+                    if (!record) return;
+                    const satuanMaster = this.getMasterSatuan(record.nama, '', record.kode || record.sku || record.barcode || '');
+                    if (satuanMaster) record.satuan = satuanMaster;
+                };
+                (this.spareparts || []).forEach(resolve);
+                (this.sisaProjects || []).forEach(resolve);
+                (this.logs || []).forEach(resolve);
+                (this.monitoringItems || []).forEach(resolve);
+                (this.monitoringHistory || []).forEach(resolve);
             },
             // Rumus minimum stock menggunakan kebutuhan selama lead time + safety stock.
             // Pemakaian harian dapat berasal dari Excel; jika tidak ada, sistem mengambil rata-rata histori OUT 30 hari terakhir.
@@ -5795,8 +5999,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.masterAutocompleteQuery = item.nama || '';
                 if (!item.nama) return;
                 const match = this.masterCatalog.find(m => String(m.nama || '').trim().toLowerCase() === String(item.nama || '').trim().toLowerCase());
-                if (match && match.satuan) {
-                    item.orderSatuan = match.satuan;
+                if (match) {
+                    item.orderSatuan = String(match.satuan || 'Pcs').trim();
+                    item.satuan = item.orderSatuan;
                     item.harga = Number(match.harga) || 0;
                 }
             },
@@ -5866,15 +6071,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 groups.splice(targetIndex, 0, moving);
                 this.applyPurchaseRequestPriorityOrder(groups);
             },
-            simpanOrderMulti() {
+            async simpanOrderMulti() {
                 if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
-                if (!this.formOrderMulti.tanggal) return alert('Tanggal order wajib dipilih!');
+                // Input PR dibuat fleksibel: hanya Nomor PR dan minimal 1 barang yang wajib.
+                // Field lain boleh kosong dan akan diberi nilai default agar tidak menghambat input.
                 const nomorPR = String(this.formOrderMulti.nomorPR || '').trim();
-                const pemesan = String(this.formOrderMulti.pemesan || '').trim();
-                if (!nomorPR) return alert('Nomor Purchase Request wajib diisi secara manual!');
-                if (!pemesan) return alert('Nama Pemesan wajib diisi!');
-                const keperluanPR = String(this.formOrderMulti.keperluan || '').trim();
-                if (!keperluanPR) return alert('Keterangan wajib diisi!');
+                if (!nomorPR) return alert('Nomor Purchase Request wajib diisi.');
+                const pemesan = String(this.formOrderMulti.pemesan || '').trim() || '-';
+                const keperluanPR = String(this.formOrderMulti.keperluan || '').trim() || '-';
                 if (this.formOrderMulti.itemsToProcess.length === 0) return alert('Tambahkan minimal 1 item order!');
                 const normalizePR = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
                 const normalizeItemName = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -5886,8 +6090,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (existingPR) {
                     prioritasPR = this.normalizePriorityValue(existingPR.prioritas) || prioritasPR;
                 }
+                // Jika prioritas dikosongkan, otomatis ditempatkan setelah prioritas terakhir.
+                // Tidak perlu mengisi urutan angka secara manual.
                 if (!prioritasPR) {
-                    return alert('Skala prioritas wajib diisi dengan angka bulat mulai dari 1.');
+                    const priorityValues = this.monitoringItems
+                        .map(order => Number(this.normalizePriorityValue(order.prioritas)))
+                        .filter(value => Number.isFinite(value) && value >= 1);
+                    prioritasPR = priorityValues.length ? Math.max(...priorityValues) + 1 : 1;
                 }
                 let isValid = true;
                 this.formOrderMulti.itemsToProcess.forEach(item => {
@@ -5908,7 +6117,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     this.shiftPurchaseRequestPrioritiesForInsert(prioritasPR, prKey);
                 }
                 // REVISI 1 (MONITORING): Tanggal tanpa jam
-                const selectedDate = this.getDateFromInput(this.formOrderMulti.tanggal);
+                const selectedDate = this.getDateFromInput(this.formOrderMulti.tanggal || new Date().toISOString().slice(0, 10));
                 const dateOnlyStr = this.getFormattedDateOnly(selectedDate);
                 const isoNow = selectedDate.toISOString();
                 this.formOrderMulti.itemsToProcess.forEach(item => {
@@ -5929,12 +6138,18 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         qtyRemaining: totalQty,
                         harga: hargaSatuan,
                         totalHarga: hargaSatuan * totalQty,
-                        satuan: String(item.orderSatuan || 'Pcs').trim().toUpperCase(),
+                        satuan: String(this.getMasterSatuan(item.nama, item.orderSatuan || 'Pcs') || 'Pcs').trim().toUpperCase(),
                         status: 'Pending'
                     });
                 });
                 if (!existingPR) this.finalizeInsertedPurchaseRequestPriority(prKey);
+                const saved = await this.saveToSupabase();
+                if (!saved) {
+                    alert('Purchase Request sudah dimasukkan ke layar, tetapi belum berhasil disimpan ke database. Data lokal dipertahankan; silakan coba simpan lagi setelah koneksi/izin diperbaiki.');
+                    return;
+                }
                 this.showMonitoringInputModal = false;
+                this.purchaseRequestPage = 1;
                 alert('Order berhasil dimasukkan ke Monitoring!');
             },
             async editMonitoringOrder(order) {
@@ -6019,6 +6234,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const monitoringLogId = Date.now() + Math.random();
                 this.monitoringHistory.unshift({
                     id: monitoringHistoryId,
+                    createdAt: new Date().toISOString(),
                     type: 'IN',
                     tgl: dateOnlyStr,
                     isoDate: isoNow,
@@ -6029,7 +6245,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     qty: qtyTerima,
                     harga: hargaBarang,
                     totalHarga: hargaBarang * qtyTerima,
-                    satuan: order.satuan,
+                    satuan: String(this.getMasterSatuan(order.nama, order.satuan || 'Pcs', order.kode || order.barcode || '') || 'Pcs').trim().toUpperCase(),
                     status: 'Menunggu Persetujuan',
                     monitoringOrderId: order.id,
                     monitoringLogId: monitoringLogId,
@@ -6037,6 +6253,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 });
                 this.logs.unshift({
                     id: monitoringLogId,
+                    createdAt: new Date().toISOString(),
                     isoDate: isoNow,
                     gudang: 'Sparepart',
                     type: 'IN',
@@ -6050,9 +6267,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     keperluan: `Penerimaan Monitoring (${order.keperluan || order.project || '-'})`,
                     monitoringOrderId: order.id,
                     monitoringHistoryId: monitoringHistoryId,
-                    satuan: order.satuan,
+                    satuan: String(this.getMasterSatuan(order.nama, order.satuan || 'Pcs', order.kode || order.barcode || '') || 'Pcs').trim().toUpperCase(),
                     approvalStatus: 'pending'
                 });
+                const saved = await this.saveToSupabase();
+                if (!saved) return alert('Penerimaan sudah muncul di layar, tetapi gagal disimpan ke database. Data lokal dipertahankan.');
                 alert(`Penerimaan order dicatat dan menunggu persetujuan Super Admin. Stok ${order.nama} belum bertambah.`);
             },
             printBAST(order) {
@@ -6083,7 +6302,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     noSJ: order.noSJ || order.nomorSJ || order.sj || '',
                     nama: order.nama || '',
                     qtyReceived,
-                    satuan: order.satuan || '',
+                    satuan: order.satuan || this.getMasterSatuan(order.nama) || '',
                     hasilAnalisa: order.hasilAnalisa || order.keterangan || '',
                     createdBy: order.createdBy || order.user || order.penginput || '',
                     approvedBy: order.approvedBy || '',
@@ -6143,7 +6362,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (stockItem) {
                     item.barcode = stockItem.barcode;
                     item.qty = Number(stockItem.qty) || 0;
-                    item.satuan = this.getMasterSatuan(stockItem.nama, stockItem.satuan || item.satuan || 'Pcs');
+                    this.syncTransactionSatuan(item, stockItem.nama, stockItem.satuan || item.satuan || 'Pcs');
                     item.harga = this.getMasterHarga(stockItem.nama, stockItem.harga);
                     if (item.outQty > item.qty) item.outQty = item.qty || 1;
                 } else {
@@ -6179,7 +6398,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const reserved = this.getPendingOutboundQty(gudang, item, excludeLogId);
                 return Math.max(0, currentStock - reserved);
             },
-            submitSparepartMultiOut() {
+            async submitSparepartMultiOut() {
                 if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
                 if (!this.formSparepartMultiOut.penerima || !this.formSparepartMultiOut.penerima.trim()) return alert('Nama Penerima wajib diisi!');
                 if (!this.formSparepartMultiOut.tanggal) return alert('Tanggal pengeluaran wajib dipilih!');
@@ -6208,6 +6427,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     const hargaBarang = this.getMasterHarga(target.nama, target.harga);
                     this.logs.unshift({
                         id: Date.now() + Math.random(),
+                        createdAt: new Date().toISOString(),
                         isoDate: isoNow,
                         gudang: 'Sparepart',
                         type: 'OUT',
@@ -6224,7 +6444,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         penerima: this.formSparepartMultiOut.penerima.toUpperCase(),
                         keperluan: this.formSparepartMultiOut.keperluan.toUpperCase(),
                         nomorPR: String(this.formSparepartMultiOut.nomorPR || '').trim().toUpperCase(),
-                        satuan: String(item.satuan || target.satuan || 'Pcs').trim().toUpperCase(),
+                        satuan: String(this.getMasterSatuan(target.nama, target.satuan || item.satuan || 'Pcs') || 'Pcs').trim().toUpperCase(),
                         approvalStatus: 'pending'
                     });
                 });
@@ -6261,14 +6481,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const key = String(item.nama || '').trim().toLowerCase();
                 if (!key) return;
                 const match = this.masterCatalog.find(m => String(m.nama || '').trim().toLowerCase() === key);
-                if (match && match.satuan) {
-                    item.satuan = match.satuan;
+                if (match) {
+                    this.syncTransactionSatuan(item, match.nama, match.satuan || 'Pcs');
                 }
             },
             removeSisaProjectMultiInItem(idx) {
                 this.formSisaProjectMultiIn.itemsToProcess.splice(idx, 1);
             },
-            submitSisaProjectMultiIn() {
+            async submitSisaProjectMultiIn() {
                 if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
                 if (!this.formSisaProjectMultiIn.supplier) return alert('Asal Vendor / Supplier wajib diisi!');
                 if (!this.formSisaProjectMultiIn.penyerah || !this.formSisaProjectMultiIn.penyerah.trim()) return alert('Nama Yang Menyerahkan wajib diisi!');
@@ -6311,6 +6531,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     const hargaBarang = this.getMasterHarga(item.nama);
                     this.logs.unshift({
                         id: Date.now() + Math.random(),
+                        createdAt: new Date().toISOString(),
                         isoDate: isoNow,
                         gudang: 'Sisa Project',
                         type: 'IN',
@@ -6327,7 +6548,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         prioritas: '',
                         penerima: this.formSisaProjectMultiIn.penerima.toUpperCase(),
                         pengambil: this.formSisaProjectMultiIn.penyerah.toUpperCase(),
-                        satuan: String(item.satuan || 'Pcs').trim().toUpperCase(),
+                        satuan: String(this.getMasterSatuan(item.nama, item.satuan || 'Pcs') || 'Pcs').trim().toUpperCase(),
                         lokasi: (item.lokasi || 'RAK SISA').toUpperCase(),
                         approvalStatus: 'pending'
                     });
@@ -6370,7 +6591,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (stockItem) {
                     item.barcode = stockItem.barcode;
                     item.qty = Number(stockItem.qty) || 0;
-                    item.satuan = this.getMasterSatuan(stockItem.nama, stockItem.satuan || item.satuan || 'Pcs');
+                    this.syncTransactionSatuan(item, stockItem.nama, stockItem.satuan || item.satuan || 'Pcs');
                     item.harga = Number(this.getMasterHarga(stockItem.nama, stockItem.harga)) || 0;
                     item.lokasi = stockItem.lokasi || '';
                     if (item.outQty > item.qty) item.outQty = item.qty || 1;
@@ -6413,6 +6634,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     const hargaBarang = this.getMasterHarga(target.nama, target.harga);
                     this.logs.unshift({
                         id: Date.now() + Math.random(),
+                        createdAt: new Date().toISOString(),
                         isoDate: isoNow,
                         gudang: 'Sisa Project',
                         type: 'OUT',
@@ -6429,7 +6651,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         keperluan: this.formSisaProjectMultiOut.keperluan.toUpperCase(),
                         nomorPR: String(this.formSisaProjectMultiOut.nomorPR || '').trim().toUpperCase(),
                         lokasi: target.lokasi || '',
-                        satuan: String(target.satuan || 'Pcs').trim().toUpperCase(),
+                        satuan: String(this.getMasterSatuan(target.nama, target.satuan || 'Pcs') || 'Pcs').trim().toUpperCase(),
                         approvalStatus: 'pending'
                     });
                 });
@@ -6451,7 +6673,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     nama: item.nama || '',
                     qty: 1,
                     harga: Number(this.getMasterHarga(item.nama, item.harga)) || 0,
-                    satuan: String(item.satuan || 'Pcs').trim().toUpperCase(),
+                    satuan: String(this.getMasterSatuan(item.nama, item.satuan || 'Pcs') || 'Pcs').trim().toUpperCase(),
                     supplier: '',
                     pengambil: '',
                     penerima: '',
@@ -6465,6 +6687,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const f = this.singleOutForm;
                 const item = f.item;
                 if (!item) return;
+                f.satuan = this.getMasterSatuan(f.nama || item.nama, item.satuan || f.satuan || 'Pcs');
                 if (!f.tanggal || !f.nama || Number(f.qty) <= 0 || !String(f.penerima || '').trim() || !String(f.keperluan || '').trim()) {
                     return alert('Tanggal, nama barang, qty, nama penerima, dan kepentingan/keterangan wajib diisi.');
                 }
@@ -6479,6 +6702,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const hargaBarang = Number(f.harga) || this.getMasterHarga(item.nama, item.harga);
                 this.logs.unshift({
                     id: Date.now() + Math.random(),
+                    createdAt: new Date().toISOString(),
                     isoDate: selectedDate.toISOString(),
                     gudang: f.gudang,
                     type: 'OUT',
@@ -6488,7 +6712,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     qtyAkhir: stok - outQty,
                     harga: hargaBarang,
                     totalHarga: hargaBarang * outQty,
-                    satuan: String(f.satuan || item.satuan || 'Pcs').trim().toUpperCase(),
+                    satuan: String(this.getMasterSatuan(f.nama || item.nama, f.satuan || item.satuan || 'Pcs', item.kode || item.barcode || '') || 'Pcs').trim().toUpperCase(),
                     tgl: dateOnlyStr,
                     user: (f.pengambil || f.penerima).toUpperCase(),
                     pengambil: (f.pengambil || '').toUpperCase(),
@@ -6538,6 +6762,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         setTimeout(() => {
                             window.print();
                             header.remove();
+                            signature.remove();
                         }, 300);
                     };
                     if (img && !img.complete) {
@@ -6765,7 +6990,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const namaBarang = String(item.nama || '').trim();
                 const namaKey = namaBarang.toLowerCase();
                 const gudang = this.activeTab === 'sisa_project' ? 'Sisa Project' : 'Sparepart';
-                const satuan = item.satuan || 'Pcs';
+                const satuan = (masterItem && masterItem.satuan) || item.satuan || 'Pcs';
 
                 const masterItem = this.masterCatalog.find(master =>
                     String(master.nama || '').trim().toLowerCase() === namaKey ||
@@ -6879,6 +7104,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         qtyIn: log.type === 'IN' ? f.qty : '',
                         qtyOut: log.type === 'OUT' ? f.qty : '',
                          harga: this.getMasterHarga(log.nama, log.harga),
+                        satuan: this.getMasterSatuan(log.nama, log.satuan || satuan, log.kode || log.barcode || '') || satuan,
                         saldo: f.saldoSetelah,
                         src: log.type === 'IN' ? (log.supplier || log.user || '-') : (log.user || '-'),
                         isOpname: (log.adjustmentType === 'OPNAME') || String(log.keperluan || '').includes('PENYESUAIAN STOCK OPNAME')
@@ -7030,7 +7256,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="col-desc">Keterangan / Kepentingan</th>
                                     <th class="col-opening">Masuk</th>
                                     <th class="col-opening">Keluar</th>
-                                    <th class="col-balance">Saldo</th>
+                                    <th class="col-balance">Stock Saat Ini</th>
                                     <th class="col-user">Petugas / Supplier</th>
                                 </tr>
                             </thead>
@@ -7063,14 +7289,96 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (typeof ExcelJS === 'undefined') return alert('Library Excel belum siap. Silakan refresh halaman.');
                 const start=this.spLogDateStart, end=this.spLogDateEnd || this.spLogDateStart, barangFilter=this.spLogBarang||'', keperluanFilter=this.spLogKeperluan||'';
                 const inRange=l=>{const d=new Date(l.isoDate||l.id);if(start&&d<new Date(start))return false;if(end){const e=new Date(end);e.setHours(23,59,59,999);if(d>e)return false;}if(barangFilter&&!String(l.nama||'').toLowerCase().includes(barangFilter.toLowerCase()))return false;if(keperluanFilter){const h=String(l.supplier||l.keperluan||l.user||'').toLowerCase();if(!h.includes(keperluanFilter.toLowerCase()))return false;}return true;};
-                const logs=this.logs.filter(l=>String(l.gudang||'').trim().toLowerCase()==='sparepart'&&inRange(l)); const ins=logs.filter(l=>String(l.type||'').toUpperCase()==='IN').sort((a,b)=>new Date(a.isoDate||a.id)-new Date(b.isoDate||b.id)); const outs=logs.filter(l=>String(l.type||'').toUpperCase()==='OUT').sort((a,b)=>new Date(a.isoDate||a.id)-new Date(b.isoDate||b.id));
-                const wb=new ExcelJS.Workbook(); wb.creator='Agrofarm Nusa Raya'; wb.created=new Date(); const ws=wb.addWorksheet('Laporan Sparepart',{pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.25,right:.25,top:.35,bottom:.35,header:.1,footer:.1}}}); ws.views=[{showGridLines:false}]; ws.columns=[{width:6},{width:14},{width:34},{width:13},{width:13},{width:13},{width:32},{width:16},{width:18}];
-                const logoId=wb.addImage({base64:AGROFARM_EXCEL_LOGO_BASE64,extension:'png'}); ws.addImage(logoId,{tl:{col:.15,row:.2},ext:{width:145,height:36}}); ws.mergeCells('A1:G1');ws.mergeCells('A2:G2');ws.mergeCells('H1:I3');
+                const logs=this.logs.filter(l=>String(l.gudang||'').trim().toLowerCase()==='sparepart'&&inRange(l)); const inputOrder=(a,b)=>{const ta=new Date(a.createdAt||a.inputAt||a.id||a.isoDate||0).getTime();const tb=new Date(b.createdAt||b.inputAt||b.id||b.isoDate||0).getTime();return ta-tb;}; const ins=logs.filter(l=>String(l.type||'').toUpperCase()==='IN').sort(inputOrder); const outs=logs.filter(l=>String(l.type||'').toUpperCase()==='OUT').sort(inputOrder);
+                const wb=new ExcelJS.Workbook(); wb.creator='Agrofarm Nusa Raya'; wb.created=new Date(); const ws=wb.addWorksheet('Laporan Sparepart',{pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.25,right:.25,top:.35,bottom:.35,header:.1,footer:.1}}}); ws.views=[{showGridLines:false}]; ws.columns=[{width:6},{width:14},{width:34},{width:13},{width:13},{width:13},{width:13},{width:32}];
+                const logoId=wb.addImage({base64:AGROFARM_EXCEL_LOGO_BASE64,extension:'png'}); ws.addImage(logoId,{tl:{col:.15,row:.2},ext:{width:145,height:36}}); ws.mergeCells('A1:G1');ws.mergeCells('A2:G2');ws.mergeCells('H1:H3');
                 ws.getCell('A1').value='LAPORAN PERGERAKAN STOK';ws.getCell('A2').value='AGROFARM NUSA RAYA — Sistem Inventory Spare Part';ws.getCell('H1').value=`Tanggal Cetak\n${start||'(awal)'} s/d ${end||'(akhir)'}\nDicetak: ${this.getFormattedDateOnly()}`;ws.getCell('A1').font={name:'Arial',size:16,bold:true};ws.getCell('A2').font={name:'Arial',size:10,bold:true};ws.getCell('H1').font={name:'Arial',size:9,bold:true};ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};ws.getCell('A2').alignment={horizontal:'center',vertical:'middle'};ws.getCell('H1').alignment={horizontal:'right',vertical:'middle',wrapText:true};
                 const border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}; const style=c=>{c.font={name:'Arial',size:9};c.border=border;c.alignment={vertical:'middle',wrapText:true};}; const info=(l,v)=>{const r=ws.addRow([l,v]);ws.mergeCells(`B${r.number}:I${r.number}`);style(r.getCell(1));style(r.getCell(2));r.getCell(1).font={name:'Arial',size:9,bold:true};}; info('Cakupan','Gudang Sparepart'); info('Periode',`${start||'(awal)'} s/d ${end||'(akhir)'}`); if(barangFilter)info('Filter Barang',barangFilter); if(keperluanFilter)info('Filter Kepentingan/Supplier',keperluanFilter); ws.addRow([]);
-                const addTable=(title,arr,type)=>{let t=ws.addRow([`${title}`,`${arr.length} TRANSAKSI`]);ws.mergeCells(`A${t.number}:G${t.number}`);t.getCell(1).font={name:'Arial',size:11,bold:true};let h=ws.addRow(['No','Tanggal','Nama Barang',type==='IN'?'Qty Masuk':'Qty Keluar','Qty Awal','Qty Akhir',type==='IN'?'Supplier / Kepentingan':'Pengambil (Kepentingan)']);h.eachCell(c=>{style(c);c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});if(!arr.length){const e=ws.addRow(['','','Tidak ada data '+(type==='IN'?'barang masuk':'barang keluar')+' pada periode ini.']);ws.mergeCells(`C${e.number}:G${e.number}`);e.getCell(3).alignment={horizontal:'center'};}arr.forEach((l,i)=>{const q=Number(l.qty)||0,hrg=Number(l.harga!=null?l.harga:this.getMasterHarga(l.nama))||0;const desc=type==='IN'?(l.supplier||l.keperluan||'-'):`${l.user||'-'} (${l.keperluan||'-'})`;const r=ws.addRow([i+1,l.tgl||'-',l.nama||'-',q,l.qtyAwal??'-',l.qtyAkhir??'-',desc]);r.eachCell(style);});ws.addRow([]);};
-                addTable('GUDANG SPAREPART — BARANG MASUK (INBOUND)',ins,'IN'); addTable('GUDANG SPAREPART — BARANG KELUAR (OUTBOUND)',outs,'OUT'); const last=ws.lastRow.number;ws.freezePanes={xSplit:0,ySplit:5};ws.printArea=`A1:J${last}`;
+                const addTable=(title,arr,type)=>{let t=ws.addRow([`${title}`,`${arr.length} TRANSAKSI`]);ws.mergeCells(`A${t.number}:G${t.number}`);t.getCell(1).font={name:'Arial',size:11,bold:true};let h=ws.addRow(['No','Tanggal','Nama Barang','Satuan',type==='IN'?'Qty Masuk':'Qty Keluar','Qty Awal','Qty Akhir',type==='IN'?'Supplier / Kepentingan':'Pengambil (Kepentingan)']);h.eachCell(c=>{style(c);c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});if(!arr.length){const e=ws.addRow(['','','Tidak ada data '+(type==='IN'?'barang masuk':'barang keluar')+' pada periode ini.']);ws.mergeCells(`C${e.number}:H${e.number}`);e.getCell(3).alignment={horizontal:'center'};}arr.forEach((l,i)=>{const q=Number(l.qty)||0,hrg=Number(l.harga!=null?l.harga:this.getMasterHarga(l.nama))||0;const desc=type==='IN'?(l.supplier||l.keperluan||'-'):`${l.user||'-'} (${l.keperluan||'-'})`;const satuan=this.getMasterSatuan(l.nama, l.satuan || '-', l.kode || l.barcode || '') || '-';const r=ws.addRow([i+1,l.tgl||'-',l.nama||'-',satuan,q,l.qtyAwal??'-',l.qtyAkhir??'-',desc]);r.eachCell(style);r.getCell(4).alignment={horizontal:'center',vertical:'middle',wrapText:true};});ws.addRow([]);};
+                addTable('GUDANG SPAREPART — BARANG MASUK (INBOUND)',ins,'IN'); addTable('GUDANG SPAREPART — BARANG KELUAR (OUTBOUND)',outs,'OUT'); const last=ws.lastRow.number;ws.freezePanes={xSplit:0,ySplit:5};ws.printArea=`A1:H${last}`;
                 const buffer=await wb.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`Laporan_Sparepart_${start||'awal'}_sd_${end||'akhir'}.xlsx`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+            },
+            async importMonitoringExcel(event) {
+                if (!this.canInputTransaction) return alert('Akun Viewer tidak dapat import Purchase Request.');
+                const file = event?.target?.files?.[0];
+                if (!file) return;
+                if (typeof XLSX === 'undefined') return alert('Library Excel belum termuat. Silakan refresh halaman.');
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true });
+                    if (!rows.length) return alert('File Excel tidak memiliki data Purchase Request.');
+                    const norm = v => String(v ?? '').trim().toLowerCase().replace(/[\s_\/.-]+/g, '');
+                    const findValue = (row, aliases) => {
+                        const keys = Object.keys(row), wanted = aliases.map(norm);
+                        const key = keys.find(k => wanted.includes(norm(k)));
+                        return key === undefined ? '' : row[key];
+                    };
+                    const parseQty = v => {
+                        if (v === '' || v === null || v === undefined) return 0;
+                        if (typeof v === 'number') return Number.isFinite(v) ? Math.max(0, v) : 0;
+                        const n = Number(String(v).replace(/,/g, '').replace(/[^0-9.-]/g, ''));
+                        return Number.isFinite(n) ? Math.max(0, n) : 0;
+                    };
+                    const parseDate = v => {
+                        if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
+                        if (typeof v === 'number') {
+                            const d = new Date(Date.UTC(1899,11,30) + Math.round(v * 86400000));
+                            if (!isNaN(d)) return d.toISOString().slice(0,10);
+                        }
+                        const raw = String(v || '').trim();
+                        if (!raw) return new Date().toISOString().slice(0,10);
+                        const m = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+                        if (m) return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+                        return raw.slice(0,10);
+                    };
+                    const normalizePR = v => String(v || '').trim().toLowerCase().replace(/\s+/g,' ');
+                    const normalizeItem = v => String(v || '').trim().toLowerCase().replace(/\s+/g,' ');
+                    let added = 0, skipped = 0;
+                    const priorityValues = this.monitoringItems.map(x => Number(this.normalizePriorityValue(x.prioritas))).filter(x => Number.isFinite(x) && x >= 1);
+                    let nextPriority = priorityValues.length ? Math.max(...priorityValues) + 1 : 1;
+                    for (const row of rows) {
+                        const nomorPR = String(findValue(row, ['Nomor PR','Nomor Purchase Request','No PR','PR Number','PR']) || '').trim();
+                        const nama = String(findValue(row, ['Nama Barang','Nama Sparepart','Barang','Item','Deskripsi']) || '').trim();
+                        if (!nomorPR || !nama) { skipped++; continue; }
+                        const tgl = parseDate(findValue(row, ['Tanggal PR','Tgl PR','Tanggal Order','Tgl Order','Tanggal Transaksi','Tanggal']));
+                        const satuan = String(findValue(row, ['Satuan','Unit','UOM']) || 'Pcs').trim() || 'Pcs';
+                        const qtyTotal = parseQty(findValue(row, ['Total Order','Qty Order','Qty Total','Jumlah Order','Qty']));
+                        const qtyReceived = Math.min(qtyTotal, parseQty(findValue(row, ['Diterima','Qty Diterima','Qty Received'])));
+                        const qtyRemainingRaw = findValue(row, ['Sisa Order','Sisa','Qty Sisa','Qty Remaining']);
+                        const qtyRemaining = qtyRemainingRaw === '' ? Math.max(0, qtyTotal - qtyReceived) : parseQty(qtyRemainingRaw);
+                        const keterangan = String(findValue(row, ['Keterangan','Keterangan Project','Project','Keperluan']) || '-').trim() || '-';
+                        const pemesan = String(findValue(row, ['Nama Pemesan','Pemesan','Penerima']) || '-').trim() || '-';
+                        let prioritas = this.normalizePriorityValue(findValue(row, ['Skala Prioritas','Prioritas','Priority']));
+                        const prKey = normalizePR(nomorPR), itemKey = normalizeItem(nama);
+                        if (this.monitoringItems.some(x => normalizePR(x.nomorPR) === prKey && normalizeItem(x.nama) === itemKey)) { skipped++; continue; }
+                        if (!prioritas) {
+                            const samePR = this.monitoringItems.find(x => normalizePR(x.nomorPR) === prKey);
+                            prioritas = this.normalizePriorityValue(samePR?.prioritas) || nextPriority;
+                        }
+                        if (!this.monitoringItems.some(x => normalizePR(x.nomorPR) === prKey)) nextPriority = Math.max(nextPriority, Number(prioritas) + 1);
+                        const dateObj = this.getDateFromInput(tgl);
+                        const harga = this.getMasterHarga(nama, 0);
+                        this.monitoringItems.unshift({
+                            id: Date.now() + Math.random(), isoDate: dateObj.toISOString(), tgl: this.getFormattedDateOnly(dateObj),
+                            nomorPR, nama: nama.toUpperCase(), keperluan: keterangan.toUpperCase(), prioritas,
+                            penerima: pemesan.toUpperCase(), pengambil: '', qtyTotal, qtyReceived, qtyRemaining,
+                            harga, totalHarga: harga * qtyTotal, satuan: satuan.toUpperCase(),
+                            status: qtyRemaining <= 0 && qtyTotal > 0 ? 'Diterima Semua' : qtyReceived > 0 ? 'Diterima Sebagian' : 'Pending'
+                        });
+                        added++;
+                    }
+                    if (!added) return alert(`Import selesai, tetapi tidak ada data baru yang dimasukkan.\nBaris dilewati: ${skipped}`);
+                    await this.saveToSupabase();
+                    this.purchaseRequestPage = 1;
+                    alert(`Import Purchase Request selesai.\nBerhasil masuk: ${added} baris\nDilewati/duplikat: ${skipped} baris`);
+                } catch (err) {
+                    console.error('Import Purchase Request gagal:', err);
+                    alert('Gagal membaca file Excel. Gunakan file hasil Export Purchase Request dari sistem atau Excel dengan kolom Nomor PR, Tanggal PR, Nama Barang, Satuan, Total Order, Diterima, Sisa Order, Keterangan, dan Skala Prioritas.');
+                } finally {
+                    if (event?.target) event.target.value = '';
+                }
             },
             async exportPurchaseRequestExcel() {
                 if (!this.canEdit) return alert('Akun Viewer tidak dapat export Purchase Request.');
@@ -7078,37 +7386,35 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const rows = this.filteredMonitoringItems || [];
                 if (!rows.length) return alert('Tidak ada data Purchase Request yang sesuai filter untuk diexport.');
                 const wb = new ExcelJS.Workbook();
-                wb.creator = 'Agrofarm Nusa Raya';
-                wb.created = new Date();
+                wb.creator = 'Agrofarm Nusa Raya'; wb.created = new Date();
                 const ws = wb.addWorksheet('Purchase Request');
                 ws.views = [{ state:'frozen', ySplit:6, showGridLines:false }];
                 ws.pageSetup = { paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0, margins:{left:.25,right:.25,top:.35,bottom:.35,header:.1,footer:.1} };
                 const logoId = wb.addImage({ base64: AGROFARM_EXCEL_LOGO_BASE64, extension:'png' });
                 ws.addImage(logoId,{tl:{col:.2,row:.2},ext:{width:145,height:36}});
-                ws.columns = [{width:7},{width:15},{width:38},{width:16},{width:16},{width:16},{width:34},{width:17},{width:20}];
-                ws.mergeCells('A1:I1'); ws.getCell('A1').value='PT AGROFARM NUSA RAYA'; ws.getCell('A1').font={bold:true,size:14}; ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};
-                ws.mergeCells('A2:I2'); ws.getCell('A2').value='Jl. Raya Ponorogo-Madiun KM 4 (JL Industri) Kertosari Babadan Ponorogo'; ws.getCell('A2').font={size:9}; ws.getCell('A2').alignment={horizontal:'center'};
-                ws.mergeCells('A3:I3'); ws.getCell('A3').value='PURCHASE REQUEST'; ws.getCell('A3').font={bold:true,size:16}; ws.getCell('A3').alignment={horizontal:'center',vertical:'middle'};
-                ws.mergeCells('A4:I4'); ws.getCell('A4').value=`Tanggal Export: ${this.getFormattedDateOnly()} | Total Data: ${rows.length}`; ws.getCell('A4').font={italic:true,size:9}; ws.getCell('A4').alignment={horizontal:'center'};
-                ws.mergeCells('A5:I5'); ws.getCell('A5').value='';
+                ws.columns = [{width:7},{width:15},{width:20},{width:38},{width:13},{width:16},{width:16},{width:16},{width:34},{width:18},{width:20}];
+                ws.mergeCells('A1:K1'); ws.getCell('A1').value='PT AGROFARM NUSA RAYA'; ws.getCell('A1').font={bold:true,size:14}; ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};
+                ws.mergeCells('A2:K2'); ws.getCell('A2').value='Jl. Raya Ponorogo-Madiun KM 4 (JL Industri) Kertosari Babadan Ponorogo'; ws.getCell('A2').font={size:9}; ws.getCell('A2').alignment={horizontal:'center'};
+                ws.mergeCells('A3:K3'); ws.getCell('A3').value='PURCHASE REQUEST'; ws.getCell('A3').font={bold:true,size:16}; ws.getCell('A3').alignment={horizontal:'center',vertical:'middle'};
+                ws.mergeCells('A4:K4'); ws.getCell('A4').value=`Tanggal Export: ${this.getFormattedDateOnly()} | Total Data: ${rows.length}`; ws.getCell('A4').font={italic:true,size:9}; ws.getCell('A4').alignment={horizontal:'center'};
+                ws.mergeCells('A5:K5'); ws.getCell('A5').value='';
                 const header=ws.getRow(6);
-                ['No','Tgl Order','Nama Barang','Total Order','Diterima','Sisa Order','Keterangan','Skala Prioritas','Status'].forEach((v,i)=>header.getCell(i+1).value=v);
+                ['No','Tanggal PR','Nomor PR','Nama Barang','Satuan','Total Order','Diterima','Sisa Order','Keterangan','Skala Prioritas','Status'].forEach((v,i)=>header.getCell(i+1).value=v);
                 header.font={bold:true,color:{argb:'FFFFFFFF'},size:9}; header.alignment={horizontal:'center',vertical:'middle',wrapText:true}; header.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF047857'}}; header.height=28;
                 header.eachCell(c=>c.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}});
                 let r=7;
                 for (const [idx,order] of rows.entries()) {
                     const row=ws.getRow(r++);
-                    row.values=[idx+1, `${order.tgl||'-'}\nNo. PR: ${order.nomorPR||'-'}`, String(order.nama||'-').toUpperCase(), `${Number(order.qtyTotal)||0} ${order.satuan||''}`, `${Number(order.qtyReceived)||0} ${order.satuan||''}`, `${Number(order.qtyRemaining)||0} ${order.satuan||''}`, String(order.keperluan||order.project||'-').toUpperCase(), Number(order.prioritas)||'', order.status==='Diterima Semua'?'Diterima Semua':order.status==='Diterima Sebagian'?'Diterima Sebagian':order.status==='Cancel'?'Canceled':'Pending'];
+                    row.values=[idx+1, order.tgl||'-', order.nomorPR||'-', String(order.nama||'-').toUpperCase(), String(order.satuan||'Pcs').toUpperCase(), Number(order.qtyTotal)||0, Number(order.qtyReceived)||0, Number(order.qtyRemaining)||0, String(order.keperluan||order.project||'-').toUpperCase(), Number(order.prioritas)||'', order.status==='Diterima Semua'?'Diterima Semua':order.status==='Diterima Sebagian'?'Diterima Sebagian':order.status==='Cancel'?'Canceled':'Pending'];
                     row.alignment={vertical:'middle',wrapText:true};
-                    for(let c=1;c<=9;c++) row.getCell(c).border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
-                    row.getCell(1).alignment={horizontal:'center',vertical:'middle'}; row.getCell(2).alignment={horizontal:'center',vertical:'middle',wrapText:true}; row.getCell(4).alignment={horizontal:'center'}; row.getCell(5).alignment={horizontal:'center'}; row.getCell(6).alignment={horizontal:'center'}; row.getCell(8).alignment={horizontal:'center'}; row.getCell(9).alignment={horizontal:'center'};
+                    for(let c=1;c<=11;c++) row.getCell(c).border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+                    [1,2,3,5,6,7,8,10,11].forEach(c=>row.getCell(c).alignment={horizontal:'center',vertical:'middle',wrapText:true});
                 }
                 if (rows.length) {
-                    const totalRow=ws.getRow(r++); totalRow.getCell(1).value=''; totalRow.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF7E6'}};
-                    ws.mergeCells(`A${totalRow.number}:F${totalRow.number}`); totalRow.getCell(1).value='TOTAL NILAI ORDER (SESUAI FILTER)'; totalRow.getCell(1).font={bold:true}; totalRow.getCell(1).alignment={horizontal:'right'}; totalRow.getCell(7).value=this.monitoringTotalHarga; totalRow.getCell(7).numFmt='#,##0'; totalRow.getCell(7).font={bold:true}; totalRow.getCell(8).value=''; totalRow.getCell(9).value='';
-                    for(let c=1;c<=9;c++) totalRow.getCell(c).border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+                    const totalRow=ws.getRow(r++); ws.mergeCells(`A${totalRow.number}:D${totalRow.number}`); totalRow.getCell(1).value='TOTAL NILAI ORDER (SESUAI FILTER)'; totalRow.getCell(1).font={bold:true}; totalRow.getCell(1).alignment={horizontal:'right'}; totalRow.getCell(6).value=this.monitoringTotalHarga; totalRow.getCell(6).numFmt='#,##0'; totalRow.getCell(6).font={bold:true};
+                    for(let c=1;c<=11;c++) totalRow.getCell(c).border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
                 }
-                ws.autoFilter={from:{row:6,column:1},to:{row:Math.max(6,r-1),column:9}}; ws.printArea=`A1:I${Math.max(6,r-1)}`;
+                ws.autoFilter={from:{row:6,column:1},to:{row:Math.max(6,r-1),column:11}}; ws.printArea=`A1:K${Math.max(6,r-1)}`;
                 const buffer=await wb.xlsx.writeBuffer(); const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`Purchase_Request_Agrofarm_${this.getFormattedDateOnly().replace(/\//g,'-')}.xlsx`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
             },
             exportMasterCatalogExcel() {
@@ -7205,18 +7511,18 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (typeof ExcelJS === 'undefined') return alert('Library Excel belum siap. Silakan refresh halaman.');
                 const inRange=l=>{const d=new Date(l.isoDate||l.id);if(this.dashFilterDateStart&&d<new Date(this.dashFilterDateStart))return false;if(this.dashFilterDateEnd){const e=new Date(this.dashFilterDateEnd);e.setHours(23,59,59,999);if(d>e)return false;}return true;};
                 const printedDate=this.getFormattedDateOnly(); const rangeText=(this.dashFilterDateStart||this.dashFilterDateEnd)?`${this.dashFilterDateStart||'(awal)'} s/d ${this.dashFilterDateEnd||'(akhir)'}`:'SEMUA PERIODE';
-                const wb=new ExcelJS.Workbook(); wb.creator='Agrofarm Nusa Raya'; wb.created=new Date(); const ws=wb.addWorksheet('Laporan Pergerakan Stok',{pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.25,right:.25,top:.35,bottom:.35,header:.1,footer:.1}}}); ws.views=[{showGridLines:false}]; ws.columns=[{width:6},{width:14},{width:34},{width:13},{width:13},{width:13},{width:32},{width:16},{width:18}];
+                const wb=new ExcelJS.Workbook(); wb.creator='Agrofarm Nusa Raya'; wb.created=new Date(); const ws=wb.addWorksheet('Laporan Pergerakan Stok',{pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.25,right:.25,top:.35,bottom:.35,header:.1,footer:.1}}}); ws.views=[{showGridLines:false}]; ws.columns=[{width:6},{width:14},{width:34},{width:13},{width:13},{width:13},{width:13},{width:32},{width:16},{width:18}];
                 const logoId=wb.addImage({base64:'data:image/png;base64,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',extension:'png'}); ws.addImage(logoId,{tl:{col:.15,row:.2},ext:{width:145,height:36}}); ws.mergeCells('A1:G1');ws.mergeCells('A2:G2');ws.mergeCells('H1:I3');
                 ws.getCell('A1').value='LAPORAN PERGERAKAN STOK';ws.getCell('A2').value='AGROFARM NUSA RAYA — Sistem Inventory Spare Part';ws.getCell('H1').value=`Tanggal Cetak\n${rangeText}\nDicetak: ${this.escapeHtml(printedDate)}`;
                 ws.getCell('A1').font={name:'Arial',size:16,bold:true};ws.getCell('A2').font={name:'Arial',size:10,bold:true};ws.getCell('H1').font={name:'Arial',size:9,bold:true};ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};ws.getCell('A2').alignment={horizontal:'center',vertical:'middle'};ws.getCell('H1').alignment={horizontal:'right',vertical:'middle',wrapText:true};
                 const border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}; const style=c=>{c.font={name:'Arial',size:9};c.border=border;c.alignment={vertical:'middle',wrapText:true};}; const info=(l,v)=>{const r=ws.addRow([l,v]);ws.mergeCells(`B${r.number}:I${r.number}`);style(r.getCell(1));style(r.getCell(2));r.getCell(1).font={name:'Arial',size:9,bold:true};}; info('Cakupan','Semua Gudang');info('Periode',rangeText);ws.addRow([]);
-                const section=g=>{const ins=this.logs.filter(l=>String(l.gudang||'').toLowerCase()===g.toLowerCase()&&String(l.type||'').toUpperCase()==='IN'&&inRange(l)).sort((a,b)=>new Date(a.isoDate||a.id)-new Date(b.isoDate||b.id));const outs=this.logs.filter(l=>String(l.gudang||'').toLowerCase()===g.toLowerCase()&&String(l.type||'').toUpperCase()==='OUT'&&inRange(l)).sort((a,b)=>new Date(a.isoDate||a.id)-new Date(b.isoDate||b.id));
+                const section=g=>{const inputOrder=(a,b)=>{const ta=new Date(a.createdAt||a.inputAt||a.id||a.isoDate||0).getTime();const tb=new Date(b.createdAt||b.inputAt||b.id||b.isoDate||0).getTime();return ta-tb;};const ins=this.logs.filter(l=>String(l.gudang||'').toLowerCase()===g.toLowerCase()&&String(l.type||'').toUpperCase()==='IN'&&inRange(l)).sort(inputOrder);const outs=this.logs.filter(l=>String(l.gudang||'').toLowerCase()===g.toLowerCase()&&String(l.type||'').toUpperCase()==='OUT'&&inRange(l)).sort((a,b)=>{const ta=new Date(a.createdAt||a.inputAt||a.id||a.isoDate||0).getTime();const tb=new Date(b.createdAt||b.inputAt||b.id||b.isoDate||0).getTime();return ta-tb;});
                     let title=ws.addRow([`GUDANG ${g.toUpperCase()} — BARANG MASUK (INBOUND)`,`${ins.length} TRANSAKSI`]);ws.mergeCells(`A${title.number}:J${title.number}`);title.getCell(1).font={name:'Arial',size:11,bold:true};
-                    let h=ws.addRow(['No','Tanggal','Nama Barang','Satuan','Qty Masuk','Qty Awal','Qty Akhir','Supplier / Kepentingan']);h.eachCell(c=>{style(c);c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});
-                    if(!ins.length){const e=ws.addRow(['','','Tidak ada data barang masuk pada periode ini.']);ws.mergeCells(`C${e.number}:G${e.number}`);e.getCell(3).alignment={horizontal:'center'};} ins.forEach((l,i)=>{const q=Number(l.qty)||0;const hrg=Number(l.harga!=null?l.harga:this.getMasterHarga(l.nama))||0;const r=ws.addRow([i+1,l.tgl||'-',l.nama||'-',(l.satuan || 'Pcs'),q,l.qtyAwal??'-',l.qtyAkhir??'-',l.supplier||l.keperluan||'-',hrg,hrg*q]);r.eachCell(style);r.getCell(8).numFmt='#,##0';r.getCell(9).numFmt='#,##0';});
+                    let h=ws.addRow(['No','Tanggal','Nama Barang','Satuan','Qty Masuk','Qty Awal','Qty Akhir','Supplier / Kepentingan','Harga Satuan','Harga Total']);h.eachCell(c=>{style(c);c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});
+                    if(!ins.length){const e=ws.addRow(['','','Tidak ada data barang masuk pada periode ini.']);ws.mergeCells(`C${e.number}:G${e.number}`);e.getCell(3).alignment={horizontal:'center'};} ins.forEach((l,i)=>{const q=Number(l.qty)||0;const hrg=Number(l.harga!=null?l.harga:this.getMasterHarga(l.nama))||0;const r=ws.addRow([i+1,l.tgl||'-',l.nama||'-',(this.getMasterSatuan(l.nama, l.satuan || 'Pcs', l.kode || l.barcode || '') || 'Pcs'),q,l.qtyAwal??'-',l.qtyAkhir??'-',l.supplier||l.keperluan||'-',hrg,hrg*q]);r.eachCell(style);r.getCell(9).numFmt='#,##0';r.getCell(10).numFmt='#,##0';});
                     title=ws.addRow([`GUDANG ${g.toUpperCase()} — BARANG KELUAR (OUTBOUND)`,`${outs.length} TRANSAKSI`]);ws.mergeCells(`A${title.number}:J${title.number}`);title.getCell(1).font={name:'Arial',size:11,bold:true};
-                    h=ws.addRow(['No','Tanggal','Nama Barang','Satuan','Qty Keluar','Qty Awal','Qty Akhir','Pengambil (Kepentingan)']);h.eachCell(c=>{style(c);c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});
-                    if(!outs.length){const e=ws.addRow(['','','Tidak ada data barang keluar pada periode ini.']);ws.mergeCells(`C${e.number}:G${e.number}`);e.getCell(3).alignment={horizontal:'center'};} outs.forEach((l,i)=>{const q=Number(l.qty)||0;const hrg=Number(l.harga!=null?l.harga:this.getMasterHarga(l.nama))||0;const r=ws.addRow([i+1,l.tgl||'-',l.nama||'-',(l.satuan || 'Pcs'),q,l.qtyAwal??'-',l.qtyAkhir??'-',`${l.user||'-'} (${l.keperluan||'-'})`,hrg,hrg*q]);r.eachCell(style);r.getCell(8).numFmt='#,##0';r.getCell(9).numFmt='#,##0';});ws.addRow([]);};
+                    h=ws.addRow(['No','Tanggal','Nama Barang','Satuan','Qty Keluar','Qty Awal','Qty Akhir','Pengambil (Kepentingan)','Harga Satuan','Harga Total']);h.eachCell(c=>{style(c);c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});
+                    if(!outs.length){const e=ws.addRow(['','','Tidak ada data barang keluar pada periode ini.']);ws.mergeCells(`C${e.number}:G${e.number}`);e.getCell(3).alignment={horizontal:'center'};} outs.forEach((l,i)=>{const q=Number(l.qty)||0;const hrg=Number(l.harga!=null?l.harga:this.getMasterHarga(l.nama))||0;const r=ws.addRow([i+1,l.tgl||'-',l.nama||'-',(this.getMasterSatuan(l.nama, l.satuan || 'Pcs', l.kode || l.barcode || '') || 'Pcs'),q,l.qtyAwal??'-',l.qtyAkhir??'-',`${l.user||'-'} (${l.keperluan||'-'})`,hrg,hrg*q]);r.eachCell(style);r.getCell(9).numFmt='#,##0';r.getCell(10).numFmt='#,##0';});ws.addRow([]);};
                 section('Sparepart');section('Sisa Project'); const last=ws.lastRow.number;ws.freezePanes={xSplit:0,ySplit:5};ws.printArea=`A1:J${last}`;
                 const buffer=await wb.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`Laporan_Pergerakan_Stok_${this.dashFilterDateStart||'awal'}_sd_${this.dashFilterDateEnd||'akhir'}.xlsx`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
             },
@@ -7267,6 +7573,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <td style="border:1px solid #000; padding:5px; text-align:center;">${i + 1}</td>
                             <td style="border:1px solid #000; padding:5px; text-align:center;">${log.tgl || '-'}</td>
                             <td style="border:1px solid #000; padding:5px;">${(log.nama || '-').toUpperCase()}</td>
+                            <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:700;">${this.getMasterSatuan(log.nama, log.satuan || '-', log.kode || log.barcode || '') || '-'}</td>
                             <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:700;">${type === 'IN' ? '+' : '-'}${log.qty || 0}</td>
                             <td style="border:1px solid #000; padding:5px; text-align:center;">${log.qtyAwal ?? '-'}</td>
                             <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:700;">${log.qtyAkhir ?? '-'}</td>
@@ -7277,8 +7584,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 };
                 const renderGudangSection = (gudangName) => {
                     const sectionShowPrice = gudangName.toLowerCase() === 'sparepart' ? this.showPrices : false;
-                    const inLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'IN' && inRange(l)).sort((a,b) => new Date(a.isoDate||a.id) - new Date(b.isoDate||b.id));
-                    const outLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'OUT' && inRange(l)).sort((a,b) => new Date(a.isoDate||a.id) - new Date(b.isoDate||b.id));
+                    const inputOrder = (a,b) => {
+                        const ta = new Date(a.createdAt || a.inputAt || a.id || a.isoDate || 0).getTime();
+                        const tb = new Date(b.createdAt || b.inputAt || b.id || b.isoDate || 0).getTime();
+                        return ta - tb;
+                    };
+                    const inLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'IN' && inRange(l)).sort(inputOrder);
+                    const outLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'OUT' && inRange(l)).sort(inputOrder);
                     return `
                         <div style="margin-top:6mm; page-break-inside:avoid;">
                             <div style="font-size:11pt; font-weight:800; border-bottom:2px solid #065f46; color:#065f46; padding-bottom:3px; margin-bottom:4px; text-transform:uppercase;">Gudang ${gudangName} &mdash; Barang Masuk (Inbound) &middot; ${inLogs.length} Transaksi</div>
@@ -7416,7 +7728,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (!this.canPrint) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat mencetak.');
                 // Pastikan laporan cetak menggunakan stok terakhir dari Master Data.
                 this.syncMasterAndSparepart();
-                const namaGudang=String(gudang||'').trim().toLowerCase(); const isSparepart=namaGudang==='sparepart'||namaGudang==='spare part'; const judulGudang=isSparepart?'SPARE PART':'SISA PROJECT'; const showPrice=isSparepart?this.showPrices:false; const source=isSparepart?(this.masterCatalog||[]).map(m=>({...m,qty:Math.max(0,Math.round(Number(m.currentStock??m.stockAwal)||0)),harga:Math.max(0,Number(m.harga)||0),satuan:m.satuan||'PCS',lokasi:m.lokasi||''})):this.sisaProjects;
+                const namaGudang=String(gudang||'').trim().toLowerCase(); const isSparepart=namaGudang==='sparepart'||namaGudang==='spare part'; const judulGudang=isSparepart?'SPARE PART':'SISA PROJECT'; const showPrice=isSparepart?this.showPrices:false; const source=isSparepart?(this.masterCatalog||[]).map(m=>({...m,qty:Math.max(0,Math.round(Number(m.currentStock??m.stockAwal)||0)),harga:Math.max(0,Number(m.harga)||0),satuan:m.satuan||'PCS',lokasi:m.lokasi||''})):(this.sisaProjects||[]).map(item=>{const master=(this.masterCatalog||[]).find(m=>(item.kode&&m.kode&&String(item.kode).trim().toLowerCase()===String(m.kode).trim().toLowerCase())||String(item.nama||'').trim().toLowerCase()===String(m.nama||'').trim().toLowerCase());return {...item,satuan:(master&&master.satuan)||item.satuan||'PCS'};});
                 const items=(Array.isArray(source)?source:[]).filter(item=>(Number(item.qty)||0)>0).slice().sort((a,b)=>String(a.nama||'').localeCompare(String(b.nama||''),'id',{sensitivity:'base'})); const printedDate=this.getFormattedDateOnly?this.getFormattedDateOnly():new Date().toLocaleDateString('id-ID');
                 const rows=items.map((item,idx)=>{const qty=Number(item.qty)||0;const harga=Number(this.getMasterHarga(item.nama,item.harga))||0;const total=harga*qty;return `<tr><td>${idx+1}</td><td>${item.kode||item.barcode||item.sku||'-'}</td><td class="nama">${item.nama||'-'}</td><td>${item.satuan||'Pcs'}</td><td class="qty">${qty.toLocaleString('id-ID')}</td><td>${item.lokasi||item.lokasiRak||item.rak||'-'}</td>${showPrice?`<td class="angka">Rp ${this.formatRupiah(harga)}</td><td class="angka">Rp ${this.formatRupiah(total)}</td>`:''}</tr>`;}).join('');
                 const totalHarga=items.reduce((sum,item)=>sum+((Number(this.getMasterHarga(item.nama,item.harga))||0)*(Number(item.qty)||0)),0); const colSpan=showPrice?8:6; const emptyRow=`<tr><td colspan="${colSpan}" class="kosong">Tidak ada stok tersedia di ${this.escapeHtml(judulGudang)}.</td></tr>`; const totalRow=showPrice&&items.length?`<tr><td colspan="7" style="border:1px solid #000;padding:7px;text-align:right;font-weight:800;">TOTAL HARGA STOCK</td><td style="border:1px solid #000;padding:7px;text-align:right;font-weight:800;">Rp ${this.formatRupiah(totalHarga)}</td></tr>`:'';
@@ -8452,7 +8764,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 for (let i = 0; i < op.items.length; i += chunkSize) chunks.push(op.items.slice(i, i + chunkSize));
                 if (!chunks.length) chunks.push([]);
                 const pages = chunks.map((items, pageIndex) => {
-                    const detailRows = items.map((it, j) => `<tr><td style="border:1px solid #000;padding:4px;text-align:center;">${pageIndex * chunkSize + j + 1}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${it.lokasi || '-'}</td><td style="border:1px solid #000;padding:4px;">${it.nama || '-'}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${it.satuan || ''}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${Number(it.qtySystem || 0).toLocaleString('id-ID')}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${Number(it.qtyFisik || 0).toLocaleString('id-ID')}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${it.selisih > 0 ? '+' : ''}${it.selisih}</td><td style="border:1px solid #000;padding:4px;">${it.catatan || '-'}</td></tr>`).join('');
+                    const detailRows = items.map((it, j) => `<tr><td style="border:1px solid #000;padding:4px;text-align:center;">${pageIndex * chunkSize + j + 1}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${it.lokasi || '-'}</td><td style="border:1px solid #000;padding:4px;">${it.nama || '-'}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${it.satuan || this.getMasterSatuan(it.nama) || ''}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${Number(it.qtySystem || 0).toLocaleString('id-ID')}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${Number(it.qtyFisik || 0).toLocaleString('id-ID')}</td><td style="border:1px solid #000;padding:4px;text-align:center;">${it.selisih > 0 ? '+' : ''}${it.selisih}</td><td style="border:1px solid #000;padding:4px;">${it.catatan || '-'}</td></tr>`).join('');
                     return `<div class="opname-print-page" style="font-family:Arial,sans-serif;color:#000;padding:8mm;box-sizing:border-box;min-height:277mm;position:relative;page-break-after:${pageIndex < chunks.length - 1 ? 'always' : 'auto'};">
                         <div style="display:flex;align-items:center;gap:14px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:14px;">
                             <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTg04Fvw4tFQIaOv_YisutC8tIMsbS2eM10wP2eWOotwA&s=10" style="height:35mm;width:35mm;object-fit:contain;">
