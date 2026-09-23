@@ -564,6 +564,42 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
     .portal-card { border-radius: 12px !important; }
 }
 
+
+        /* HISTORY PENERIMAAN PR: scroll/pagination lebih stabil */
+        .pr-history-scroll {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x pan-y;
+            scrollbar-gutter: stable;
+            isolation: isolate;
+        }
+        .pr-history-table {
+            table-layout: fixed;
+        }
+        .pr-history-table th,
+        .pr-history-table td {
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+        }
+        .pr-history-actions button {
+            min-width: 64px;
+            min-height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pr-history-status {
+            white-space: nowrap;
+        }
+        @media screen and (max-width: 900px) {
+            .pr-history-scroll { max-height: 460px; }
+            .pr-history-actions { max-width: 150px; }
+            .pr-history-actions button { min-width: 58px; padding-left: 7px !important; padding-right: 7px !important; }
+        }
 </style>
 </head>
 <body class="min-h-screen antialiased bg-slate-50">
@@ -964,7 +1000,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             <div class="space-y-3">
                 <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
                     <i data-lucide="wrench" class="w-5 h-5 text-emerald-700"></i>
-                    <h2 class="font-extrabold text-slate-800 uppercase text-xs tracking-wider">Pergerakan Stok: Gudang Spare Part (Inbound & Outbound)</h2>
+                    <h2 class="font-extrabold text-slate-800 uppercase text-xs tracking-wider">Pergerakan Stok: Gudang Spare Part (Inbound & Outbound)</h2><button @click="sparepartShowPrices = !sparepartShowPrices" class="ml-auto bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-slate-200">{{ sparepartShowPrices ? 'Hide Harga' : 'Tampilkan Harga' }}</button>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-emerald-600">
@@ -980,9 +1016,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <tr>
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
+                                        <th class="p-2 text-center">Satuan</th>
                                         <th class="p-2 text-center">Qty</th>
-                                        <th class="p-2 text-right">Harga</th>
-                                        <th class="p-2">Supplier / Kepentingan</th>
+                                        <th class="p-2 text-center">Qty Awal</th>
+                                        <th class="p-2 text-center">Qty Akhir</th>
+                                        <th class="p-2">No. PO / Supplier</th>
+                                        <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Satuan</th>
+                                        <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Total</th>
                                         <th class="p-2 text-center no-print">Status / Aksi</th>
                                     </tr>
                                 </thead>
@@ -993,9 +1033,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                         </td>
                                         <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
+                                        <td class="p-2 text-center font-bold text-slate-700">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
                                         <td class="p-2 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">+{{ log.qty }}</td>
-                                    <td class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
-                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
+                                        <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
+                                        <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase"><div>No. PO: {{ log.nomorPO || '-' }}</div><div class="mt-0.5">Supplier: {{ log.supplier || '-' }}</div></td>
+                                        <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                        <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
                                             <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
@@ -1007,6 +1051,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </tbody>
                             </table>
+                
                         </div>
                     </div>
                     <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-amber-600">
@@ -1022,8 +1067,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <tr>
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
+                                        <th class="p-2 text-center">Satuan</th>
                                         <th class="p-2 text-center">Qty</th>
-                                        <th class="p-2 text-right">Harga</th>
+                                        <th class="p-2 text-center">Qty Awal</th>
+                                        <th class="p-2 text-center">Qty Akhir</th>
+                                        <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Satuan</th>
+                                        <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Total</th>
                                         <th class="p-2">Penerima / Kepentingan</th>
                                         <th class="p-2 text-center no-print">Status / Aksi</th>
                                     </tr>
@@ -1035,8 +1084,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                         </td>
                                         <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
+                                        <td class="p-2 text-center font-bold text-slate-700">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
                                         <td class="p-2 text-center font-bold text-amber-700 bg-amber-50/50 rounded">-{{ log.qty }}</td>
-                                    <td class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                        <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
+                                        <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
+                                        <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                        <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
                                         <td class="p-2 text-center no-print">
                                             <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
@@ -1049,6 +1102,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </tbody>
                             </table>
+                
                         </div>
                     </div>
                 </div>
@@ -1057,7 +1111,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             <div class="space-y-3 pt-4">
                 <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
                     <i data-lucide="boxes" class="w-5 h-5 text-teal-700"></i>
-                    <h2 class="font-extrabold text-slate-800 uppercase text-xs tracking-wider">Pergerakan Stok: Gudang Sisa Project (Inbound & Outbound)</h2>
+                    <h2 class="font-extrabold text-slate-800 uppercase text-xs tracking-wider">Pergerakan Stok: Gudang Sisa Project (Inbound & Outbound)</h2><button @click="sisaProjectShowPrices = !sisaProjectShowPrices" class="ml-auto bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-slate-200">{{ sisaProjectShowPrices ? 'Hide Harga' : 'Tampilkan Harga' }}</button>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-emerald-600">
@@ -1073,8 +1127,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <tr>
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
+                                        <th class="p-2 text-center">Satuan</th>
                                         <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2 text-center">Qty Awal</th>
+                                        <th class="p-2 text-center">Qty Akhir</th>
                                         <th class="p-2">Asal / Kepentingan</th>
+                                        <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
+                                        <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
+                                        <th class="p-2 text-center no-print">Status / Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -1084,9 +1144,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                         </td>
                                         <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
+                                        <td class="p-2 text-center font-bold text-slate-700">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
                                         <td class="p-2 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">+{{ log.qty }}</td>
-                                    <td class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                        <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
+                                        <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
+                                        <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                        <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
                                             <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
@@ -1094,10 +1158,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         </td>
                                     </tr>
                                     <tr v-if="filteredProjectLogsIn.length === 0">
-                                        <td colspan="4" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang masuk sisa project pada periode ini.</td>
+                                        <td colspan="9" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang masuk sisa project pada periode ini.</td>
                                     </tr>
                                 </tbody>
                             </table>
+                
                         </div>
                     </div>
                     <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-amber-600">
@@ -1113,8 +1178,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <tr>
                                         <th class="p-2">Tgl</th>
                                         <th class="p-2">Nama Barang</th>
+                                        <th class="p-2 text-center">Satuan</th>
                                         <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2 text-center">Qty Awal</th>
+                                        <th class="p-2 text-center">Qty Akhir</th>
                                         <th class="p-2">Penerima / Kepentingan</th>
+                                        <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
+                                        <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -1124,9 +1194,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                         </td>
                                         <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
+                                        <td class="p-2 text-center font-bold text-slate-700">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
                                         <td class="p-2 text-center font-bold text-amber-700 bg-amber-50/50 rounded">-{{ log.qty }}</td>
-                                    <td class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                        <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
+                                        <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
+                                        <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                        <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
                                             <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
@@ -1138,6 +1212,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </tbody>
                             </table>
+                
                         </div>
                     </div>
                 </div>
@@ -1165,7 +1240,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
                             <div>
                                 <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Input *</label>
-                                <input v-model="formMasterManual.tanggal" type="date" class="w-full h-10 px-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
+                                <input :value="getISODateOnly()" type="date" readonly class="w-full h-10 px-2.5 bg-slate-100 border border-slate-200 rounded-lg font-bold text-xs text-slate-600 outline-none cursor-not-allowed">
                             </div>
                             <div>
                                 <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Qty / Stock Awal</label>
@@ -1451,7 +1526,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200/60">
                             <tr>
                                 <th class="p-3 text-center">No</th>
-                                <th class="p-3 text-center">Tgl Order<br><span class="text-[9px]">No. PR</span></th>
+                                <th class="p-3 text-center">Tgl Order</th>
+                                <th class="p-3 text-center">No. PR</th>
                                 <th class="p-3 sparepart-name">Nama Barang</th>
                                  <th class="p-3 text-center">Satuan</th>
                                 <th class="p-3 text-center">Total Order</th>
@@ -1467,10 +1543,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <tr v-for="(order, idx) in filteredMonitoringItems.slice((purchaseRequestPage - 1) * purchaseRequestPageSize, purchaseRequestPage * purchaseRequestPageSize)" :key="order.id" class="hover:bg-slate-50">
                                 <td class="p-3 text-center font-bold text-slate-400">{{ ((purchaseRequestPage - 1) * purchaseRequestPageSize) + idx + 1 }}</td>
                                 <!-- REVISI 1 (MONITORING): Jam dihilangkan, hanya menampilkan tanggal -->
-                                <td class="p-3 text-center font-mono text-slate-600 font-bold">
-                                    <div>{{ order.tgl }}</div>
-                                    <div class="mt-1 text-[9px] font-bold text-slate-700">{{ order.nomorPR || '-' }}</div>
-                                </td>
+                                <td class="p-3 text-center font-mono text-slate-600 font-bold">{{ order.tgl }}</td>
+                                <td class="p-3 text-center font-bold text-slate-700">{{ order.nomorPR || '-' }}</td>
                                 <td class="p-3 font-bold text-slate-800 uppercase">
                                     {{ order.nama }}
                                 </td>
@@ -1510,7 +1584,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         </tbody>
                         <tfoot v-if="filteredMonitoringItems.length > 0" class="bg-amber-50 border-t-2 border-amber-200">
                             <tr class="font-black text-amber-900">
-                                <td colspan="7" class="p-3 text-right uppercase text-[11px] tracking-wider">Total Nilai Order (sesuai filter)</td>
+                                <td colspan="10" class="p-3 text-right uppercase text-[11px] tracking-wider">Total Nilai Order (sesuai filter)</td>
                                 <td class="p-3 text-right whitespace-nowrap">{{ formatRupiah(monitoringTotalHarga) }}</td>
                                 <td colspan="4" class="p-3 no-print"></td>
                             </tr>
@@ -1534,54 +1608,63 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         </span>
                         <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full border border-emerald-200">{{ monitoringHistoryIn.length }} Transaksi</span>
                     </div>
-                    <div class="overflow-x-auto custom-scroll max-h-[350px]">
-                        <table class="w-full text-left text-xs excel-print-table">
+                    <div class="pr-history-scroll overflow-auto custom-scroll max-h-[430px] rounded-lg border border-slate-100">
+                        <table class="w-full min-w-[1240px] text-left text-xs excel-print-table pr-history-table">
                             <thead class="bg-emerald-50/70 font-bold text-emerald-900 uppercase text-[9px] border-b border-emerald-200 sticky top-0">
                                 <tr>
                                     <th class="p-2.5 text-center">No</th>
                                     <th class="p-2.5 text-center">Tgl Penerimaan</th>
+                                    <th class="p-2.5 text-center">No. PO</th>
+                                    <th class="p-2.5">Supplier</th>
                                     <th class="p-2.5">Nama Barang</th>
                                     <th class="p-2.5 text-center">Satuan</th>
                                     <th class="p-2.5 text-center">Total Order</th>
                                     <th class="p-2.5 text-center">Diterima</th>
                                     <th class="p-2.5 text-center">Sisa Order</th>
                                     <th class="p-2.5">Keterangan</th>
-                                    <th class="p-2.5 text-center no-print">Aksi</th>
+                                    <th class="p-2.5 text-center no-print w-[180px]">Aksi</th>
                                     <th class="p-2.5 text-center">Status</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="(h, idx) in monitoringHistoryIn.slice((purchaseRequestHistoryPage - 1) * purchaseRequestHistoryPageSize, purchaseRequestHistoryPage * purchaseRequestHistoryPageSize)" :key="h.id" class="hover:bg-emerald-50/30">
-                                    <td class="p-2.5 text-center font-bold text-slate-400">{{ ((purchaseRequestHistoryPage - 1) * purchaseRequestHistoryPageSize) + idx + 1 }}</td>
+                                <tr v-for="(h, idx) in paginatedPurchaseRequestHistory" :key="h.id" class="hover:bg-emerald-50/30">
+                                    <td class="p-2.5 text-center font-bold text-slate-400">{{ purchaseRequestHistoryPageStart + idx }}</td>
                                     <td class="p-2.5 text-center font-mono text-slate-600 font-bold text-[10px]">
                                         <div>{{ h.tgl || '-' }}</div>
-                                        <div class="text-[9px] text-emerald-700 font-black mt-1">No. PR: {{ h.nomorPR || monitoringItems.find(o => o.id === h.monitoringOrderId)?.nomorPR || '-' }}</div>
+                                        <div class="text-[9px] text-emerald-700 font-black mt-1">No. PR: {{ h._nomorPR }}</div>
                                     </td>
+                                    <td class="p-2.5 text-center font-bold text-slate-700">{{ h._nomorPO }}</td>
+                                    <td class="p-2.5 font-bold text-slate-700 uppercase">{{ h._supplier }}</td>
                                     <td class="p-2.5 font-bold text-slate-800 uppercase">{{ h.nama }}</td>
-                                    <td class="p-2.5 text-center font-bold text-slate-700 uppercase">{{ h.satuan || monitoringItems.find(o => o.id === h.monitoringOrderId)?.satuan || '-' }}</td>
-                                    <td class="p-2.5 text-center font-bold text-slate-700">{{ monitoringItems.find(o => o.id === h.monitoringOrderId)?.qtyTotal ?? h.qty }} {{ h.satuan }}</td>
-                                    <td class="p-2.5 text-center font-bold text-emerald-700">{{ monitoringItems.find(o => o.id === h.monitoringOrderId)?.qtyReceived ?? h.qty }} {{ h.satuan }}</td>
-                                    <td class="p-2.5 text-center font-bold text-amber-600">{{ monitoringItems.find(o => o.id === h.monitoringOrderId)?.qtyRemaining ?? 0 }} {{ h.satuan }}</td>
+                                    <td class="p-2.5 text-center font-bold text-slate-700 uppercase">{{ h._satuan }}</td>
+                                    <td class="p-2.5 text-center font-bold text-slate-700">{{ h._qtyTotal }} {{ h._satuan }}</td>
+                                    <td class="p-2.5 text-center font-bold text-emerald-700">{{ h._qtyReceived }} {{ h._satuan }}</td>
+                                    <td class="p-2.5 text-center font-bold text-amber-600">{{ h._qtyRemaining }} {{ h._satuan }}</td>
                                     <td class="p-2.5 font-extrabold text-xs text-emerald-900 uppercase">{{ h.keperluan || h.project || '-' }}</td>
-                                    <td class="p-2.5 text-center no-print">
-                                        <button v-if="h.qty > 0 && canPrint" @click="printBAST(h)" class="mr-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-lg font-bold text-[9px] uppercase shadow-sm">BAST</button>
-                                        <button v-if="(isPendingLog(h) && canInputTransaction) || (!isPendingLog(h) && canEdit)" @click="editLog(h)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                    <td class="p-2.5 text-center no-print align-middle">
+                                        <div class="pr-history-actions flex flex-wrap justify-center items-center gap-1.5 max-w-[180px] mx-auto">
+                                            <button v-if="h.qty > 0 && canPrint" @click="printBAST(h)" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-[9px] uppercase shadow-sm whitespace-nowrap">BAST</button>
+                                            <button v-if="h.qty > 0 && canEdit" @click="cancelPurchaseReceipt(h)" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-[9px] uppercase shadow-sm whitespace-nowrap">Cancel</button>
+                                            <button v-if="(isPendingLog(h) && canInputTransaction) || (!isPendingLog(h) && canEdit)" @click="editLog(h)" class="bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 px-2.5 py-1.5 rounded-lg font-bold text-[9px] uppercase whitespace-nowrap">Edit</button>
+                                        </div>
                                     </td>
-                                    <td class="p-2.5 text-center">
-                                        <span :class="h.status === 'Diterima Semua' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : (h.status === 'Diterima Sebagian' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-amber-100 text-amber-800 border-amber-200')" class="px-2 py-0.5 text-[9px] font-bold rounded border uppercase">{{ h.status || 'Pending' }}</span>
-                                        <span class="block mt-1 px-2 py-0.5 text-[8px] font-bold rounded border" :class="String(h.approvalStatus || 'approved').toLowerCase() === 'pending' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'">{{ String(h.approvalStatus || 'approved').toLowerCase() === 'pending' ? 'Belum Disetujui' : 'Sudah Disetujui' }}</span>
+                                    <td class="p-2.5 text-center align-middle">
+                                        <div class="pr-history-status flex flex-col items-center justify-center gap-1.5 min-w-[125px]">
+                                            <span :class="h.status === 'Diterima Semua' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : (h.status === 'Diterima Sebagian' ? 'bg-blue-100 text-blue-800 border-blue-200' : (h.status === 'Cancel Penerimaan' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-amber-100 text-amber-800 border-amber-200'))" class="w-full px-2 py-1 text-[9px] font-bold rounded border uppercase whitespace-nowrap">{{ h.status || 'Pending' }}</span>
+                                            <span class="w-full px-2 py-1 text-[8px] font-bold rounded border whitespace-nowrap" :class="String(h.approvalStatus || 'approved').toLowerCase() === 'pending' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'">{{ String(h.approvalStatus || 'approved').toLowerCase() === 'pending' ? 'Belum Disetujui' : 'Sudah Disetujui' }}</span>
+                                        </div>
                                     </td>
                                 </tr>
-                                <tr v-if="monitoringHistoryIn.length === 0"><td colspan="10" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada riwayat penerimaan order.</td></tr>
+                                <tr v-if="monitoringHistoryIn.length === 0"><td colspan="12" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada riwayat penerimaan order.</td></tr>
                             </tbody>
                         </table>
                     </div>
-                    <div v-if="monitoringHistoryIn.length > purchaseRequestHistoryPageSize" class="p-4 border-t border-slate-100 bg-white flex items-center justify-between gap-3 no-print">
-                        <p class="text-[10px] text-slate-500">Menampilkan {{ ((purchaseRequestHistoryPage - 1) * purchaseRequestHistoryPageSize) + 1 }}–{{ Math.min(purchaseRequestHistoryPage * purchaseRequestHistoryPageSize, monitoringHistoryIn.length) }} dari {{ monitoringHistoryIn.length }} data</p>
+                    <div v-if="purchaseRequestHistoryPageCount > 1" class="p-4 border-t border-slate-100 bg-white flex items-center justify-between gap-3 no-print">
+                        <p class="text-[10px] text-slate-500">Menampilkan {{ purchaseRequestHistoryPageStart }}–{{ purchaseRequestHistoryPageEnd }} dari {{ monitoringHistoryDisplay.length }} data</p>
                         <div class="flex items-center gap-2">
                             <button type="button" @click="purchaseRequestHistoryPage = Math.max(1, purchaseRequestHistoryPage - 1)" :disabled="purchaseRequestHistoryPage <= 1" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Sebelumnya</button>
-                            <span class="px-2 text-[10px] font-black text-slate-600">Halaman {{ Math.min(purchaseRequestHistoryPage, Math.ceil(monitoringHistoryIn.length / purchaseRequestHistoryPageSize)) }} / {{ Math.ceil(monitoringHistoryIn.length / purchaseRequestHistoryPageSize) }}</span>
-                            <button type="button" @click="purchaseRequestHistoryPage = Math.min(Math.ceil(monitoringHistoryIn.length / purchaseRequestHistoryPageSize), purchaseRequestHistoryPage + 1)" :disabled="purchaseRequestHistoryPage >= Math.ceil(monitoringHistoryIn.length / purchaseRequestHistoryPageSize)" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Berikutnya</button>
+                            <span class="px-2 text-[10px] font-black text-slate-600">Halaman {{ Math.min(purchaseRequestHistoryPage, purchaseRequestHistoryPageCount) }} / {{ purchaseRequestHistoryPageCount }}</span>
+                            <button type="button" @click="purchaseRequestHistoryPage = Math.min(purchaseRequestHistoryPageCount, purchaseRequestHistoryPage + 1)" :disabled="purchaseRequestHistoryPage >= purchaseRequestHistoryPageCount" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Berikutnya</button>
                         </div>
                     </div>
                 </div>
@@ -2111,8 +2194,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     <button v-if="canInputTransaction" @click="openSparepartMultiOutModal" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
                         <i data-lucide="minus-square" class="w-4 h-4"></i> Pengeluaran Multiple Sparepart
                     </button>
-                    <button @click="showPrices = !showPrices" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm border border-slate-200">
-                        <i :data-lucide="showPrices ? 'eye-off' : 'eye'" class="w-4 h-4"></i> {{ showPrices ? 'Hide Harga' : 'Tampilkan Harga' }}
+                    <button @click="sparepartShowPrices = !sparepartShowPrices" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm border border-slate-200">
+                        <i :data-lucide="sparepartShowPrices ? 'eye-off' : 'eye'" class="w-4 h-4"></i> {{ sparepartShowPrices ? 'Hide Harga' : 'Tampilkan Harga' }}
                     </button>
                 </div>
                 <div class="portal-card rounded-xl p-3 flex flex-wrap items-center gap-2 sparepart-actions-card">
@@ -2160,15 +2243,16 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">Qty Masuk</th>
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
-                                    <th class="p-2">Supplier / Kepentingan</th>
-                                    <th v-if="showPrices" class="p-2 text-right">Harga Satuan</th>
+                                    <th class="p-2">No. PO / Supplier</th>
+                                    <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Satuan</th>
+                                    <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2 text-center">Status Approval</th>
                                         <th class="p-2 text-center no-print">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="(log, idx) in filteredSparepartLogsIn" :key="log.id">
-                                    <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                <tr v-for="(log, idx) in paginatedSparepartLogsIn" :key="log.id">
+                                    <td class="p-2 text-center font-bold text-slate-400">{{ ((sparepartLogInPage - 1) * logPageSize) + idx + 1 }}</td>
                                     <td class="p-2 font-bold text-slate-800 uppercase">
                                         {{ log.nama }}
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -2177,8 +2261,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center font-bold text-emerald-600">+{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
-                                    <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
-                                    <td v-if="showPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                    <td class="p-2 text-slate-500 text-[10px] uppercase">
+                                        <div>No. PO: {{ log.nomorPO || '-' }}</div>
+                                        <div class="mt-0.5">Supplier: {{ log.supplier || '-' }}</div>
+                                    </td>
+                                    <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                    <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-center">
                                         <span :class="isPendingLog(log) ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" class="inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[9px] font-black whitespace-nowrap">
                                             <i :data-lucide="isPendingLog(log) ? 'clock-3' : 'badge-check'" class="w-3 h-3"></i>
@@ -2191,9 +2279,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
-                                <tr v-if="filteredSparepartLogsIn.length === 0"><td colspan="10" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang masuk.</td></tr>
+                                <tr v-if="filteredSparepartLogsIn.length === 0"><td colspan="11" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang masuk.</td></tr>
                             </tbody>
                         </table>
+                <div v-if="sparepartLogInPageCount > 1" class="px-3 py-2 border-t border-slate-100 bg-white flex items-center justify-between gap-2 no-print">
+                    <span class="text-[9px] font-semibold text-slate-500">Menampilkan {{ ((sparepartLogInPage - 1) * logPageSize) + 1 }}–{{ Math.min(sparepartLogInPage * logPageSize, filteredSparepartLogsIn.length) }} dari {{ filteredSparepartLogsIn.length }} data</span>
+                    <div class="flex items-center gap-2">
+                        <button @click="sparepartLogInPage = Math.max(1, sparepartLogInPage - 1)" :disabled="sparepartLogInPage <= 1" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[9px] font-black disabled:opacity-40">Sebelumnya</button>
+                        <span class="text-[9px] font-black text-slate-600">Halaman {{ sparepartLogInPage }} / {{ sparepartLogInPageCount }}</span>
+                        <button @click="sparepartLogInPage = Math.min(sparepartLogInPageCount, sparepartLogInPage + 1)" :disabled="sparepartLogInPage >= sparepartLogInPageCount" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[9px] font-black disabled:opacity-40">Berikutnya</button>
+                    </div>
+                </div>
                     </div>
                 </div>
                 <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-amber-600">
@@ -2213,15 +2309,18 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">Qty Out</th>
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
+                                    <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
+                                    <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2">Penerima / Kepentingan</th>
-                                    <th v-if="showPrices" class="p-2 text-right">Harga Satuan</th>
+                                    <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Satuan</th>
+                                    <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2 text-center">Status Approval</th>
                                         <th class="p-2 text-center no-print">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="(log, idx) in filteredSparepartLogsOut" :key="log.id">
-                                    <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                <tr v-for="(log, idx) in paginatedSparepartLogsOut" :key="log.id">
+                                    <td class="p-2 text-center font-bold text-slate-400">{{ ((sparepartLogOutPage - 1) * logPageSize) + idx + 1 }}</td>
                                     <td class="p-2 font-bold text-slate-800 uppercase">
                                         {{ log.nama }}
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -2230,8 +2329,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center font-bold text-amber-600">-{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
+                                    <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                    <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
-                                    <td v-if="showPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                    <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                    <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-center">
                                         <span :class="isPendingLog(log) ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" class="inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[9px] font-black whitespace-nowrap">
                                             <i :data-lucide="isPendingLog(log) ? 'clock-3' : 'badge-check'" class="w-3 h-3"></i>
@@ -2244,16 +2346,24 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
-                                <tr v-if="filteredSparepartLogsOut.length === 0"><td colspan="10" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang keluar.</td></tr>
+                                <tr v-if="filteredSparepartLogsOut.length === 0"><td colspan="11" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang keluar.</td></tr>
                             </tbody>
                         </table>
+                <div v-if="sparepartLogOutPageCount > 1" class="px-3 py-2 border-t border-slate-100 bg-white flex items-center justify-between gap-2 no-print">
+                    <span class="text-[9px] font-semibold text-slate-500">Menampilkan {{ ((sparepartLogOutPage - 1) * logPageSize) + 1 }}–{{ Math.min(sparepartLogOutPage * logPageSize, filteredSparepartLogsOut.length) }} dari {{ filteredSparepartLogsOut.length }} data</span>
+                    <div class="flex items-center gap-2">
+                        <button @click="sparepartLogOutPage = Math.max(1, sparepartLogOutPage - 1)" :disabled="sparepartLogOutPage <= 1" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[9px] font-black disabled:opacity-40">Sebelumnya</button>
+                        <span class="text-[9px] font-black text-slate-600">Halaman {{ sparepartLogOutPage }} / {{ sparepartLogOutPageCount }}</span>
+                        <button @click="sparepartLogOutPage = Math.min(sparepartLogOutPageCount, sparepartLogOutPage + 1)" :disabled="sparepartLogOutPage >= sparepartLogOutPageCount" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[9px] font-black disabled:opacity-40">Berikutnya</button>
+                    </div>
+                </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between gap-3 bg-amber-50/60 rounded-lg px-3 py-2">
                         <div>
                             <div class="text-[9px] font-black text-amber-800 uppercase">Total Harga Pengeluaran Gudang Sisa Project</div>
                             <div class="text-[9px] text-slate-500 mt-0.5">Nilai dihitung dari seluruh pengeluaran Sisa Project yang tercatat.</div>
                         </div>
-                        <div v-if="showPrices" class="text-sm font-black text-amber-700 whitespace-nowrap">Rp {{ formatRupiah(totalHargaPengeluaranSisaProject) }}</div>
+                        <div v-if="sisaProjectShowPrices" class="text-sm font-black text-amber-700 whitespace-nowrap">Rp {{ formatRupiah(totalHargaPengeluaranSisaProject) }}</div>
                         <div v-else class="text-[10px] font-bold text-slate-400 whitespace-nowrap">Harga disembunyikan</div>
                     </div>
                 </div>
@@ -2314,8 +2424,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <th class="p-3 text-center sparepart-stock">Stok Available</th>
                                 <th class="p-3 text-center sparepart-action">Aksi Pengeluaran</th>
                                 <th class="p-3 text-center sparepart-card">Kartu Stock</th>
-                                <th v-if="showPrices" class="p-3.5 text-right">Harga Satuan</th>
-                                <th v-if="showPrices" class="p-3.5 text-right">Harga Total</th>
+                                <th v-if="sparepartShowPrices" class="p-3.5 text-right">Harga Satuan</th>
+                                <th v-if="sparepartShowPrices" class="p-3.5 text-right">Harga Total</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -2341,14 +2451,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <i data-lucide="printer" class="w-3 h-3"></i> Kartu Stock
                                     </button>
                                 </td>
-                                <td v-if="showPrices" class="p-3.5 text-right font-bold text-slate-700 whitespace-nowrap">Rp {{ formatRupiah(item.harga != null ? item.harga : getMasterHarga(item.nama)) }}</td>
-                                <td v-if="showPrices" class="p-3.5 text-right font-black text-emerald-700 whitespace-nowrap">Rp {{ formatRupiah((Number(item.harga != null ? item.harga : getMasterHarga(item.nama)) || 0) * (Number(item.qty) || 0)) }}</td>
+                                <td v-if="sparepartShowPrices" class="p-3.5 text-right font-bold text-slate-700 whitespace-nowrap">Rp {{ formatRupiah(item.harga != null ? item.harga : getMasterHarga(item.nama)) }}</td>
+                                <td v-if="sparepartShowPrices" class="p-3.5 text-right font-black text-emerald-700 whitespace-nowrap">Rp {{ formatRupiah((Number(item.harga != null ? item.harga : getMasterHarga(item.nama)) || 0) * (Number(item.qty) || 0)) }}</td>
                             </tr>
-                            <tr v-if="filteredSpareparts.length === 0"><td :colspan="showPrices ? 10 : 8" class="p-10 text-center text-slate-400 font-medium">Stok Sparepart kosong.</td></tr>
+                            <tr v-if="filteredSpareparts.length === 0"><td :colspan="sparepartShowPrices ? 10 : 8" class="p-10 text-center text-slate-400 font-medium">Stok Sparepart kosong.</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <div v-if="showPrices" class="px-4 py-3 border-t border-slate-100 bg-slate-50/60 flex justify-end">
+                <div v-if="sparepartShowPrices" class="px-4 py-3 border-t border-slate-100 bg-slate-50/60 flex justify-end">
                     <div class="text-right">
                         <span class="text-[10px] font-bold uppercase text-slate-500">Total Harga Stock</span>
                         <div class="text-base font-black text-emerald-700">Rp {{ formatRupiah(totalHargaSparepart) }}</div>
@@ -2454,6 +2564,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     <button v-if="canInputTransaction" @click="openSisaProjectMultiOutModal" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 shadow-sm">
                         <i data-lucide="minus-square" class="w-4 h-4"></i> Pengeluaran Multiple Sisa Project
                     </button>
+                    <button @click="sisaProjectShowPrices = !sisaProjectShowPrices" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 border border-slate-200">
+                        <i :data-lucide="sisaProjectShowPrices ? 'eye-off' : 'eye'" class="w-4 h-4"></i> {{ sisaProjectShowPrices ? 'Hide Harga' : 'Tampilkan Harga' }}
+                    </button>
                 </div>
                 </div>
                 <div class="portal-card rounded-xl p-3 flex flex-wrap items-center gap-2">
@@ -2497,13 +2610,15 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
                                     <th class="p-2">Asal / Kepentingan</th>
+                                    <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
+                                    <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2 text-center">Status Approval</th>
                                         <th class="p-2 text-center no-print">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="(log, idx) in filteredProjectLogsIn" :key="log.id">
-                                    <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                <tr v-for="(log, idx) in paginatedProjectLogsIn" :key="log.id">
+                                    <td class="p-2 text-center font-bold text-slate-400">{{ ((sisaProjectLogInPage - 1) * logPageSize) + idx + 1 }}</td>
                                     <td class="p-2 font-bold text-slate-800 uppercase">
                                         {{ log.nama }}
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -2513,6 +2628,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
+                                    <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                    <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-center">
                                         <span :class="isPendingLog(log) ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" class="inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[9px] font-black whitespace-nowrap">
                                             <i :data-lucide="isPendingLog(log) ? 'clock-3' : 'badge-check'" class="w-3 h-3"></i>
@@ -2525,9 +2642,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
-                                <tr v-if="filteredProjectLogsIn.length === 0"><td colspan="9" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang masuk.</td></tr>
+                                <tr v-if="filteredProjectLogsIn.length === 0"><td colspan="11" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang masuk.</td></tr>
                             </tbody>
                         </table>
+                <div v-if="sisaProjectLogInPageCount > 1" class="px-3 py-2 border-t border-slate-100 bg-white flex items-center justify-between gap-2 no-print">
+                    <span class="text-[9px] font-semibold text-slate-500">Menampilkan {{ ((sisaProjectLogInPage - 1) * logPageSize) + 1 }}–{{ Math.min(sisaProjectLogInPage * logPageSize, filteredProjectLogsIn.length) }} dari {{ filteredProjectLogsIn.length }} data</span>
+                    <div class="flex items-center gap-2">
+                        <button @click="sisaProjectLogInPage = Math.max(1, sisaProjectLogInPage - 1)" :disabled="sisaProjectLogInPage <= 1" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[9px] font-black disabled:opacity-40">Sebelumnya</button>
+                        <span class="text-[9px] font-black text-slate-600">Halaman {{ sisaProjectLogInPage }} / {{ sisaProjectLogInPageCount }}</span>
+                        <button @click="sisaProjectLogInPage = Math.min(sisaProjectLogInPageCount, sisaProjectLogInPage + 1)" :disabled="sisaProjectLogInPage >= sisaProjectLogInPageCount" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[9px] font-black disabled:opacity-40">Berikutnya</button>
+                    </div>
+                </div>
                     </div>
                 </div>
                 <div class="portal-card rounded-xl p-5 space-y-3 border-t-4 border-t-amber-600">
@@ -2548,13 +2673,15 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
                                     <th class="p-2">Penerima / Kepentingan</th>
+                                    <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
+                                    <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2 text-center">Status Approval</th>
                                         <th class="p-2 text-center no-print">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="(log, idx) in filteredProjectLogsOut" :key="log.id">
-                                    <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                <tr v-for="(log, idx) in paginatedProjectLogsOut" :key="log.id">
+                                    <td class="p-2 text-center font-bold text-slate-400">{{ ((sisaProjectLogOutPage - 1) * logPageSize) + idx + 1 }}</td>
                                     <td class="p-2 font-bold text-slate-800 uppercase">
                                         {{ log.nama }}
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -2564,6 +2691,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.user }} ({{ log.keperluan || '-' }})</td>
+                                    <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                    <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-center">
                                         <span :class="isPendingLog(log) ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" class="inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[9px] font-black whitespace-nowrap">
                                             <i :data-lucide="isPendingLog(log) ? 'clock-3' : 'badge-check'" class="w-3 h-3"></i>
@@ -2576,9 +2705,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
-                                <tr v-if="filteredProjectLogsOut.length === 0"><td colspan="9" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang keluar.</td></tr>
+                                <tr v-if="filteredProjectLogsOut.length === 0"><td colspan="11" class="p-4 text-center text-slate-400 italic text-[11px]">Belum ada log barang keluar.</td></tr>
                             </tbody>
                         </table>
+                <div v-if="sisaProjectLogOutPageCount > 1" class="px-3 py-2 border-t border-slate-100 bg-white flex items-center justify-between gap-2 no-print">
+                    <span class="text-[9px] font-semibold text-slate-500">Menampilkan {{ ((sisaProjectLogOutPage - 1) * logPageSize) + 1 }}–{{ Math.min(sisaProjectLogOutPage * logPageSize, filteredProjectLogsOut.length) }} dari {{ filteredProjectLogsOut.length }} data</span>
+                    <div class="flex items-center gap-2">
+                        <button @click="sisaProjectLogOutPage = Math.max(1, sisaProjectLogOutPage - 1)" :disabled="sisaProjectLogOutPage <= 1" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[9px] font-black disabled:opacity-40">Sebelumnya</button>
+                        <span class="text-[9px] font-black text-slate-600">Halaman {{ sisaProjectLogOutPage }} / {{ sisaProjectLogOutPageCount }}</span>
+                        <button @click="sisaProjectLogOutPage = Math.min(sisaProjectLogOutPageCount, sisaProjectLogOutPage + 1)" :disabled="sisaProjectLogOutPage >= sisaProjectLogOutPageCount" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[9px] font-black disabled:opacity-40">Berikutnya</button>
+                    </div>
+                </div>
                     </div>
                 </div>
             </div>
@@ -2592,20 +2729,25 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     <button v-if="canPrint" @click="printStockGudang('Sisa Project')" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase shadow-sm flex items-center gap-1.5">
                         <i data-lucide="printer" class="w-3.5 h-3.5"></i> Cetak Stock
                     </button>
+                    <button v-if="canEdit" @click="exportStockGudangExcel('Sisa Project')" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase shadow-sm flex items-center gap-1.5">
+                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Excel Stock
+                    </button>
                     <span class="text-[11px] font-semibold bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200">{{ filteredSisaProjects.length }} Item Available</span>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs excel-print-table">
+                    <table class="w-full text-left text-xs excel-print-table sparepart-table">
                         <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200/60">
                             <tr>
-                                <th class="p-3.5 text-center">No</th>
-                                <th class="p-3.5 text-center">Lokasi Rak</th>
-                                <th class="p-3.5">Nama Barang</th>
-                                 <th class="p-3.5 text-center">Satuan</th>
-                                <th class="p-3.5 text-center">Stok Available</th>
-                                <th class="p-3.5 text-center">Aksi Pengeluaran</th>
-                                <th class="p-3.5 text-center">Kartu Stock</th>
+                                <th class="p-3 text-center">No</th>
+                                <th class="p-3 text-center sparepart-location">Lokasi Rak</th>
+                                <th class="p-3 sparepart-name">Nama Barang</th>
+                                <th class="p-3 text-center">Satuan</th>
+                                <th class="p-3 text-center sparepart-stock">Stok Available</th>
+                                <th class="p-3 text-center sparepart-action">Aksi Pengeluaran</th>
+                                <th class="p-3 text-center sparepart-card">Kartu Stock</th>
+                                <th v-if="sisaProjectShowPrices" class="p-3.5 text-right sparepart-price">Harga Satuan</th>
+                                <th v-if="sisaProjectShowPrices" class="p-3.5 text-right">Harga Total</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -2629,8 +2771,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <i data-lucide="printer" class="w-3 h-3"></i> Kartu Stock
                                     </button>
                                 </td>
+                                <td v-if="sisaProjectShowPrices" class="p-3.5 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(item.harga != null ? item.harga : getMasterHarga(item.nama)) }}</td>
+                                <td v-if="sisaProjectShowPrices" class="p-3.5 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(item.harga != null ? item.harga : getMasterHarga(item.nama)) || 0) * (Number(item.qty) || 0)) }}</td>
                             </tr>
-                            <tr v-if="filteredSisaProjects.length === 0"><td colspan="7" class="p-10 text-center text-slate-400 font-medium">Stok Sisa Project kosong.</td></tr>
+                            <tr v-if="filteredSisaProjects.length === 0"><td :colspan="sisaProjectShowPrices ? 9 : 7" class="p-10 text-center text-slate-400 font-medium">Stok Sisa Project kosong.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -3063,6 +3207,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <input v-model="formOrderMulti.nomorPR" @input="onPurchaseRequestHeaderInput" type="text" required autocomplete="off" placeholder="Input nomor Purchase Request secara manual" class="w-full p-2.5 bg-white font-extrabold text-sm border-2 border-slate-300 rounded-lg outline-none focus:border-emerald-500">
                     </div>
                     <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Nomor Purchase Order</label>
+                        <input v-model="formOrderMulti.nomorPO" type="text" autocomplete="off" placeholder="Nomor PO" class="w-full p-2.5 bg-white font-extrabold text-sm border-2 border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Supplier</label>
+                        <input v-model="formOrderMulti.supplier" type="text" autocomplete="off" placeholder="Nama supplier" class="w-full p-2.5 bg-white font-extrabold text-sm border-2 border-slate-300 rounded-lg outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
                         <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Nama Pemesan *</label>
                         <input v-model="formOrderMulti.pemesan" type="text" required autocomplete="off" placeholder="Nama pemesan" class="w-full p-2.5 bg-white font-extrabold text-sm border-2 border-slate-300 rounded-lg outline-none focus:border-emerald-500">
                     </div>
@@ -3076,7 +3228,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Keterangan *</label>
                     <input v-model="formOrderMulti.keperluan" type="text" required placeholder="Contoh: GH-A / Maintenance" class="w-full p-2.5 bg-white font-semibold text-xs border border-slate-300 rounded-lg uppercase outline-none focus:border-emerald-500">
                 </div>
-                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div class="w-full max-w-2xl mx-auto flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <span class="text-xs font-bold text-slate-700 uppercase">Daftar Barang Order:</span>
                     <button @click="addManualItemToMonitoring" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg uppercase shadow-sm flex items-center gap-1">
                         + Tambah Item Order
@@ -3124,6 +3276,76 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
                 <button @click="showMonitoringInputModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold uppercase">Batal</button>
                 <button @click="simpanOrderMulti" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold uppercase shadow-sm">Masukkan Ke Purchase Request</button>
+            </div>
+        </div>
+    </div>
+    <!-- MODAL PENERIMAAN PURCHASE REQUEST MULTI ITEM -->
+    <div v-if="showPurchaseReceiptModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl max-w-3xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="font-black text-slate-800 text-sm uppercase">Penerimaan Purchase Request</h3>
+                    <p class="text-[10px] text-slate-500 mt-1">Format penerimaan dibuat satu form seperti Input Purchase Request. Semua item dalam No. PR diproses sekaligus.</p>
+                </div>
+                <button @click="showPurchaseReceiptModal=false" class="text-slate-400 hover:text-slate-700 text-xl">&times;</button>
+            </div>
+
+            <div class="space-y-3 overflow-y-auto overflow-x-hidden custom-scroll pr-1 flex-1 w-full">
+                <div class="w-full max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Tanggal Penerimaan *</label>
+                        <input v-model="purchaseReceiptDate" type="date" required class="w-full p-2.5 bg-emerald-50 font-extrabold text-sm border-2 border-emerald-500 rounded-xl outline-none focus:ring-2 focus:ring-emerald-200">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Nomor Purchase Request</label>
+                        <input :value="purchaseReceiptItems[0]?.nomorPR || '-'" type="text" readonly class="w-full p-2.5 bg-slate-100 font-extrabold text-sm border border-slate-200 rounded-xl uppercase text-slate-700">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Nomor Purchase Order *</label>
+                        <input v-model="purchaseReceiptPO" type="text" required autocomplete="off" placeholder="Input nomor PO" class="w-full p-2.5 bg-white font-extrabold text-sm border-2 border-slate-300 rounded-xl outline-none focus:border-emerald-500 uppercase">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Supplier *</label>
+                        <input v-model="purchaseReceiptSupplier" type="text" required autocomplete="off" placeholder="Input nama supplier" class="w-full p-2.5 bg-white font-extrabold text-sm border-2 border-slate-300 rounded-xl outline-none focus:border-emerald-500 uppercase">
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span class="text-xs font-bold text-slate-700 uppercase">Daftar Barang Penerimaan:</span>
+                    <span class="text-[10px] font-bold text-emerald-700 uppercase">{{ purchaseReceiptItems.length }} Item</span>
+                </div>
+
+                <div class="w-full max-w-2xl mx-auto space-y-2 border-t border-slate-100 pt-3">
+                    <div v-for="(item, idx) in purchaseReceiptItems" :key="item.orderId" class="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <div class="font-bold text-xs uppercase text-slate-800">{{ idx + 1 }}. {{ item.nama }}</div>
+                            <span class="text-[9px] font-bold text-slate-500 uppercase">Sisa Order: {{ item.qtyRemaining }} {{ item.satuan }}</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Qty Diterima</label>
+                                <input v-model.number="item.qty" type="number" min="0" :max="item.qtyRemaining" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-emerald-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Harga Satuan (Rp)</label>
+                                <input v-model.number="item.harga" type="number" min="0" step="any" class="w-full p-1.5 bg-white font-bold text-xs text-right border border-emerald-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Satuan</label>
+                                <input :value="item.satuan" type="text" readonly class="w-full p-1.5 bg-slate-100 font-semibold text-xs text-center border border-emerald-300 rounded-md uppercase">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Total Harga</label>
+                                <input :value="formatRupiah((Number(item.qty) || 0) * (Number(item.harga) || 0))" type="text" readonly class="w-full p-1.5 bg-slate-100 font-bold text-xs text-right border border-emerald-300 rounded-md">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button @click="showPurchaseReceiptModal=false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold uppercase">Batal</button>
+                <button @click="submitPurchaseReceipt" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold uppercase shadow-sm">Simpan Semua Penerimaan</button>
             </div>
         </div>
     </div>
@@ -3187,10 +3409,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <input v-model.number="item.outQty" type="number" min="1" :max="item.qty" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-amber-300 rounded-md">
                             </div>
                             <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Harga Satuan (Rp)</label>
+                                <input v-model.number="item.harga" type="number" min="0" step="any" class="w-full p-1.5 bg-white font-bold text-xs text-right border border-emerald-300 rounded-md">
+                            </div>
+                            <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Satuan</label>
                                 <input :value="getMasterSatuan(item.nama, item.satuan || 'Pcs')" type="text" readonly placeholder="Satuan dari Data Master" class="w-full p-1.5 bg-slate-100 font-semibold text-xs text-center border border-amber-300 rounded-md uppercase">
                             </div>
-                        <div v-if="showPrices" class="flex justify-end gap-4 pt-1 text-[10px] font-bold text-slate-600">
+                        <div v-if="sparepartShowPrices" class="flex justify-end gap-4 pt-1 text-[10px] font-bold text-slate-600">
                             <span>Harga Satuan: Rp {{ formatRupiah(getMasterHarga(item.nama, item.harga)) }}</span>
                         </div>
                         </div>
@@ -3255,10 +3481,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </div>
                             <button @click="removeSisaProjectMultiInItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Qty Masuk</label>
                                 <input v-model.number="item.qty" type="number" min="1" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-emerald-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Harga Satuan (Rp)</label>
+                                <input v-model.number="item.harga" type="number" min="0" step="any" class="w-full p-1.5 bg-white font-bold text-xs text-right border border-emerald-300 rounded-md">
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Satuan</label>
@@ -3332,7 +3562,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </div>
                             <button @click="removeSisaProjectOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Stok Saat Ini</label>
                                 <input :value="item.qty" type="number" readonly class="w-full p-1.5 bg-slate-100 font-bold text-xs text-center border border-amber-300 rounded-md">
@@ -3346,6 +3576,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <input :value="getMasterSatuan(item.nama, item.satuan || 'Pcs')" type="text" readonly placeholder="Satuan dari Data Master" class="w-full p-1.5 bg-slate-100 font-semibold text-xs text-center border border-amber-300 rounded-md uppercase">
                             </div>
                             <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block">Harga Satuan (Rp)</label>
+                                <input v-model.number="item.harga" type="number" min="0" step="any" class="w-full p-1.5 bg-white font-bold text-xs text-right border border-amber-300 rounded-md">
+                            </div>
+                            <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Lokasi Rak</label>
                                 <input :value="item.lokasi || '-'" type="text" readonly class="w-full p-1.5 bg-slate-100 font-semibold text-xs text-center border border-amber-300 rounded-md uppercase">
                             </div>
@@ -3354,7 +3588,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <input :value="formSisaProjectMultiOut.keperluan || '-'" type="text" readonly class="w-full p-1.5 bg-slate-100 font-semibold text-xs border border-amber-300 rounded-md uppercase">
                             </div>
                         </div>
-                        <div v-if="showPrices" class="flex justify-end pt-1 text-[10px] font-bold text-slate-600">
+                        <div v-if="sisaProjectShowPrices" class="flex justify-end pt-1 text-[10px] font-bold text-slate-600">
                             <span>Harga Satuan: Rp {{ formatRupiah(getMasterHarga(item.nama, item.harga)) }}</span>
                         </div>
                     </div>
@@ -3410,6 +3644,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 activeItem: {},
                 bastData: { noBPB: '', date: '', printDate: '', supplier: '', alamat: '', kodeSupplier: '', kodeDept: '', noPO: '', noSJ: '', nomorPR: '', nama: '', qtyReceived: 0, satuan: '', hasilAnalisa: '', createdBy: '', approvedBy: '', verifiedBy: '' },
                 showPrices: true,
+                sparepartShowPrices: true,
+                sisaProjectShowPrices: true,
+                purchaseRequestShowPrices: true,
+                showPurchaseReceiptModal: false,
+                purchaseReceiptDate: '',
+                purchaseReceiptPO: '',
+                purchaseReceiptSupplier: '',
+                purchaseReceiptItems: [],
                 showPlanningPrices: true,
                 dashFilterDateStart: new Date().toISOString().slice(0, 10),
                 dashFilterDateEnd: new Date().toISOString().slice(0, 10),
@@ -3435,7 +3677,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 monFilterBarang: '',
                 monFilterProject: '',
                 monSort: 'priority_desc',
-                formOrderMulti: { tanggal: '', nomorPR: '', pemesan: '', prioritas: '', keperluan: '', itemsToProcess: [] },
+                formOrderMulti: { tanggal: '', nomorPR: '', nomorPO: '', supplier: '', pemesan: '', prioritas: '', keperluan: '', itemsToProcess: [] },
                 showSparepartMultiOutModal: false,
                 showBarcodeScanner: false,
                 barcodeScanInput: '',
@@ -3460,6 +3702,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 spjLogHargaMax: '',
                 spjLogBarang: '',
                 spjLogKeperluan: '',
+                sparepartLogInPage: 1,
+                sparepartLogOutPage: 1,
+                sisaProjectLogInPage: 1,
+                sisaProjectLogOutPage: 1,
+                logPageSize: 5,
                 formSisaProjectMultiIn: { supplier: '', nomorPR: '', penyerah: '', penerima: '', keperluan: '', tanggal: '', itemsToProcess: [] },
                 formSisaProjectMultiOut: { user: '', tanggal: '', nomorPR: '', penyerah: '', penerima: '', keperluan: '', selectedItems: [] },
                 showApprovalFormModal: false,
@@ -3470,7 +3717,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 purchaseRequestPage: 1,
                 purchaseRequestPageSize: 20,
                 purchaseRequestHistoryPage: 1,
-                purchaseRequestHistoryPageSize: 20,
+                purchaseRequestHistoryPageSize: 10,
                 showSingleOutModal: false,
                 singleOutForm: { item: null, tanggal: '', gudang: '', jenis: 'Pengeluaran / OUTBOUND', nama: '', qty: 1, harga: 0, satuan: 'Pcs', supplier: '', pengambil: '', penerima: '', keperluan: '' },
                 approvalForm: { log: null, tanggal: '', nomorPR: '', gudang: '', jenis: '', nama: '', qty: 0, harga: 0, satuan: '', supplier: '', pengambil: '', penerima: '', keperluan: '' },
@@ -3523,7 +3770,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 sparepartPage: 1,
                 sparepartPageSize: 20,
                 sisaProjectPage: 1,
-                sisaProjectPageSize: 20,
+                sisaProjectPageSize: 10,
                 opnameHistory: [],
                 opnameDraft: {
                     gudang: 'Sparepart',
@@ -3618,6 +3865,16 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             planningDateEnd() { this.planningRequestPage = 1; this.planningUsedStockCacheKey = ''; },
             planningWarehouseFilter() { this.planningRequestPage = 1; },
             approvalWarehouseTab() { this.approvalPage = 1; },
+            spLogDateStart() { this.sparepartLogInPage = 1; this.sparepartLogOutPage = 1; },
+            spLogDateEnd() { this.sparepartLogInPage = 1; this.sparepartLogOutPage = 1; },
+            spLogBarang() { this.sparepartLogInPage = 1; this.sparepartLogOutPage = 1; },
+            spLogKeperluan() { this.sparepartLogInPage = 1; this.sparepartLogOutPage = 1; },
+            spLogHargaMin() { this.sparepartLogInPage = 1; this.sparepartLogOutPage = 1; },
+            spLogHargaMax() { this.sparepartLogInPage = 1; this.sparepartLogOutPage = 1; },
+            spjLogDateStart() { this.sisaProjectLogInPage = 1; this.sisaProjectLogOutPage = 1; },
+            spjLogDateEnd() { this.sisaProjectLogInPage = 1; this.sisaProjectLogOutPage = 1; },
+            spjLogBarang() { this.sisaProjectLogInPage = 1; this.sisaProjectLogOutPage = 1; },
+            spjLogKeperluan() { this.sisaProjectLogInPage = 1; this.sisaProjectLogOutPage = 1; },
             approvalMovementTab() { this.approvalPage = 1; },
             approvalStatusFilter() { this.approvalPage = 1; },
             monFilterDateStart() { this.purchaseRequestPage = 1; },
@@ -3981,6 +4238,44 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             monitoringHistoryIn() {
                 return this.monitoringHistory.filter(h => h.type === 'IN');
             },
+            // Cache data PR terkait sekali agar tabel History tidak menjalankan find() berulang
+            // untuk setiap kolom pada setiap baris. Ini mengurangi beban render saat data PR banyak.
+            monitoringHistoryDisplay() {
+                const orderMap = new Map((this.monitoringItems || []).map(o => [String(o.id), o]));
+                return this.monitoringHistoryIn.map(h => {
+                    const order = orderMap.get(String(h.monitoringOrderId));
+                    return {
+                        ...h,
+                        _order: order || null,
+                        _nomorPR: h.nomorPR || order?.nomorPR || '-',
+                        _nomorPO: h.nomorPO || order?.nomorPO || '-',
+                        _supplier: h.supplier || order?.supplier || '-',
+                        _satuan: h.satuan || order?.satuan || '-',
+                        _qtyTotal: order?.qtyTotal ?? h.qty,
+                        _qtyReceived: order?.qtyReceived ?? h.qty,
+                        _qtyRemaining: order?.qtyRemaining ?? 0
+                    };
+                });
+            },
+            purchaseRequestHistoryPageCount() {
+                return Math.max(1, Math.ceil(this.monitoringHistoryDisplay.length / this.purchaseRequestHistoryPageSize));
+            },
+            paginatedPurchaseRequestHistory() {
+                const maxPage = this.purchaseRequestHistoryPageCount;
+                const page = Math.min(Math.max(1, Number(this.purchaseRequestHistoryPage) || 1), maxPage);
+                const start = (page - 1) * this.purchaseRequestHistoryPageSize;
+                return this.monitoringHistoryDisplay.slice(start, start + this.purchaseRequestHistoryPageSize);
+            },
+            purchaseRequestHistoryPageStart() {
+                if (!this.monitoringHistoryDisplay.length) return 0;
+                const page = Math.min(Math.max(1, Number(this.purchaseRequestHistoryPage) || 1), this.purchaseRequestHistoryPageCount);
+                return ((page - 1) * this.purchaseRequestHistoryPageSize) + 1;
+            },
+            purchaseRequestHistoryPageEnd() {
+                if (!this.monitoringHistoryDisplay.length) return 0;
+                const page = Math.min(Math.max(1, Number(this.purchaseRequestHistoryPage) || 1), this.purchaseRequestHistoryPageCount);
+                return Math.min(page * this.purchaseRequestHistoryPageSize, this.monitoringHistoryDisplay.length);
+            },
             hasExistingPurchaseRequest() {
                 const pr = String(this.formOrderMulti.nomorPR || '').trim().toLowerCase().replace(/\s+/g, ' ');
                 if (!pr) return false;
@@ -3988,14 +4283,15 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             filteredSpareparts() {
                 const q = String(this.spLogBarang || '').trim().toLowerCase();
-                // Data Master adalah satu-satunya sumber stok Spare Part yang ditampilkan.
-                const source = (this.masterCatalog || []).map(master => ({
-                    ...master,
-                    qty: Math.max(0, Math.round(Number(master.currentStock ?? master.stockAwal) || 0)),
-                    harga: Math.max(0, Number(master.harga) || 0),
-                    minStock: Math.max(0, Number(master.minStock) || 0),
-                    satuan: master.satuan || 'PCS',
-                    lokasi: master.lokasi || '-'
+                // Tampilan Gudang Spare Part memakai stok gudang terbaru.
+                // Data Master hanya dipakai sebagai metadata barang.
+                const source = (this.spareparts || []).map(stock => ({
+                    ...stock,
+                    qty: Math.max(0, Math.round(Number(stock.qty) || 0)),
+                    harga: Math.max(0, Number(stock.harga) || 0),
+                    minStock: Math.max(0, Number(stock.minStock) || 0),
+                    satuan: stock.satuan || 'PCS',
+                    lokasi: stock.lokasi || '-'
                 }));
                 if (!q) return source;
                 return source.filter(item => String(item.nama || '').toLowerCase().includes(q) || String(item.kode || '').toLowerCase().includes(q));
@@ -4148,6 +4444,26 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     useSisaFilter ? this.spjLogHargaMax : ''
                 ).filter(log => !q || String(log.nama || '').toLowerCase().includes(q));
             },
+            paginatedSparepartLogsIn() {
+                const start = (this.sparepartLogInPage - 1) * this.logPageSize;
+                return this.filteredSparepartLogsIn.slice(start, start + this.logPageSize);
+            },
+            paginatedSparepartLogsOut() {
+                const start = (this.sparepartLogOutPage - 1) * this.logPageSize;
+                return this.filteredSparepartLogsOut.slice(start, start + this.logPageSize);
+            },
+            paginatedProjectLogsIn() {
+                const start = (this.sisaProjectLogInPage - 1) * this.logPageSize;
+                return this.filteredProjectLogsIn.slice(start, start + this.logPageSize);
+            },
+            paginatedProjectLogsOut() {
+                const start = (this.sisaProjectLogOutPage - 1) * this.logPageSize;
+                return this.filteredProjectLogsOut.slice(start, start + this.logPageSize);
+            },
+            sparepartLogInPageCount() { return Math.max(1, Math.ceil(this.filteredSparepartLogsIn.length / this.logPageSize)); },
+            sparepartLogOutPageCount() { return Math.max(1, Math.ceil(this.filteredSparepartLogsOut.length / this.logPageSize)); },
+            sisaProjectLogInPageCount() { return Math.max(1, Math.ceil(this.filteredProjectLogsIn.length / this.logPageSize)); },
+            sisaProjectLogOutPageCount() { return Math.max(1, Math.ceil(this.filteredProjectLogsOut.length / this.logPageSize)); },
             lowStockItems() {
                 const rows = [];
                 (this.masterCatalog || []).forEach(s => {
@@ -4302,9 +4618,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const nama = String(this.formMasterManual.nama || '').trim();
                 if (!nama) return alert('Nama Barang wajib diisi.');
 
-                // Tanggal tetap editable. Jika kosong saat disimpan, gunakan hari ini.
-                const tanggalInput = String(this.formMasterManual.tanggal || '').trim() || this.getISODateOnly();
-
                 const normalize = value => String(value || '').trim().toLowerCase();
                 const existing = (this.masterCatalog || []).find(item => {
                     const sameKode = normalize(item.kode) && normalize(this.formMasterManual.kode) && normalize(item.kode) === normalize(this.formMasterManual.kode);
@@ -4325,7 +4638,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     minStock: Math.max(0, Math.round(Number(this.formMasterManual.minStock) || 0)),
                     currentStock: qty,
                     stockAwal: qty,
-                    tanggal: tanggalInput,
+                    tanggal: this.getISODateOnly(),
                     leadTime: Math.max(0, Math.round(Number(this.formMasterManual.leadTime) || 0)),
                     avgDailyUsage: Math.max(0, Number(this.formMasterManual.avgDailyUsage) || 0),
                     satuan,
@@ -4359,7 +4672,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 
                 try {
                     const buffer = await file.arrayBuffer();
-                    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+                    const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
                     if (!rows.length) return alert('File Excel tidak memiliki data.');
@@ -4370,49 +4683,19 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         const key = keys.find(k => aliases.includes(normHeader(k)));
                         return key == null ? '' : row[key];
                     };
-                    const parseQty = value => {
-                        if (value === null || value === undefined || value === '') return 0;
-                        const n = Number(String(value).replace(/,/g, ''));
-                        return Math.max(0, Math.round(Number.isFinite(n) ? n : 0));
-                    };
-                    const parseDate = value => {
-                        const today = this.getISODateOnly();
-
-                        if (value instanceof Date && !isNaN(value)) {
-                            return value.toISOString().slice(0, 10);
-                        }
-
-                        // Excel dapat menyimpan tanggal sebagai serial number.
-                        if (typeof value === 'number' && Number.isFinite(value)) {
-                            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-                            const date = new Date(excelEpoch.getTime() + value * 86400000);
-                            if (!isNaN(date)) return date.toISOString().slice(0, 10);
-                        }
-
-                        const raw = String(value || '').trim();
-                        if (!raw) return today;
-
-                        const m = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-                        if (m) return `${m[3]}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
-
-                        const iso = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
-                        if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
-
-                        return raw.slice(0, 10) || today;
-                    };
+                    const parseQty = value => this.strictQty(value, 0);
+                    const parseDate = value => this.strictDateOnly(value, this.getISODateOnly());
 
                     const imported = rows.map((row, index) => {
                         const nama = String(findValue(row, ['namabarang','nama','item','deskripsi','namasparepart'])).trim();
-                        const kodeRaw = String(findValue(row, ['kodebarang','kode','sku','nomorsku'])).trim();
+                        const kodeRaw = String(findValue(row, ['kodebarang','kode','sku','nomorsku','nomorsku'])).trim();
                         const qty = parseQty(findValue(row, ['qtystockawal','qtystokawal','qty','stok','stock','stokawal','stockawal','stokakhir','stockakhir']));
                         const satuanRaw = String(findValue(row, ['satuanunit','satuan','unit','uom'])).trim();
                         const hargaRaw = findValue(row, ['hargasatuan','harga']);
                         const minStockRaw = findValue(row, ['bufferstok','buffer','minstock','stokminimum','minimumstok']);
                         const leadTimeRaw = findValue(row, ['leadtimedari','leadtime','leadtimedays']);
                         const lokasi = String(findValue(row, ['keteranganrak','lokasi','lokasirak','rak'])).trim();
-
                         if (!nama && !kodeRaw) return null;
-
                         return {
                             kode: (kodeRaw || `SKU-${Date.now()}-${index + 1}`).toUpperCase(),
                             nama: nama.toUpperCase(),
@@ -4420,8 +4703,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             minStock: parseQty(minStockRaw),
                             currentStock: qty,
                             stockAwal: qty,
-                            // Jika kolom tanggal tidak ada atau kosong, parseDate otomatis
-                            // mengembalikan tanggal hari ini. Jika valid, tanggal Excel dipertahankan.
                             tanggal: parseDate(findValue(row, ['tanggalinput','tanggal'])),
                             leadTime: parseQty(leadTimeRaw),
                             avgDailyUsage: Math.max(0, Number(findValue(row, ['pemakaianharian','avgdailyusage','pemakaianrataharian'])) || 0),
@@ -4433,57 +4714,63 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 
                     if (!imported.length) return alert('Tidak ada baris Data Master yang dapat dibaca dari file.');
 
-                    // Import TIDAK mengganti/reset Data Master existing.
-                    // SKU yang sama diperbarui hanya pada field yang memang berasal
-                    // dari Excel; SKU baru ditambahkan sebagai baris baru.
-                    const normalize = value => String(value || '').trim().toLowerCase();
-                    const existing = Array.isArray(this.masterCatalog) ? this.masterCatalog : [];
-                    const merged = existing.map(item => ({ ...item }));
-                    let added = 0;
-                    let updated = 0;
+                    // ==========================================================
+                    // IMPORT DATA MASTER: MERGE, BUKAN REPLACE
+                    // Identitas barang ditentukan oleh SKU/kode. Jika barang yang
+                    // sama hanya berbeda SATUAN, cukup perbarui satuannya.
+                    // Stok, harga, min stock, dan field lain dari data lama tidak
+                    // ikut ditimpa hanya karena satuan pada file berbeda.
+                    // ==========================================================
+                    const normalizeMasterKey = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+                    const existingMaster = Array.isArray(this.masterCatalog) ? this.masterCatalog : [];
+                    const mergedMaster = [...existingMaster];
+                    let addedCount = 0;
+                    let satuanUpdatedCount = 0;
 
-                    imported.forEach(importedItem => {
-                        const targetIndex = importedItem.kode
-                            ? merged.findIndex(item => normalize(item.kode) === normalize(importedItem.kode))
-                            : -1;
+                    imported.forEach(row => {
+                        const kodeKey = normalizeMasterKey(row.kode);
+                        const namaKey = normalizeMasterKey(row.nama);
+                        let index = -1;
 
-                        if (targetIndex >= 0) {
-                            // Pertahankan field existing yang tidak ada/benar di database.
-                            // Field Data Master yang ada di file Excel diperbarui dengan nilai Excel.
-                            const current = merged[targetIndex];
-                            merged[targetIndex] = {
-                                ...current,
-                                kode: importedItem.kode || current.kode,
-                                nama: importedItem.nama || current.nama,
-                                harga: importedItem.harga,
-                                minStock: importedItem.minStock,
-                                currentStock: importedItem.currentStock,
-                                stockAwal: importedItem.stockAwal,
-                                tanggal: importedItem.tanggal || this.getISODateOnly(),
-                                leadTime: importedItem.leadTime,
-                                avgDailyUsage: importedItem.avgDailyUsage,
-                                satuan: importedItem.satuan || current.satuan || 'Pcs',
-                                lokasi: importedItem.lokasi || current.lokasi || '',
-                                totalHarga: importedItem.totalHarga
-                            };
-                            updated++;
-                        } else {
-                            merged.push(importedItem);
-                            added++;
+                        if (kodeKey) {
+                            index = mergedMaster.findIndex(item => normalizeMasterKey(item.kode) === kodeKey);
                         }
+                        if (index < 0 && namaKey) {
+                            index = mergedMaster.findIndex(item => normalizeMasterKey(item.nama) === namaKey);
+                        }
+
+                        if (index < 0) {
+                            mergedMaster.push(row);
+                            addedCount++;
+                            return;
+                        }
+
+                        const existing = mergedMaster[index];
+                        const importedSatuan = normalizeMasterKey(row.satuan);
+                        const existingSatuan = normalizeMasterKey(existing.satuan);
+
+                        // Jika identitas barang sama dan yang berbeda hanya satuan,
+                        // ubah SATUAN SAJA. Jangan reset stok gudang/Data Master.
+                        if (importedSatuan && importedSatuan !== existingSatuan) {
+                            existing.satuan = row.satuan;
+                            satuanUpdatedCount++;
+                        }
+
+                        // SKU/nama kosong di data lama boleh dilengkapi dari file,
+                        // tetapi nilai stok tidak disentuh.
+                        if (!String(existing.kode || '').trim() && row.kode) existing.kode = row.kode;
+                        if (!String(existing.nama || '').trim() && row.nama) existing.nama = row.nama;
                     });
 
-                    this.masterCatalog = merged;
+                    this.masterCatalog = mergedMaster;
                     this.masterPage = 1;
+                    this.syncAllSatuanFromMaster();
+                    await this.saveToSupabase();
 
-                    // Simpan state terbaru agar hasil import tidak tertimpa snapshot lama.
-                    const saved = await this.saveToSupabase();
-                    if (!saved) {
-                        alert(`Import selesai di layar (${added} baru, ${updated} diperbarui), tetapi gagal disimpan ke database.`);
-                        return;
-                    }
-
-                    alert(`Data Master berhasil diimport. ${added} data baru ditambahkan dan ${updated} data existing diperbarui tanpa menghapus data lain.`);
+                    const detail = [];
+                    if (addedCount) detail.push(`${addedCount} barang baru`);
+                    if (satuanUpdatedCount) detail.push(`${satuanUpdatedCount} satuan diperbarui`);
+                    alert(`Import Data Master selesai. ${detail.length ? detail.join(', ') + '.' : 'Tidak ada perubahan identitas barang.'}`);
                 } catch (err) {
                     console.error('Import Data Master gagal:', err);
                     alert('Data Master gagal diimport. Pastikan format file Excel sesuai.');
@@ -4560,6 +4847,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.formOrderMulti = {
                     tanggal: this.getISODateOnly(),
                     nomorPR: '',
+                    nomorPO: '',
+                    supplier: '',
                     pemesan: '',
                     prioritas: '',
                     keperluan: '',
@@ -4627,13 +4916,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const nama = String(this.editingMaster.nama || '').trim();
                 if (!nama) return alert('Nama Barang wajib diisi.');
                 const qty = Math.max(0, Math.round(Number(this.editingMaster.currentStock) || 0));
-                const tanggal = String(this.editingMaster.tanggal || '').trim() || this.getISODateOnly();
                 const proposed = {
                     ...this.editingMaster,
                     kode: String(this.editingMaster.kode || '').trim().toUpperCase(),
                     nama: nama.toUpperCase(),
                     currentStock: qty,
-                    tanggal,
                     stockAwal: Math.max(0, Math.round(Number(this.editingMaster.stockAwal ?? qty) || 0)),
                     minStock: Math.max(0, Math.round(Number(this.editingMaster.minStock) || 0)),
                     harga: Math.max(0, Number(this.editingMaster.harga) || 0),
@@ -5303,39 +5590,16 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 throw new Error(`Stok saat ini tidak mencukupi untuk persetujuan transaksi. Stok yang masih tersedia setelah reservasi transaksi lain: ${availableForApproval}.`);
                             }
 
-                            // Jangan izinkan approval yang membuat saldo kronologis negatif.
-                            // Transaksi diurutkan berdasarkan tanggal, lalu id sebagai tie-breaker.
-                            const simulatedLogs = this.logs
-                                .filter(x => String(x.gudang || '').trim().toLowerCase() === String(log.gudang || '').trim().toLowerCase())
-                                .filter(x => {
-                                    const sameItem = String(x.nama || '').trim().toLowerCase() === String(log.nama || '').trim().toLowerCase();
-                                    return sameItem && (!this.isPendingLog(x) || String(x.id) === String(log.id));
-                                })
-                                .map(x => x === log ? { ...x, approvalStatus: 'approved' } : x)
-                                .filter(x => !this.isPendingLog(x))
-                                .sort((a, b) => {
-                                    const da = new Date(a.isoDate || a.id || 0).getTime();
-                                    const db = new Date(b.isoDate || b.id || 0).getTime();
-                                    return da - db || Number(a.id || 0) - Number(b.id || 0);
-                                });
-
-                            const simulatedOpening = String(log.gudang || '').trim().toLowerCase() === 'sisa project'
-                                ? 0
-                                : Math.max(0, Number(stockItem.stockAwal ?? 0) || 0);
-                            let simulatedSaldo = simulatedOpening;
-                            for (const tx of simulatedLogs) {
-                                const txQty = Math.max(0, Number(tx.qty) || 0);
-                                if (String(tx.type).toUpperCase() === 'IN') {
-                                    simulatedSaldo += txQty;
-                                } else {
-                                    simulatedSaldo -= txQty;
-                                    if (simulatedSaldo < 0) {
-                                        throw new Error(`Transaksi ${tx.nama} pada ${tx.tgl || '-'} tidak dapat disetujui karena urutan transaksi membuat stok menjadi negatif.`);
-                                    }
-                                }
+                            // VALIDASI BERDASARKAN STOK TERKINI, BUKAN STOCK AWAL.
+                            // stockItem.qty adalah saldo gudang terakhir setelah transaksi
+                            // yang sudah disetujui. Jadi transaksi kedua/ketiga dan seterusnya
+                            // selalu memakai saldo terbaru, bukan kembali ke Data Master.
+                            const currentStockBeforeApproval = Math.max(0, Number(stockItem.qty) || 0);
+                            if (qty > currentStockBeforeApproval) {
+                                throw new Error(`Stok ${log.nama} saat ini hanya ${currentStockBeforeApproval}. Qty keluar ${qty} tidak dapat disetujui.`);
                             }
 
-                            stockItem.qty = Math.max(0, (Number(stockItem.qty) || 0) - qty);
+                            stockItem.qty = currentStockBeforeApproval - qty;
                             stockItem.totalHarga = this.getMasterHarga(stockItem.nama, stockItem.harga) * stockItem.qty;
                             if (log.gudang === 'Sparepart') this.syncMasterStockForSparepart(stockItem);
                         }
@@ -5495,10 +5759,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     logs: raw(this.logs),
                     planningRequests: raw(this.planningRequests),
                     planningUsages: raw(this.planningUsages),
-                    opnameHistory: raw(this.opnameHistory),
-                    // Penanda migrasi satu kali Data Master:
-                    // data existing lama sudah dipindahkan dari tanggal -> satuan.
-                    dataMasterTanggalSatuanMigrationV1: true
+                    opnameHistory: raw(this.opnameHistory)
                 };
             },
             scheduleSupabaseSave(delay = 900) {
@@ -5562,7 +5823,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     this.planningAutocompleteResults = [];
                     this.opnameHistory = Array.isArray(state.opnameHistory) ? state.opnameHistory : [];
                     this.supabaseLastUpdatedAt = data.updated_at || this.supabaseLastUpdatedAt || '';
+                    this.normalizeInventoryDataTypes();
                     this.syncMasterAndSparepart();
+                    this.syncWarehouseLogBalances();
                     this.supabaseConnected = true;
                     this.$nextTick(() => this.refreshIcons());
                 } catch (err) {
@@ -5620,42 +5883,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 // project Supabase belum mengaktifkan replication untuk inventory_state.
                 this.startSupabaseRealtimeFallback();
             },
-            migrateExistingMasterTanggalToSatuan(state) {
-                // Migrasi SATU KALI hanya untuk snapshot Data Master lama yang
-                // belum memiliki penanda migrasi. Setelah berhasil disimpan,
-                // penanda ini mencegah logic migrasi berjalan pada data baru.
-                if (!state || state.dataMasterTanggalSatuanMigrationV1 === true) {
-                    return { state, changed: false };
-                }
-
-                const needsMigrationMarker = true;
-                const today = this.getISODateOnly();
-                const source = Array.isArray(state.masterCatalog) ? state.masterCatalog : [];
-                let changed = false;
-
-                const migratedMaster = source.map(item => {
-                    const migrated = { ...item };
-                    const oldTanggal = String(item?.tanggal || '').trim();
-
-                    if (oldTanggal) {
-                        migrated.satuan = oldTanggal;
-                        migrated.tanggal = today;
-                        changed = true;
-                    } else if (!migrated.tanggal) {
-                        migrated.tanggal = today;
-                        changed = true;
-                    }
-
-                    return migrated;
-                });
-
-                if (changed || source.length === 0) {
-                    state.masterCatalog = migratedMaster;
-                }
-                state.dataMasterTanggalSatuanMigrationV1 = true;
-
-                return { state, changed: changed || needsMigrationMarker };
-            },
             async loadFromSupabase() {
                 const client = this.getSupabaseClient();
                 if (!client) {
@@ -5663,26 +5890,16 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     console.warn('Supabase belum dikonfigurasi. Isi SUPABASE_URL dan SUPABASE_PUBLISHABLE_KEY.');
                     return;
                 }
-
-                let shouldPersistMigration = false;
-
                 try {
                     const { data, error } = await client
                         .from('inventory_state')
                         .select('state,updated_at')
                         .eq('id', 'main')
                         .maybeSingle();
-
                     if (error) throw error;
-
                     if (data && data.state) {
                         this.supabaseLastUpdatedAt = data.updated_at || this.supabaseLastUpdatedAt || '';
-
-                        let state = data.state;
-                        const migration = this.migrateExistingMasterTanggalToSatuan(state);
-                        state = migration.state;
-                        shouldPersistMigration = migration.changed;
-
+                        const state = data.state;
                         this.masterCatalog = Array.isArray(state.masterCatalog) ? state.masterCatalog : [];
                         this.monitoringItems = Array.isArray(state.monitoringItems) ? state.monitoringItems : [];
                         this.monitoringHistory = Array.isArray(state.monitoringHistory) ? state.monitoringHistory : [];
@@ -5697,25 +5914,16 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         this.planningCacheBuilding = false;
                         this.planningAutocompleteResults = [];
                         this.opnameHistory = Array.isArray(state.opnameHistory) ? state.opnameHistory : [];
+                        this.normalizeInventoryDataTypes();
                         this.syncMasterAndSparepart();
+                        this.syncWarehouseLogBalances();
                     }
-
                     this.supabaseConnected = true;
                 } catch (err) {
                     console.error('Gagal mengambil data dari Supabase:', err);
                     alert('Data Supabase belum bisa dimuat. Cek koneksi, tabel inventory_state, dan RLS Supabase.');
                 } finally {
                     this.isHydratingFromSupabase = false;
-                }
-
-                // Jika snapshot lama belum memiliki penanda migrasi, simpan SATU KALI
-                // setelah state existing selesai dimuat. Tidak ada logic migrasi
-                // yang akan berjalan lagi pada data baru.
-                if (shouldPersistMigration && this.isAuthenticated) {
-                    const saved = await this.saveToSupabase();
-                    if (!saved) {
-                        console.warn('Migrasi Data Master berhasil diterapkan di layar, tetapi penanda migrasi belum tersimpan ke Supabase.');
-                    }
                 }
             },
             async saveToSupabase() {
@@ -5746,6 +5954,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     // Sebelum penyimpanan, pastikan seluruh satuan transaksi/gudang
                     // yang punya pasangan di Data Master memakai satuan dari Master.
                     this.syncAllSatuanFromMaster();
+                    this.syncWarehouseLogBalances();
                     const updatedAt = new Date().toISOString();
                     const payload = {
                         id: 'main',
@@ -6088,6 +6297,195 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const num = Number(value) || 0;
                 return num.toLocaleString('id-ID');
             },
+            // ================================================================
+            // NORMALISASI TIPE DATA INVENTORY - SATU SUMBER, TIPE TEGAS
+            // HANYA FIELD TANGGAL YANG BOLEH MENJADI DATE/STRING TANGGAL.
+            // QTY/STOK/JUMLAH SELALU NUMBER. SATUAN SELALU TEXT.
+            // ================================================================
+            excelSerialFromDate(value) {
+                if (!(value instanceof Date) || isNaN(value.getTime())) return null;
+                const utc = Date.UTC(value.getFullYear(), value.getMonth(), value.getDate());
+                const excelEpoch = Date.UTC(1899, 11, 30);
+                return Math.round((utc - excelEpoch) / 86400000);
+            },
+            strictQty(value, fallback = 0) {
+                if (value === null || value === undefined || value === '') return Math.max(0, Math.round(Number(fallback) || 0));
+                if (value instanceof Date) return Math.max(0, Math.round(Number(fallback) || 0));
+                if (typeof value === 'number') return Number.isFinite(value) ? Math.max(0, Math.round(value)) : Math.max(0, Math.round(Number(fallback) || 0));
+                const raw = String(value).trim();
+                // String tanggal pada field Qty dianggap data tidak valid, bukan jumlah.
+                // Jangan pernah mengubah tanggal menjadi timestamp/serial besar di stok.
+                if (/^\d{4}-\d{2}-\d{2}(?:T|$)/.test(raw) || /^\d{1,2}[\/-]\d{1,2}[\/-]\d{4}$/.test(raw)) {
+                    return Math.max(0, Math.round(Number(fallback) || 0));
+                }
+                const cleaned = raw.replace(/,/g, '').replace(/[^0-9.-]/g, '');
+                const n = Number(cleaned);
+                return Number.isFinite(n) ? Math.max(0, Math.round(n)) : Math.max(0, Math.round(Number(fallback) || 0));
+            },
+            strictText(value, fallback = '') {
+                if (value instanceof Date) return String(fallback || '').trim();
+                return String(value ?? fallback ?? '').trim();
+            },
+            isDateLikeValue(value) {
+                if (value instanceof Date) return true;
+                const raw = String(value ?? '').trim();
+                return /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(raw) || /^\d{1,2}[\/-]\d{1,2}[\/-]\d{4}$/.test(raw);
+            },
+            safeQty(primary, ...fallbacks) {
+                const candidates = [primary, ...fallbacks];
+                for (const value of candidates) {
+                    if (this.isDateLikeValue(value)) continue;
+                    if (value === null || value === undefined || value === '') continue;
+                    const n = Number(value);
+                    if (Number.isFinite(n)) return Math.max(0, Math.round(n));
+                }
+                return 0;
+            },
+            safeNumber(primary, ...fallbacks) {
+                const candidates = [primary, ...fallbacks];
+                for (const value of candidates) {
+                    if (this.isDateLikeValue(value)) continue;
+                    if (value === null || value === undefined || value === '') continue;
+                    const n = Number(value);
+                    if (Number.isFinite(n)) return Math.max(0, n);
+                }
+                return 0;
+            },
+            safeText(primary, ...fallbacks) {
+                const candidates = [primary, ...fallbacks];
+                for (const value of candidates) {
+                    if (this.isDateLikeValue(value)) continue;
+                    const text = String(value ?? '').trim();
+                    if (text) return text;
+                }
+                return '';
+            },
+            strictDateOnly(value, fallback = '') {
+                if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString().slice(0,10);
+                // Pada Excel, tanggal tanpa cellDates=true dapat berupa serial number.
+                // Konversi serial hanya di field tanggal; jangan dipakai untuk Qty/Satuan.
+                if (typeof value === 'number' && Number.isFinite(value) && value > 0 && value < 100000) {
+                    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(value) * 86400000);
+                    if (!isNaN(d.getTime())) return d.toISOString().slice(0,10);
+                }
+                const raw = String(value ?? '').trim();
+                if (!raw) return fallback || this.getISODateOnly();
+                const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+                const dmy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+                if (dmy) return `${dmy[3]}-${String(dmy[2]).padStart(2,'0')}-${String(dmy[1]).padStart(2,'0')}`;
+                return fallback || this.getISODateOnly();
+            },
+            normalizeInventoryDataTypes() {
+                // REPAIR-ONLY: jangan mengubah nilai yang sudah valid.
+                // Hanya perbaiki field jika nilainya jelas berupa tanggal/tipe yang salah.
+                const masterByKey = new Map();
+                const date = v => this.strictDateOnly(v, this.getISODateOnly());
+                (this.masterCatalog || []).forEach(m => {
+                    if (!m || typeof m !== 'object') return;
+                    m.kode = this.safeText(m.kode);
+                    m.nama = this.safeText(m.nama).toUpperCase();
+                    m.satuan = this.safeText(m.satuan, 'Pcs') || 'Pcs';
+                    m.currentStock = this.safeQty(m.currentStock, m.stockAwal);
+                    m.stockAwal = this.safeQty(m.stockAwal, m.currentStock);
+                    m.minStock = this.safeQty(m.minStock);
+                    m.leadTime = this.safeQty(m.leadTime);
+                    m.avgDailyUsage = this.safeQty(m.avgDailyUsage);
+                    m.harga = this.safeNumber(m.harga);
+                    m.tanggal = date(m.tanggal);
+                    m.lokasi = this.safeText(m.lokasi).toUpperCase();
+                    m.totalHarga = m.harga * m.currentStock;
+                    if (m.kode) masterByKey.set(`k:${m.kode.toLowerCase()}`, m);
+                    if (m.nama) masterByKey.set(`n:${m.nama.toLowerCase()}`, m);
+                });
+                const masterFor = r => {
+                    const kode = this.safeText(r?.kode, r?.sku, r?.barcode).toLowerCase();
+                    const nama = this.safeText(r?.nama).toLowerCase();
+                    return (kode && masterByKey.get(`k:${kode}`)) || (nama && masterByKey.get(`n:${nama}`)) || null;
+                };
+                (this.spareparts || []).forEach(r => {
+                    if (!r || typeof r !== 'object') return;
+                    const m = masterFor(r);
+                    r.kode = this.safeText(r.kode, m?.kode);
+                    r.nama = this.safeText(r.nama, m?.nama).toUpperCase();
+                    r.qty = this.safeQty(r.qty, r.stockAwal, m?.currentStock);
+                    r.stockAwal = this.safeQty(r.stockAwal, r.qty, m?.stockAwal);
+                    r.minStock = this.safeQty(r.minStock, m?.minStock);
+                    r.satuan = this.safeText(m?.satuan, r.satuan, 'Pcs') || 'Pcs';
+                    r.harga = this.safeNumber(m?.harga, r.harga);
+                    r.totalHarga = r.harga * r.qty;
+                });
+                (this.sisaProjects || []).forEach(r => {
+                    if (!r || typeof r !== 'object') return;
+                    const m = masterFor(r);
+                    r.kode = this.safeText(r.kode, m?.kode);
+                    r.nama = this.safeText(r.nama, m?.nama).toUpperCase();
+                    r.qty = this.safeQty(r.qty, r.stockAwal, m?.currentStock);
+                    r.stockAwal = this.safeQty(r.stockAwal, r.qty, m?.stockAwal);
+                    r.satuan = this.safeText(m?.satuan, r.satuan, 'Pcs') || 'Pcs';
+                    r.harga = this.safeNumber(m?.harga, r.harga);
+                    r.totalHarga = r.harga * r.qty;
+                });
+                (this.monitoringItems || []).forEach(r => {
+                    if (!r || typeof r !== 'object') return;
+                    const m = masterFor(r);
+                    r.nomorPR = this.safeText(r.nomorPR);
+                    r.nama = this.safeText(r.nama).toUpperCase();
+                    r.satuan = this.safeText(m?.satuan, r.satuan, 'Pcs') || 'Pcs';
+                    r.tgl = date(r.tgl || r.isoDate);
+                    r.isoDate = this.getDateFromInput(r.tgl).toISOString();
+                    r.qtyTotal = this.safeQty(r.qtyTotal, r.qty, r.qtyReceived, r.qtyRemaining);
+                    r.qtyReceived = Math.min(r.qtyTotal, this.safeQty(r.qtyReceived));
+                    r.qtyRemaining = Math.max(0, r.qtyTotal - r.qtyReceived);
+                    r.prioritas = this.safeQty(r.prioritas);
+                    r.harga = this.safeNumber(m?.harga, r.harga);
+                    r.totalHarga = r.harga * r.qtyTotal;
+                });
+                (this.monitoringHistory || []).forEach(r => {
+                    if (!r || typeof r !== 'object') return;
+                    const m = masterFor(r);
+                    r.nama = this.safeText(r.nama).toUpperCase();
+                    r.satuan = this.safeText(m?.satuan, r.satuan, 'Pcs') || 'Pcs';
+                    r.qty = this.safeQty(r.qty, r.qtyReceived, r.qtyRemaining);
+                    r.qtyReceived = this.safeQty(r.qtyReceived, r.qty);
+                    r.qtyRemaining = this.safeQty(r.qtyRemaining);
+                });
+                (this.logs || []).forEach(r => {
+                    if (!r || typeof r !== 'object') return;
+                    const m = masterFor(r);
+                    r.nama = this.safeText(r.nama).toUpperCase();
+                    r.kode = this.safeText(r.kode, m?.kode);
+                    r.satuan = this.safeText(m?.satuan, r.satuan, 'Pcs') || 'Pcs';
+                    r.qty = this.safeQty(r.qty, r.qtyAwal, r.qtyAkhir);
+                    r.qtyAwal = this.safeQty(r.qtyAwal, r.qty);
+                    r.qtyAkhir = this.safeQty(r.qtyAkhir, r.qtyAwal);
+                    r.harga = this.safeNumber(m?.harga, r.harga);
+                    r.totalHarga = r.harga * r.qty;
+                    r.tgl = date(r.tgl || r.isoDate);
+                    if (r.isoDate) r.isoDate = this.getDateFromInput(r.tgl).toISOString();
+                });
+                // Planning: perbaiki hanya angka yang jelas salah; nilai valid dipertahankan.
+                (this.planningRequests || []).forEach(r => {
+                    if (!r || typeof r !== 'object') return;
+                    r.satuan = this.safeText(masterFor(r)?.satuan, r.satuan, 'Pcs') || 'Pcs';
+                    r.bufferStock = this.safeQty(r.bufferStock);
+                    r.penambahanStock = this.safeQty(r.penambahanStock);
+                    r.stok = this.safeQty(r.stok);
+                    r.stokTerpakai = this.safeQty(r.stokTerpakai);
+                    r.hargaSatuan = this.safeNumber(r.hargaSatuan);
+                });
+                (this.planningUsages || []).forEach(r => {
+                    if (!r || typeof r !== 'object') return;
+                    r.satuan = this.safeText(masterFor(r)?.satuan, r.satuan, 'Pcs') || 'Pcs';
+                    r.stokSparepart = this.safeQty(r.stokSparepart);
+                    r.stokSisaProject = this.safeQty(r.stokSisaProject);
+                    (r.proyek || []).forEach(p => {
+                        p.qty = this.safeQty(p.qty);
+                        p.nama = this.safeText(p.nama);
+                    });
+                });
+                this.syncAllSatuanFromMaster();
+            },
             getMasterHarga(nama, fallback = 0) {
                 const key = String(nama || '').trim().toLowerCase();
                 if (!key) return Number(fallback) || 0;
@@ -6180,6 +6578,92 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 master.totalHarga = Math.max(0, Number(master.harga) || 0) * qty;
                 return master;
             },
+            // Mengambil saldo TERKINI gudang. Data Master hanya menjadi referensi
+            // identitas/metadata; setelah transaksi berjalan, saldo gudang berasal dari
+            // record spareparts/sisaProjects yang sudah diperbarui oleh approval.
+            syncWarehouseLogBalances() {
+                const normalize = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+                const configs = [
+                    { gudang: 'Sparepart', stocks: this.spareparts || [] },
+                    { gudang: 'Sisa Project', stocks: this.sisaProjects || [] }
+                ];
+                const isApproved = log => !this.isPendingLog(log) && String(log?.adjustmentType || '').toUpperCase() !== 'OPNAME';
+                const sortLogs = (a, b) => new Date(a.createdAt || a.inputAt || a.isoDate || a.id || 0).getTime() - new Date(b.createdAt || b.inputAt || b.isoDate || b.id || 0).getTime();
+
+                // KUNCI PERBAIKAN:
+                // Log lama tidak selalu menyimpan barcode (contoh: penerimaan dari Purchase Request).
+                // Kalau stok mempunyai barcode tetapi log tidak, log tetap harus dicocokkan
+                // ke barang berdasarkan nama. Jangan membuat key barcode untuk stok saja karena
+                // akibatnya log tersebut tidak pernah masuk ke grup sinkronisasi.
+                const getKeys = (gudang, x) => {
+                    const barcode = normalize(x?.barcode);
+                    const nama = normalize(x?.nama);
+                    const keys = [];
+                    if (barcode) keys.push(`barcode:${barcode}`);
+                    if (gudang === 'Sisa Project') {
+                        const sisaKey = `sisa:${nama}|${normalize(x?.supplier || x?.asal)}|${normalize(x?.keperluan || x?.project)}`;
+                        if (nama) keys.push(sisaKey);
+                    } else if (nama) {
+                        keys.push(`nama:${nama}`);
+                    }
+                    return [...new Set(keys)];
+                };
+
+                configs.forEach(({ gudang, stocks }) => {
+                    // Satu stok boleh mempunyai lebih dari satu alias:
+                    // barcode DAN nama. Ini membuat log lama tanpa barcode tetap ditemukan.
+                    const stockMap = new Map();
+                    stocks.forEach(item => {
+                        const qty = Math.max(0, Number(item.qty) || 0);
+                        getKeys(gudang, item).forEach(key => {
+                            if (!stockMap.has(key)) stockMap.set(key, qty);
+                        });
+                    });
+
+                    const groups = new Map();
+                    (this.logs || [])
+                        .filter(log => String(log.gudang || '').toLowerCase() === gudang.toLowerCase() && isApproved(log))
+                        .forEach(log => {
+                            // Pilih key yang benar-benar ada di stok. Untuk log lama tanpa barcode,
+                            // fallback otomatis ke key nama/sisa-project.
+                            const keys = getKeys(gudang, log);
+                            const key = keys.find(k => stockMap.has(k));
+                            if (!key) return;
+                            if (!groups.has(key)) groups.set(key, []);
+                            groups.get(key).push(log);
+                        });
+
+                    groups.forEach((logs, key) => {
+                        const ordered = logs.slice().sort(sortLogs);
+                        const currentStock = stockMap.get(key);
+                        const netMovement = ordered.reduce((sum, log) => {
+                            const qty = Math.max(0, Number(log.qty) || 0);
+                            return sum + (String(log.type || '').toUpperCase() === 'OUT' ? -qty : qty);
+                        }, 0);
+
+                        // Saldo akhir gudang yang tersimpan adalah sumber kebenaran.
+                        // Dari saldo akhir + seluruh pergerakan, hitung mundur saldo awal,
+                        // lalu hitung maju lagi untuk setiap log.
+                        let running = Math.max(0, currentStock - netMovement);
+                        ordered.forEach(log => {
+                            const qty = Math.max(0, Number(log.qty) || 0);
+                            log.qtyAwal = Math.max(0, Math.round(running));
+                            running = String(log.type || '').toUpperCase() === 'OUT' ? running - qty : running + qty;
+                            log.qtyAkhir = Math.max(0, Math.round(running));
+                        });
+                    });
+                });
+            },
+            getLatestWarehouseStock(gudang, nama, barcode = '') {
+                const list = gudang === 'Sisa Project' ? (this.sisaProjects || []) : (this.spareparts || []);
+                const namaKey = String(nama || '').trim().toLowerCase();
+                const barKey = String(barcode || '').trim();
+                const found = list.find(item =>
+                    (barKey && String(item.barcode || '').trim() === barKey) ||
+                    String(item.nama || '').trim().toLowerCase() === namaKey
+                );
+                return found ? Math.max(0, Number(found.qty) || 0) : 0;
+            },
             syncMasterAndSparepart() {
                 const norm = value => String(value || '').trim().toLowerCase();
                 const usedBarcodes = new Set(this.spareparts.map(s => String(s.barcode || '').trim()).filter(Boolean));
@@ -6205,39 +6689,38 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     if (!stock) {
                         stock = this.spareparts.find(s => !s.kode && norm(s.nama) === key);
                     }
-                    const masterQty = Math.max(0, Number(master.currentStock ?? master.stockAwal) || 0);
                     const masterHarga = Math.max(0, Number(master.harga) || 0);
 
-                    // SEMUA barang Master wajib mempunyai pasangan di Gudang Sparepart,
-                    // termasuk jika stok awal/current stock = 0.
-                    // Qty Gudang Sparepart tetap mengikuti stok transaksi yang sudah berjalan.
+                    // Data Master hanya menjadi referensi identitas barang dan metadata.
+                    // Stok Gudang Spare Part berjalan sendiri dari transaksi pemasukan
+                    // dan pengeluaran. Barang baru selalu mulai dari 0 di gudang.
                     if (!stock) {
                         stock = {
                             barcode: nextBarcode(),
                             kode: master.kode,
                             nama: master.nama,
-                            qty: masterQty,
-                            stockAwal: masterQty,
+                            qty: 0,
+                            stockAwal: 0,
                             minStock: Number(master.minStock) || 0,
                             lokasi: master.lokasi || 'RAK UTAMA',
                             satuan: master.satuan || 'PCS',
                             harga: masterHarga,
-                            totalHarga: masterHarga * masterQty,
+                            totalHarga: 0,
                         };
                         this.spareparts.push(stock);
                     } else {
-                        // MASTER DATA adalah sumber utama untuk stok terakhir.
-                        // Setiap sinkronisasi wajib membuat Gudang Sparepart mengikuti
-                        // currentStock Master Data, termasuk ketika nilainya 0.
+                        // PENTING: jangan pernah menimpa qty gudang dengan stok Data Master.
+                        // qty yang ada adalah stok terbaru setelah transaksi sebelumnya.
+                        const currentWarehouseQty = Math.max(0, Number(stock.qty) || 0);
                         stock.kode = master.kode || stock.kode;
                         stock.nama = master.nama;
                         stock.minStock = Number(master.minStock) || 0;
                         stock.harga = masterHarga;
-                        stock.qty = masterQty;
-                        stock.totalHarga = masterHarga * masterQty;
+                        stock.qty = currentWarehouseQty;
+                        stock.totalHarga = masterHarga * currentWarehouseQty;
                         stock.satuan = master.satuan || stock.satuan || 'PCS';
                         stock.lokasi = master.lokasi || stock.lokasi || '';
-                        stock.stockAwal = Number(master.stockAwal ?? masterQty) || 0;
+                        stock.stockAwal = 0;
                     }
 
                 });
@@ -6342,6 +6825,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const nomorPR = String(this.formOrderMulti.nomorPR || '').trim();
                 if (!nomorPR) return alert('Nomor Purchase Request wajib diisi.');
                 const pemesan = String(this.formOrderMulti.pemesan || '').trim() || '-';
+                const nomorPO = String(this.formOrderMulti.nomorPO || '').trim().toUpperCase();
+                const supplier = String(this.formOrderMulti.supplier || '').trim().toUpperCase();
                 const keperluanPR = String(this.formOrderMulti.keperluan || '').trim() || '-';
                 if (this.formOrderMulti.itemsToProcess.length === 0) return alert('Tambahkan minimal 1 item order!');
                 const normalizePR = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -6392,6 +6877,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         isoDate: isoNow,
                         tgl: dateOnlyStr,
                         nomorPR: nomorPR,
+                        nomorPO: nomorPO,
+                        supplier: supplier,
                         nama: item.nama.toUpperCase(),
                         keperluan: keperluanPR.toUpperCase(),
                         prioritas: prioritasPR,
@@ -6454,6 +6941,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (qtyBaru < oldReceived) return alert('Qty order tidak boleh lebih kecil dari qty yang sudah diterima.');
 
                 order.nomorPR = nomorPRBaru.toUpperCase();
+                order.nomorPO = String(prompt('Nomor Purchase Order:', order.nomorPO || '') || order.nomorPO || '').trim().toUpperCase();
+                order.supplier = String(prompt('Supplier:', order.supplier || '') || order.supplier || '').trim().toUpperCase();
                 order.keperluan = String(keteranganBaru).trim().toUpperCase();
                 this.changePurchaseRequestPriority(order, normalizedPriority);
                 order.qtyTotal = qtyBaru;
@@ -6470,6 +6959,53 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 await this.saveToSupabase();
                 alert(`Purchase Request ${order.nama} berhasil diperbarui.`);
             },
+            recalculateWarehouseLogChain(gudang, nama) {
+                const key = String(nama || '').trim().toLowerCase();
+                const rows = (this.logs || []).filter(l => String(l.gudang || '').trim().toLowerCase() === String(gudang || '').trim().toLowerCase() && String(l.nama || '').trim().toLowerCase() === key).sort((a,b) => {
+                    const ta = new Date(a.isoDate || a.createdAt || a.id || 0).getTime() || Number(a.id) || 0;
+                    const tb = new Date(b.isoDate || b.createdAt || b.id || 0).getTime() || Number(b.id) || 0;
+                    return ta - tb;
+                });
+                let running = rows.length ? Number(rows[0].qtyAwal) || 0 : 0;
+                rows.forEach(l => {
+                    const approved = !this.isPendingLog(l) && Number(l.qty || 0) !== 0;
+                    l.qtyAwal = running;
+                    if (approved) {
+                        const qty = Math.max(0, Number(l.qty) || 0);
+                        running = String(l.type || '').toUpperCase() === 'OUT' ? Math.max(0, running - qty) : running + qty;
+                    }
+                    l.qtyAkhir = running;
+                    l.totalHarga = (Number(l.harga) || 0) * (Number(l.qty) || 0);
+                });
+                const stock = (gudang === 'Sparepart' ? this.spareparts : this.sisaProjects).find(s => String(s.nama || '').trim().toLowerCase() === key);
+                if (stock) stock.qty = Math.max(0, Math.round(running));
+            },
+            async cancelPurchaseReceipt(history) {
+                if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data.');
+                if (!history || Number(history.qty) <= 0) return;
+                if (!confirm(`Batalkan penerimaan ${history.nama} sebanyak ${history.qty} ${history.satuan || ''}? Qty penerimaan akan menjadi 0 dan sisa PR dikembalikan.`)) return;
+                const qtyOld = Math.max(0, Number(history.qty) || 0);
+                const order = this.monitoringItems.find(o => String(o.id) === String(history.monitoringOrderId));
+                const log = this.logs.find(l => String(l.id) === String(history.monitoringLogId) || String(l.monitoringHistoryId) === String(history.id));
+                const approved = String(history.approvalStatus || '').toLowerCase() !== 'pending' && !this.isPendingLog(history);
+                if (approved && log && qtyOld > 0) {
+                    const stock = this.spareparts.find(s => String(s.nama||'').trim().toLowerCase() === String(history.nama||'').trim().toLowerCase());
+                    if (stock && (Number(stock.qty)||0) < qtyOld) return alert('Cancel tidak dapat dilakukan karena stok Sparepart saat ini lebih kecil dari qty penerimaan yang akan dibatalkan.');
+                    if (stock) { stock.qty = Math.max(0,(Number(stock.qty)||0)-qtyOld); stock.totalHarga = (Number(stock.harga)||0)*stock.qty; }
+                }
+                history.qty = 0; history.totalHarga = 0; history.status = 'Cancel Penerimaan'; history.approvalStatus = 'approved'; history.cancelledAt = new Date().toISOString();
+                if (log) { log.qty = 0; log.totalHarga = 0; log.qtyAkhir = log.qtyAwal; log.keperluan = `${log.keperluan || 'Penerimaan Monitoring'} [CANCEL]`; log.cancelledAt = new Date().toISOString(); }
+                if (order) {
+                    order.qtyReceived = Math.max(0,(Number(order.qtyReceived)||0)-qtyOld);
+                    order.qtyRemaining = Math.max(0,(Number(order.qtyTotal)||0)-order.qtyReceived);
+                    order.status = order.qtyRemaining <= 0 ? 'Diterima Semua' : order.qtyReceived > 0 ? 'Diterima Sebagian' : 'Pending';
+                    this.monitoringHistory.forEach(h => { if (String(h.monitoringOrderId)===String(order.id) && Number(h.qty)>0) h.status = order.status; });
+                }
+                this.recalculateWarehouseLogChain('Sparepart', history.nama);
+                this.syncMasterStockForSparepart(this.spareparts.find(s => String(s.nama||'').trim().toLowerCase()===String(history.nama||'').trim().toLowerCase()));
+                await this.saveToSupabase();
+                alert(`Penerimaan ${history.nama} dibatalkan. Qty penerimaan menjadi 0 dan sisa PR dikembalikan.`);
+            },
             async cancelOrder(order) {
                 if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data.');
 
@@ -6481,62 +7017,43 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             async terimaBarang(order) {
                 if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
-                const selectedDateStr = await this.pickTransactionDate(this.getISODateOnly(), 'Tanggal Penerimaan Barang');
-                if (!selectedDateStr) return;
-                const qtyTerimaInput = prompt(`Terima order ${order.nama}\nMasukkan Qty Diterima (Sisa: ${order.qtyRemaining} ${order.satuan}):`, order.qtyRemaining);
-                if (!qtyTerimaInput || isNaN(qtyTerimaInput) || Number(qtyTerimaInput) <= 0) return;
-                const qtyTerima = Number(qtyTerimaInput);
-                if (qtyTerima > order.qtyRemaining) return alert('Qty melebihi sisa order!');
-                const orderNameKey = String(order.nama || '').trim().toLowerCase();
-                const stockItem = this.spareparts.find(s => String(s.nama || '').trim().toLowerCase() === orderNameKey);
-                const qtyAwal = stockItem ? Number(stockItem.qty) || 0 : 0;
-                const hargaBarang = this.getMasterHarga(order.nama, order.harga);
-                const selectedDate = this.getDateFromInput(selectedDateStr);
+                if (!order) return;
+                const prKey = String(order.nomorPR || '').trim().toLowerCase();
+                const related = this.monitoringItems.filter(o => String(o.nomorPR || '').trim().toLowerCase() === prKey && o.status !== 'Cancel' && (Number(o.qtyRemaining) || 0) > 0);
+                this.purchaseReceiptItems = related.map(o => ({ orderId:o.id, nama:o.nama, nomorPR:o.nomorPR || order.nomorPR || '', satuan:o.satuan || 'Pcs', qtyRemaining:Number(o.qtyRemaining)||0, qty: Number(o.qtyRemaining)||0, harga:Number(this.getMasterHarga(o.nama,o.harga))||0 }));
+                this.purchaseReceiptDate = this.getISODateOnly();
+                this.purchaseReceiptPO = order.nomorPO || '';
+                this.purchaseReceiptSupplier = order.supplier || '';
+                this.showPurchaseReceiptModal = true;
+                this.$nextTick(() => this.refreshIcons());
+            },
+            async submitPurchaseReceipt() {
+                if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
+                if (!this.purchaseReceiptDate) return alert('Tanggal penerimaan wajib dipilih.');
+                if (!String(this.purchaseReceiptPO || '').trim()) return alert('Nomor Purchase Order wajib diisi.');
+                if (!String(this.purchaseReceiptSupplier || '').trim()) return alert('Supplier wajib diisi.');
+                const items = (this.purchaseReceiptItems || []).filter(x => Number(x.qty) > 0);
+                if (!items.length) return alert('Isi minimal satu Qty penerimaan.');
+                const selectedDate = this.getDateFromInput(this.purchaseReceiptDate);
                 const dateOnlyStr = this.getFormattedDateOnly(selectedDate);
                 const isoNow = selectedDate.toISOString();
-                const monitoringHistoryId = Date.now() + Math.random();
-                const monitoringLogId = Date.now() + Math.random();
-                this.monitoringHistory.unshift({
-                    id: monitoringHistoryId,
-                    createdAt: new Date().toISOString(),
-                    type: 'IN',
-                    tgl: dateOnlyStr,
-                    isoDate: isoNow,
-                    nomorPR: order.nomorPR || '',
-                    keperluan: order.keperluan || order.project,
-                    nama: order.nama,
-                    nomorPR: order.nomorPR || '',
-                    qty: qtyTerima,
-                    harga: hargaBarang,
-                    totalHarga: hargaBarang * qtyTerima,
-                    satuan: String(this.getMasterSatuan(order.nama, order.satuan || 'Pcs', order.kode || order.barcode || '') || 'Pcs').trim().toUpperCase(),
-                    status: 'Menunggu Persetujuan',
-                    monitoringOrderId: order.id,
-                    monitoringLogId: monitoringLogId,
-                    approvalStatus: 'pending'
-                });
-                this.logs.unshift({
-                    id: monitoringLogId,
-                    createdAt: new Date().toISOString(),
-                    isoDate: isoNow,
-                    gudang: 'Sparepart',
-                    type: 'IN',
-                    nama: order.nama,
-                    qty: qtyTerima,
-                    harga: hargaBarang,
-                    qtyAwal: qtyAwal,
-                    qtyAkhir: qtyAwal + qtyTerima,
-                    totalHarga: hargaBarang * qtyTerima,
-                    tgl: dateOnlyStr,
-                    keperluan: `Penerimaan Monitoring (${order.keperluan || order.project || '-'})`,
-                    monitoringOrderId: order.id,
-                    monitoringHistoryId: monitoringHistoryId,
-                    satuan: String(this.getMasterSatuan(order.nama, order.satuan || 'Pcs', order.kode || order.barcode || '') || 'Pcs').trim().toUpperCase(),
-                    approvalStatus: 'pending'
-                });
+                for (const item of items) {
+                    const order = this.monitoringItems.find(o => String(o.id) === String(item.orderId));
+                    if (!order) continue;
+                    const qty = Math.round(Number(item.qty) || 0);
+                    if (qty <= 0 || qty > Number(order.qtyRemaining || 0)) return alert(`Qty penerimaan ${item.nama} melebihi sisa order.`);
+                    const stockItem = this.spareparts.find(s => String(s.nama||'').trim().toLowerCase() === String(order.nama||'').trim().toLowerCase());
+                    const qtyAwal = stockItem ? this.getLatestWarehouseStock('Sparepart', stockItem.nama, stockItem.barcode) : 0;
+                    const harga = Number(this.getMasterHarga(order.nama, order.harga)) || 0;
+                    const historyId = Date.now() + Math.random();
+                    const logId = Date.now() + Math.random();
+                    this.monitoringHistory.unshift({ id:historyId, createdAt:new Date().toISOString(), type:'IN', tgl:dateOnlyStr, isoDate:isoNow, nomorPR:order.nomorPR||'', nomorPO:String(this.purchaseReceiptPO || order.nomorPO || '').trim(), supplier:String(this.purchaseReceiptSupplier || order.supplier || '').trim(), keperluan:order.keperluan||order.project, nama:order.nama, qty, harga, totalHarga:harga*qty, satuan:String(this.getMasterSatuan(order.nama,order.satuan||'Pcs',order.kode||order.barcode||'')||'Pcs').trim().toUpperCase(), status:'Menunggu Persetujuan', monitoringOrderId:order.id, monitoringLogId:logId, approvalStatus:'pending' });
+                    this.logs.unshift({ id:logId, createdAt:new Date().toISOString(), isoDate:isoNow, gudang:'Sparepart', type:'IN', nama:order.nama, qty, harga, qtyAwal, qtyAkhir:qtyAwal+qty, totalHarga:harga*qty, tgl:dateOnlyStr, supplier:String(this.purchaseReceiptSupplier || order.supplier || '').trim(), nomorPR:order.nomorPR||'', nomorPO:String(this.purchaseReceiptPO || order.nomorPO || '').trim(), keperluan:`Penerimaan Monitoring (${order.keperluan||order.project||'-'})`, monitoringOrderId:order.id, monitoringHistoryId:historyId, satuan:String(this.getMasterSatuan(order.nama,order.satuan||'Pcs',order.kode||order.barcode||'')||'Pcs').trim().toUpperCase(), approvalStatus:'pending' });
+                }
+                this.showPurchaseReceiptModal = false;
                 const saved = await this.saveToSupabase();
-                if (!saved) return alert('Penerimaan sudah muncul di layar, tetapi gagal disimpan ke database. Data lokal dipertahankan.');
-                alert(`Penerimaan order dicatat dan menunggu persetujuan Super Admin. Stok ${order.nama} belum bertambah.`);
+                if (!saved) return alert('Penerimaan sudah muncul di layar, tetapi gagal disimpan ke database.');
+                alert('Penerimaan berhasil dicatat sekaligus dan menunggu persetujuan Super Admin.');
             },
             printBAST(order) {
                 if (!this.canPrint) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat mencetak.');
@@ -6687,9 +7204,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const isoNow = selectedDate.toISOString();
                 this.formSparepartMultiOut.selectedItems.forEach(item => {
                     const target = this.spareparts.find(s => s.barcode === item.barcode);
-                    const qtyAwal = Number(target.qty) || 0;
+                    const qtyAwal = this.getLatestWarehouseStock('Sparepart', target.nama, target.barcode);
                     const outQty = Number(item.outQty);
-                    const hargaBarang = this.getMasterHarga(target.nama, target.harga);
+                    const hargaBarang = Number(item.harga != null ? item.harga : this.getMasterHarga(target.nama, target.harga)) || 0;
                     this.logs.unshift({
                         id: Date.now() + Math.random(),
                         createdAt: new Date().toISOString(),
@@ -6728,7 +7245,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     penerima: '',
                     keperluan: '',
                     tanggal: this.getISODateOnly(), 
-                    itemsToProcess: [{ kode: 'MANUAL-' + Date.now(), nama: '', qty: 1, satuan: 'Pcs', lokasi: 'RAK SISA' }] 
+                    itemsToProcess: [{ kode: 'MANUAL-' + Date.now(), nama: '', qty: 1, harga: 0, satuan: 'Pcs', lokasi: 'RAK SISA' }] 
                 };
                 this.showSisaProjectMultiInModal = true;
             },
@@ -6737,6 +7254,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     kode: 'MANUAL-' + Date.now(),
                     nama: '',
                     qty: 1,
+                    harga: 0,
                     satuan: 'Pcs',
                     lokasi: 'RAK SISA'
                 });
@@ -6791,9 +7309,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     if (!item.nama) return;
                     const namaKey = normalizeSisa(item.nama);
                     const stockItem = this.sisaProjects.find(s => normalizeSisa(s.nama) === namaKey && normalizeSisa(s.supplier || s.asal || '') === asalSisa && normalizeSisa(s.keperluan || s.project || '-') === projectKey);
-                    const qtyAwal = stockItem ? Number(stockItem.qty) || 0 : 0;
+                    const qtyAwal = stockItem ? this.getLatestWarehouseStock('Sisa Project', stockItem.nama, stockItem.barcode) : 0;
                     const inQty = Number(item.qty) || 1;
-                    const hargaBarang = this.getMasterHarga(item.nama);
+                    const hargaBarang = Number(item.harga != null ? item.harga : this.getMasterHarga(item.nama)) || 0;
                     this.logs.unshift({
                         id: Date.now() + Math.random(),
                         createdAt: new Date().toISOString(),
@@ -6840,6 +7358,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     barcode: '',
                     nama: '',
                     qty: 0,
+                    harga: 0,
                     satuan: 'Pcs',
                     outQty: 1,
                     keperluan: '',
@@ -6857,7 +7376,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     item.barcode = stockItem.barcode;
                     item.qty = Number(stockItem.qty) || 0;
                     this.syncTransactionSatuan(item, stockItem.nama, stockItem.satuan || item.satuan || 'Pcs');
-                    item.harga = Number(this.getMasterHarga(stockItem.nama, stockItem.harga)) || 0;
+                    item.harga = Number(stockItem.harga != null ? stockItem.harga : this.getMasterHarga(stockItem.nama, stockItem.harga)) || 0;
                     item.lokasi = stockItem.lokasi || '';
                     if (item.outQty > item.qty) item.outQty = item.qty || 1;
                 } else {
@@ -6894,7 +7413,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const isoNow = selectedDate.toISOString();
                 this.formSisaProjectMultiOut.selectedItems.forEach(item => {
                     const target = this.sisaProjects.find(s => s.barcode === item.barcode);
-                    const qtyAwal = Number(target.qty) || 0;
+                    const qtyAwal = this.getLatestWarehouseStock('Sisa Project', target.nama, target.barcode);
                     const outQty = Number(item.outQty);
                     const hargaBarang = this.getMasterHarga(target.nama, target.harga);
                     this.logs.unshift({
@@ -7570,7 +8089,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (typeof XLSX === 'undefined') return alert('Library Excel belum termuat. Silakan refresh halaman.');
                 try {
                     const buffer = await file.arrayBuffer();
-                    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+                    const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true });
                     if (!rows.length) return alert('File Excel tidak memiliki data Purchase Request.');
@@ -7580,24 +8099,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         const key = keys.find(k => wanted.includes(norm(k)));
                         return key === undefined ? '' : row[key];
                     };
-                    const parseQty = v => {
-                        if (v === '' || v === null || v === undefined) return 0;
-                        if (typeof v === 'number') return Number.isFinite(v) ? Math.max(0, v) : 0;
-                        const n = Number(String(v).replace(/,/g, '').replace(/[^0-9.-]/g, ''));
-                        return Number.isFinite(n) ? Math.max(0, n) : 0;
-                    };
-                    const parseDate = v => {
-                        if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
-                        if (typeof v === 'number') {
-                            const d = new Date(Date.UTC(1899,11,30) + Math.round(v * 86400000));
-                            if (!isNaN(d)) return d.toISOString().slice(0,10);
-                        }
-                        const raw = String(v || '').trim();
-                        if (!raw) return new Date().toISOString().slice(0,10);
-                        const m = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-                        if (m) return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
-                        return raw.slice(0,10);
-                    };
+                    const parseQty = v => this.strictQty(v, 0);
+                    const parseDate = v => this.strictDateOnly(v, this.getISODateOnly());
                     const normalizePR = v => String(v || '').trim().toLowerCase().replace(/\s+/g,' ');
                     const normalizeItem = v => String(v || '').trim().toLowerCase().replace(/\s+/g,' ');
                     let added = 0, skipped = 0;
@@ -7608,13 +8111,19 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         const nama = String(findValue(row, ['Nama Barang','Nama Sparepart','Barang','Item','Deskripsi']) || '').trim();
                         if (!nomorPR || !nama) { skipped++; continue; }
                         const tgl = parseDate(findValue(row, ['Tanggal PR','Tgl PR','Tanggal Order','Tgl Order','Tanggal Transaksi','Tanggal']));
-                        const satuan = String(findValue(row, ['Satuan','Unit','UOM']) || 'Pcs').trim() || 'Pcs';
+                        const masterRef = (this.masterCatalog || []).find(m =>
+                            String(m.nama || '').trim().toLowerCase() === String(nama || '').trim().toLowerCase()
+                        );
+                        const satuanRaw = findValue(row, ['Satuan','Unit','UOM']);
+                        const satuan = String(masterRef?.satuan || (satuanRaw instanceof Date ? '' : satuanRaw) || 'Pcs').trim() || 'Pcs';
                         const qtyTotal = parseQty(findValue(row, ['Total Order','Qty Order','Qty Total','Jumlah Order','Qty']));
                         const qtyReceived = Math.min(qtyTotal, parseQty(findValue(row, ['Diterima','Qty Diterima','Qty Received'])));
                         const qtyRemainingRaw = findValue(row, ['Sisa Order','Sisa','Qty Sisa','Qty Remaining']);
                         const qtyRemaining = qtyRemainingRaw === '' ? Math.max(0, qtyTotal - qtyReceived) : parseQty(qtyRemainingRaw);
                         const keterangan = String(findValue(row, ['Keterangan','Keterangan Project','Project','Keperluan']) || '-').trim() || '-';
                         const pemesan = String(findValue(row, ['Nama Pemesan','Pemesan','Penerima']) || '-').trim() || '-';
+                        const nomorPO = String(findValue(row, ['Nomor PO','Nomor Purchase Order','PO Number','PO']) || '').trim().toUpperCase();
+                        const supplier = String(findValue(row, ['Supplier','Nama Supplier','Vendor']) || '').trim().toUpperCase();
                         let prioritas = this.normalizePriorityValue(findValue(row, ['Skala Prioritas','Prioritas','Priority']));
                         const prKey = normalizePR(nomorPR), itemKey = normalizeItem(nama);
                         if (this.monitoringItems.some(x => normalizePR(x.nomorPR) === prKey && normalizeItem(x.nama) === itemKey)) { skipped++; continue; }
@@ -7627,7 +8136,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         const harga = this.getMasterHarga(nama, 0);
                         this.monitoringItems.unshift({
                             id: Date.now() + Math.random(), isoDate: dateObj.toISOString(), tgl: this.getFormattedDateOnly(dateObj),
-                            nomorPR, nama: nama.toUpperCase(), keperluan: keterangan.toUpperCase(), prioritas,
+                            nomorPR, nomorPO, supplier, nama: nama.toUpperCase(), keperluan: keterangan.toUpperCase(), prioritas,
                             penerima: pemesan.toUpperCase(), pengambil: '', qtyTotal, qtyReceived, qtyRemaining,
                             harga, totalHarga: harga * qtyTotal, satuan: satuan.toUpperCase(),
                             status: qtyRemaining <= 0 && qtyTotal > 0 ? 'Diterima Semua' : qtyReceived > 0 ? 'Diterima Sebagian' : 'Pending'
@@ -7657,29 +8166,29 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 ws.pageSetup = { paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0, margins:{left:.25,right:.25,top:.35,bottom:.35,header:.1,footer:.1} };
                 const logoId = wb.addImage({ base64: AGROFARM_EXCEL_LOGO_BASE64, extension:'png' });
                 ws.addImage(logoId,{tl:{col:.2,row:.2},ext:{width:145,height:36}});
-                ws.columns = [{width:7},{width:15},{width:20},{width:38},{width:13},{width:16},{width:16},{width:16},{width:34},{width:18},{width:20}];
-                ws.mergeCells('A1:K1'); ws.getCell('A1').value='PT AGROFARM NUSA RAYA'; ws.getCell('A1').font={bold:true,size:14}; ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};
-                ws.mergeCells('A2:K2'); ws.getCell('A2').value='Jl. Raya Ponorogo-Madiun KM 4 (JL Industri) Kertosari Babadan Ponorogo'; ws.getCell('A2').font={size:9}; ws.getCell('A2').alignment={horizontal:'center'};
-                ws.mergeCells('A3:K3'); ws.getCell('A3').value='PURCHASE REQUEST'; ws.getCell('A3').font={bold:true,size:16}; ws.getCell('A3').alignment={horizontal:'center',vertical:'middle'};
-                ws.mergeCells('A4:K4'); ws.getCell('A4').value=`Tanggal Export: ${this.getFormattedDateOnly()} | Total Data: ${rows.length}`; ws.getCell('A4').font={italic:true,size:9}; ws.getCell('A4').alignment={horizontal:'center'};
-                ws.mergeCells('A5:K5'); ws.getCell('A5').value='';
+                ws.columns = [{width:7},{width:15},{width:20},{width:20},{width:24},{width:38},{width:13},{width:16},{width:16},{width:16},{width:34},{width:18},{width:20}];
+                ws.mergeCells('A1:M1'); ws.getCell('A1').value='PT AGROFARM NUSA RAYA'; ws.getCell('A1').font={bold:true,size:14}; ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};
+                ws.mergeCells('A2:M2'); ws.getCell('A2').value='Jl. Raya Ponorogo-Madiun KM 4 (JL Industri) Kertosari Babadan Ponorogo'; ws.getCell('A2').font={size:9}; ws.getCell('A2').alignment={horizontal:'center'};
+                ws.mergeCells('A3:M3'); ws.getCell('A3').value='PURCHASE REQUEST'; ws.getCell('A3').font={bold:true,size:16}; ws.getCell('A3').alignment={horizontal:'center',vertical:'middle'};
+                ws.mergeCells('A4:M4'); ws.getCell('A4').value=`Tanggal Export: ${this.getFormattedDateOnly()} | Total Data: ${rows.length}`; ws.getCell('A4').font={italic:true,size:9}; ws.getCell('A4').alignment={horizontal:'center'};
+                ws.mergeCells('A5:M5'); ws.getCell('A5').value='';
                 const header=ws.getRow(6);
-                ['No','Tanggal PR','Nomor PR','Nama Barang','Satuan','Total Order','Diterima','Sisa Order','Keterangan','Skala Prioritas','Status'].forEach((v,i)=>header.getCell(i+1).value=v);
+                ['No','Tanggal PR','Nomor PR','Nomor PO','Supplier','Nama Barang','Satuan','Total Order','Diterima','Sisa Order','Keterangan','Skala Prioritas','Status'].forEach((v,i)=>header.getCell(i+1).value=v);
                 header.font={bold:true,color:{argb:'FFFFFFFF'},size:9}; header.alignment={horizontal:'center',vertical:'middle',wrapText:true}; header.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF047857'}}; header.height=28;
                 header.eachCell(c=>c.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}});
                 let r=7;
                 for (const [idx,order] of rows.entries()) {
                     const row=ws.getRow(r++);
-                    row.values=[idx+1, order.tgl||'-', order.nomorPR||'-', String(order.nama||'-').toUpperCase(), String(order.satuan||'Pcs').toUpperCase(), Number(order.qtyTotal)||0, Number(order.qtyReceived)||0, Number(order.qtyRemaining)||0, String(order.keperluan||order.project||'-').toUpperCase(), Number(order.prioritas)||'', order.status==='Diterima Semua'?'Diterima Semua':order.status==='Diterima Sebagian'?'Diterima Sebagian':order.status==='Cancel'?'Canceled':'Pending'];
+                    row.values=[idx+1, order.tgl||'-', order.nomorPR||'-', order.nomorPO||'-', order.supplier||'-', String(order.nama||'-').toUpperCase(), String(order.satuan||'Pcs').toUpperCase(), Number(order.qtyTotal)||0, Number(order.qtyReceived)||0, Number(order.qtyRemaining)||0, String(order.keperluan||order.project||'-').toUpperCase(), Number(order.prioritas)||'', order.status==='Diterima Semua'?'Diterima Semua':order.status==='Diterima Sebagian'?'Diterima Sebagian':order.status==='Cancel'?'Canceled':'Pending'];
                     row.alignment={vertical:'middle',wrapText:true};
-                    for(let c=1;c<=11;c++) row.getCell(c).border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
-                    [1,2,3,5,6,7,8,10,11].forEach(c=>row.getCell(c).alignment={horizontal:'center',vertical:'middle',wrapText:true});
+                    for(let c=1;c<=13;c++) row.getCell(c).border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+                    [1,2,3,4,5,7,8,9,10,12,13].forEach(c=>row.getCell(c).alignment={horizontal:'center',vertical:'middle',wrapText:true});
                 }
                 if (rows.length) {
-                    const totalRow=ws.getRow(r++); ws.mergeCells(`A${totalRow.number}:D${totalRow.number}`); totalRow.getCell(1).value='TOTAL NILAI ORDER (SESUAI FILTER)'; totalRow.getCell(1).font={bold:true}; totalRow.getCell(1).alignment={horizontal:'right'}; totalRow.getCell(6).value=this.monitoringTotalHarga; totalRow.getCell(6).numFmt='#,##0'; totalRow.getCell(6).font={bold:true};
-                    for(let c=1;c<=11;c++) totalRow.getCell(c).border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+                    const totalRow=ws.getRow(r++); ws.mergeCells(`A${totalRow.number}:G${totalRow.number}`); totalRow.getCell(1).value='TOTAL NILAI ORDER (SESUAI FILTER)'; totalRow.getCell(1).font={bold:true}; totalRow.getCell(1).alignment={horizontal:'right'}; totalRow.getCell(8).value=this.monitoringTotalHarga; totalRow.getCell(8).numFmt='#,##0'; totalRow.getCell(8).font={bold:true};
+                    for(let c=1;c<=13;c++) totalRow.getCell(c).border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
                 }
-                ws.autoFilter={from:{row:6,column:1},to:{row:Math.max(6,r-1),column:11}}; ws.printArea=`A1:K${Math.max(6,r-1)}`;
+                ws.autoFilter={from:{row:6,column:1},to:{row:Math.max(6,r-1),column:13}}; ws.printArea=`A1:M${Math.max(6,r-1)}`;
                 const buffer=await wb.xlsx.writeBuffer(); const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`Purchase_Request_Agrofarm_${this.getFormattedDateOnly().replace(/\//g,'-')}.xlsx`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
             },
             exportMasterCatalogExcel() {
@@ -7970,7 +8479,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     }).join('');
                 };
                 const renderGudangSection = (gudangName) => {
-                    const sectionShowPrice = gudangName.toLowerCase() === 'sparepart' ? this.showPrices : false;
+                    const sectionShowPrice = gudangName.toLowerCase() === 'sparepart' ? this.sparepartShowPrices : this.sisaProjectShowPrices;
                     const inputOrder = (a,b) => {
                         const ta = new Date(a.createdAt || a.inputAt || a.id || a.isoDate || 0).getTime();
                         const tb = new Date(b.createdAt || b.inputAt || b.id || b.isoDate || 0).getTime();
@@ -8079,7 +8588,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const namaGudang = String(gudang || '').trim().toLowerCase();
                 const isSparepart = namaGudang === 'sparepart' || namaGudang === 'spare part';
                 const judulGudang = isSparepart ? 'SPARE PART' : 'SISA PROJECT';
-                const showPrice = isSparepart ? this.showPrices : false;
+                const showPrice = isSparepart ? this.sparepartShowPrices : this.sisaProjectShowPrices;
                 const source = isSparepart
                     ? (Array.isArray(this.filteredMasterCatalog) ? this.filteredMasterCatalog.map(item => ({
                         ...item,
@@ -8113,22 +8622,112 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             printStockGudang(gudang) {
                 if (!this.canPrint) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat mencetak.');
-                // Pastikan laporan cetak menggunakan stok terakhir dari Master Data.
                 this.syncMasterAndSparepart();
-                const namaGudang=String(gudang||'').trim().toLowerCase(); const isSparepart=namaGudang==='sparepart'||namaGudang==='spare part'; const judulGudang=isSparepart?'SPARE PART':'SISA PROJECT'; const showPrice=isSparepart?this.showPrices:false; const source=isSparepart?(this.masterCatalog||[]).map(m=>({...m,qty:Math.max(0,Math.round(Number(m.currentStock??m.stockAwal)||0)),harga:Math.max(0,Number(m.harga)||0),satuan:m.satuan||'PCS',lokasi:m.lokasi||''})):(this.sisaProjects||[]).map(item=>{const master=(this.masterCatalog||[]).find(m=>(item.kode&&m.kode&&String(item.kode).trim().toLowerCase()===String(m.kode).trim().toLowerCase())||String(item.nama||'').trim().toLowerCase()===String(m.nama||'').trim().toLowerCase());return {...item,satuan:(master&&master.satuan)||item.satuan||'PCS'};});
-                const items=(Array.isArray(source)?source:[]).filter(item=>(Number(item.qty)||0)>0).slice().sort((a,b)=>String(a.nama||'').localeCompare(String(b.nama||''),'id',{sensitivity:'base'})); const printedDate=this.getFormattedDateOnly?this.getFormattedDateOnly():new Date().toLocaleDateString('id-ID');
-                const rows=items.map((item,idx)=>{const qty=Number(item.qty)||0;const harga=Number(this.getMasterHarga(item.nama,item.harga))||0;const total=harga*qty;return `<tr><td>${idx+1}</td><td>${item.kode||item.barcode||item.sku||'-'}</td><td class="nama">${item.nama||'-'}</td><td>${item.satuan||'Pcs'}</td><td class="qty">${qty.toLocaleString('id-ID')}</td><td>${item.lokasi||item.lokasiRak||item.rak||'-'}</td>${showPrice?`<td class="angka">Rp ${this.formatRupiah(harga)}</td><td class="angka">Rp ${this.formatRupiah(total)}</td>`:''}</tr>`;}).join('');
-                const totalHarga=items.reduce((sum,item)=>sum+((Number(this.getMasterHarga(item.nama,item.harga))||0)*(Number(item.qty)||0)),0); const colSpan=showPrice?8:6; const emptyRow=`<tr><td colspan="${colSpan}" class="kosong">Tidak ada stok tersedia di ${this.escapeHtml(judulGudang)}.</td></tr>`; const totalRow=showPrice&&items.length?`<tr><td colspan="7" style="border:1px solid #000;padding:7px;text-align:right;font-weight:800;">TOTAL HARGA STOCK</td><td style="border:1px solid #000;padding:7px;text-align:right;font-weight:800;">Rp ${this.formatRupiah(totalHarga)}</td></tr>`:'';
-                const labelArea=document.getElementById('label-print-area'); if(!labelArea){alert('Area cetak stock tidak ditemukan.');return;}
-                labelArea.innerHTML=`<div class="stock-print-document"><div class="stock-print-header"><div style="display:flex;align-items:center;gap:12px;"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTg04Fvw4tFQIaOv_YisutC8tIMsbS2eM10wP2eWOotwA&s=10" alt="Agrofarm" style="height:35mm;width:auto;max-width:70mm;object-fit:contain;"><div><div class="stock-print-title">DAFTAR STOCK GUDANG</div><div class="stock-print-subtitle">AGROFARM NUSA RAYA — SISTEM INVENTORY SPARE PART</div><div class="stock-print-warehouse">GUDANG ${this.escapeHtml(judulGudang)}</div></div></div><div class="stock-print-date"><b>Tanggal Cetak</b><br>${this.escapeHtml(printedDate)}</div></div><table class="stock-print-table"><thead><tr><th>No</th><th>Kode / SKU</th><th>Nama Barang</th><th>Satuan</th><th>Stok Saat Ini</th><th>Lokasi Rak</th>${showPrice?'<th>Harga Satuan</th><th>Harga Total</th>':''}</tr></thead><tbody>${rows||emptyRow}${totalRow}</tbody></table><div class="stock-print-note">Keterangan: laporan ini menampilkan jumlah stok yang tersedia pada saat tombol Cetak Stock ditekan.</div><div class="stock-print-sign"><div>Dibuat<br><br><br>____________________</div><div>Disetujui<br><br><br>____________________</div><div>Diketahui<br><br><br>____________________</div></div></div>`;
-                document.body.classList.add('printing-label'); this.$nextTick(()=>{requestAnimationFrame(()=>{const logoImg=labelArea.querySelector('.stock-print-header img');const doPrint=()=>setTimeout(()=>window.print(),350);if(logoImg&&!logoImg.complete){logoImg.onload=doPrint;logoImg.onerror=doPrint;}else{doPrint();}});}); const cleanup=()=>{document.body.classList.remove('printing-label');labelArea.innerHTML='';window.removeEventListener('afterprint',cleanup);}; window.addEventListener('afterprint',cleanup);
+                const namaGudang = String(gudang || '').trim().toLowerCase();
+                const isSparepart = namaGudang === 'sparepart' || namaGudang === 'spare part';
+                const judulGudang = isSparepart ? 'SPARE PART' : 'SISA PROJECT';
+                const showPrice = isSparepart ? this.sparepartShowPrices : this.sisaProjectShowPrices;
+                const source = isSparepart
+                    ? (this.spareparts || []).map(s => ({...s, qty: Math.max(0, Math.round(Number(s.qty) || 0)), harga: Math.max(0, Number(s.harga) || 0), satuan: s.satuan || 'PCS', lokasi: s.lokasi || ''}))
+                    : (this.sisaProjects || []).map(item => {
+                        const master = (this.masterCatalog || []).find(m =>
+                            (item.kode && m.kode && String(item.kode).trim().toLowerCase() === String(m.kode).trim().toLowerCase()) ||
+                            String(item.nama || '').trim().toLowerCase() === String(m.nama || '').trim().toLowerCase()
+                        );
+                        return {...item, satuan: (master && master.satuan) || item.satuan || 'PCS'};
+                    });
+                const items = (Array.isArray(source) ? source : [])
+                    .filter(item => (Number(item.qty) || 0) > 0)
+                    .slice()
+                    .sort((a,b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id', {sensitivity:'base'}));
+                const printedDate = this.getFormattedDateOnly ? this.getFormattedDateOnly() : new Date().toLocaleDateString('id-ID');
+                const totalHarga = items.reduce((sum,item) => sum + ((Number(this.getMasterHarga(item.nama,item.harga)) || 0) * (Number(item.qty) || 0)), 0);
+                const ROWS_PER_PAGE = showPrice ? 18 : 24;
+                const chunks = [];
+                if (items.length) {
+                    for (let i = 0; i < items.length; i += ROWS_PER_PAGE) chunks.push(items.slice(i, i + ROWS_PER_PAGE));
+                } else {
+                    chunks.push([]);
+                }
+                const totalPages = chunks.length;
+                const logo = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTg04Fvw4tFQIaOv_YisutC8tIMsbS2eM10wP2eWOotwA&s=10';
+                const colSpan = showPrice ? 8 : 6;
+                const buildRows = (chunk, offset) => chunk.map((item, idx) => {
+                    const qty = Number(item.qty) || 0;
+                    const harga = Number(this.getMasterHarga(item.nama,item.harga)) || 0;
+                    const total = harga * qty;
+                    return `<tr>
+                        <td>${offset + idx + 1}</td>
+                        <td>${this.escapeHtml(item.kode || item.barcode || item.sku || '-')}</td>
+                        <td class="nama">${this.escapeHtml(item.nama || '-')}</td>
+                        <td>${this.escapeHtml(item.satuan || 'Pcs')}</td>
+                        <td class="qty">${qty.toLocaleString('id-ID')}</td>
+                        <td>${this.escapeHtml(item.lokasi || item.lokasiRak || item.rak || '-')}</td>
+                        ${showPrice ? `<td class="angka">Rp ${this.formatRupiah(harga)}</td><td class="angka">Rp ${this.formatRupiah(total)}</td>` : ''}
+                    </tr>`;
+                }).join('');
+                const buildPage = (chunk, pageIdx) => {
+                    const isLast = pageIdx === totalPages - 1;
+                    const offset = chunks.slice(0, pageIdx).reduce((n,c) => n + c.length, 0);
+                    const rows = chunk.length ? buildRows(chunk, offset) : `<tr><td colspan="${colSpan}" class="kosong">Tidak ada stok tersedia di ${this.escapeHtml(judulGudang)}.</td></tr>`;
+                    const totalRow = isLast && showPrice && items.length
+                        ? `<tr class="stock-print-total"><td colspan="7">TOTAL HARGA STOCK</td><td class="angka">Rp ${this.formatRupiah(totalHarga)}</td></tr>` : '';
+                    return `<section class="stock-print-page">
+                        <div class="stock-print-document">
+                            <div class="stock-print-header">
+                                <div class="stock-print-brand">
+                                    <img src="${logo}" alt="Agrofarm">
+                                    <div>
+                                        <div class="stock-print-title">DAFTAR STOCK GUDANG</div>
+                                        <div class="stock-print-subtitle">AGROFARM NUSA RAYA — SISTEM INVENTORY SPARE PART</div>
+                                        <div class="stock-print-warehouse">GUDANG ${this.escapeHtml(judulGudang)}</div>
+                                    </div>
+                                </div>
+                                <div class="stock-print-date"><b>Tanggal Cetak</b><br>${this.escapeHtml(printedDate)}<br><span>Halaman ${pageIdx + 1} dari ${totalPages}</span></div>
+                            </div>
+                            <table class="stock-print-table">
+                                <thead><tr>
+                                    <th>No</th><th>Kode / SKU</th><th>Nama Barang</th><th>Satuan</th><th>Stok Saat Ini</th><th>Lokasi Rak</th>
+                                    ${showPrice ? '<th>Harga Satuan</th><th>Harga Total</th>' : ''}
+                                </tr></thead>
+                                <tbody>${rows}${totalRow}</tbody>
+                            </table>
+                            <div class="stock-print-note">Keterangan: laporan ini menampilkan jumlah stok yang tersedia pada saat tombol Cetak Stock ditekan.</div>
+                            ${isLast ? `<div class="stock-print-sign"><div>Dibuat<br><br><br>____________________</div><div>Disetujui<br><br><br>____________________</div><div>Diketahui<br><br><br>____________________</div></div>` : ''}
+                        </div>
+                    </section>`;
+                };
+                const labelArea = document.getElementById('label-print-area');
+                if (!labelArea) return alert('Area cetak stock tidak ditemukan.');
+                labelArea.innerHTML = chunks.map((chunk, idx) => buildPage(chunk, idx)).join('');
+                let style = document.getElementById('__stock_print_dynamic_style');
+                if (!style) { style = document.createElement('style'); style.id = '__stock_print_dynamic_style'; document.head.appendChild(style); }
+                style.textContent = `@media print {
+                    @page { size: A4 portrait; margin: 10mm 11mm; }
+                    body.printing-label .stock-print-page { page-break-after: always; break-after: page; min-height: 277mm; box-sizing: border-box; padding: 2mm 0; }
+                    body.printing-label .stock-print-page:last-child { page-break-after: auto; break-after: auto; }
+                    body.printing-label .stock-print-document { page-break-inside: avoid; break-inside: avoid; }
+                }`;
+                document.body.classList.add('printing-label');
+                this.$nextTick(() => {
+                    const logoImg = labelArea.querySelector('.stock-print-header img');
+                    const doPrint = () => setTimeout(() => window.print(), 350);
+                    if (logoImg && !logoImg.complete) { logoImg.onload = doPrint; logoImg.onerror = doPrint; } else doPrint();
+                });
+                const cleanup = () => {
+                    document.body.classList.remove('printing-label');
+                    labelArea.innerHTML = '';
+                    style.textContent = '';
+                    window.removeEventListener('afterprint', cleanup);
+                };
+                window.addEventListener('afterprint', cleanup);
             },
             initOpnameDraft(gudang) {
                 const g = gudang || this.opnameDraft.gudang || 'Sparepart';
                 this.syncMasterAndSparepart();
                 // Untuk Spare Part, Qty Sistem harus sama persis dengan stok yang tampil di Data Master.
                 // Data Master menampilkan: stockAwal jika tersedia, lalu currentStock sebagai fallback.
-                const source = (g === 'Sisa Project' ? this.sisaProjects : this.masterCatalog) || [];
+                const source = (g === 'Sisa Project' ? this.sisaProjects : this.spareparts) || [];
                 this.opnameDraft = {
                     gudang: g,
                     tanggal: this.opnameDraft.tanggal || new Date().toISOString().slice(0,10),
@@ -8191,13 +8790,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 reader.onload = (e) => {
                     try {
                         const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: false });
                         if (!workbook.SheetNames.length) {
                             alert('File Excel tidak memiliki sheet.');
                             return;
                         }
                         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true });
                         if (!rows.length) {
                             alert('File Excel kosong!');
                             return;
@@ -8213,10 +8812,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             return key !== undefined ? row[key] : '';
                         };
                         const toQty = (v) => {
-                            if (v === '' || v === null || v === undefined) return '';
-                            if (typeof v === 'number') return Number.isFinite(v) ? v : '';
-                            const cleaned = String(v).trim().replace(/,/g, '').replace(/\./g, '');
-                            const n = Number(cleaned);
+                            if (v === '' || v === null || v === undefined || this.isDateLikeValue(v)) return '';
+                            const n = this.strictQty(v, 0);
                             return Number.isFinite(n) ? n : '';
                         };
 
