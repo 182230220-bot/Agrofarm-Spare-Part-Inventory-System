@@ -69,7 +69,7 @@
                 display: none !important;
             }
             body.printing-label .stock-print-document { display:block !important; font-family:Arial,sans-serif; color:#000; background:#fff; width:100%; }
-            body.printing-label .stock-print-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:6mm; margin-bottom:6mm; }
+            body.printing-label .stock-print-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:2mm; margin-bottom:2mm; }
             body.printing-label .stock-print-title { font-size:18pt; font-weight:800; text-align:center; }
             body.printing-label .stock-print-subtitle { font-size:10pt; font-weight:600; text-align:center; margin-top:2mm; }
             body.printing-label .stock-print-warehouse { font-size:11pt; font-weight:800; text-align:center; margin-top:2mm; }
@@ -316,7 +316,7 @@
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            @page { size: A4 landscape; margin: 10mm 12mm; }
+            @page { size: A4 landscape; margin: 20mm; }
         }
 
         /* FIX: style responsif/scanner untuk tampilan layar.
@@ -934,7 +934,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-[11px] font-bold bg-red-100 text-red-800 px-2 py-0.5 rounded border border-red-200">{{ lowStockItems.length }} Item Perlu Restock</span>
-                        <button v-if="canEdit" @click="exportLowStockExcel" class="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
+                        <button v-if="canEdit" type="button" @click.stop.prevent="exportLowStockExcel" class="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold flex items-center gap-1.5 shadow-sm" style="pointer-events:auto !important; position:relative; z-index:30;">
                             <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Export Excel
                         </button>
                     </div>
@@ -1010,7 +1010,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </span>
                             <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">{{ filteredSparepartLogsIn.length }} Records</span>
                         </div>
-                        <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                        <div class="overflow-x-auto">
                             <table class="w-full text-left text-xs excel-print-table">
                                 <thead class="bg-emerald-50/70 font-bold text-emerald-900 uppercase text-[9px] sticky top-0 border-b border-emerald-200">
                                     <tr>
@@ -1021,13 +1021,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2 text-center">Qty Awal</th>
                                         <th class="p-2 text-center">Qty Akhir</th>
                                         <th class="p-2">No. PO / Supplier</th>
+                                    <th class="p-2">Keterangan</th>
                                         <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Satuan</th>
                                         <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Total</th>
                                         <th class="p-2 text-center no-print">Status / Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in filteredSparepartLogsIn" :key="log.id" class="hover:bg-emerald-50/30">
+                                    <tr v-for="log in filteredSparepartLogsIn.slice(0, 5)" :key="log.id" class="hover:bg-emerald-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -1038,6 +1039,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
                                         <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase"><div>No. PO: {{ log.nomorPO || '-' }}</div><div class="mt-0.5">Supplier: {{ log.supplier || '-' }}</div></td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                         <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                         <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
@@ -1061,7 +1063,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </span>
                             <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">{{ filteredSparepartLogsOut.length }} Records</span>
                         </div>
-                        <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                        <div class="overflow-x-auto">
                             <table class="w-full text-left text-xs excel-print-table">
                                 <thead class="bg-amber-50/70 font-bold text-amber-900 uppercase text-[9px] sticky top-0 border-b border-amber-200">
                                     <tr>
@@ -1074,11 +1076,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Satuan</th>
                                         <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Total</th>
                                         <th class="p-2">Penerima / Kepentingan</th>
+                                    <th class="p-2">Keterangan</th>
                                         <th class="p-2 text-center no-print">Status / Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in filteredSparepartLogsOut" :key="log.id" class="hover:bg-amber-50/30">
+                                    <tr v-for="log in filteredSparepartLogsOut.slice(0, 5)" :key="log.id" class="hover:bg-amber-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -1091,6 +1094,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                         <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                         <td class="p-2 text-center no-print">
                                             <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
@@ -1121,7 +1125,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </span>
                             <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">{{ filteredProjectLogsIn.length }} Records</span>
                         </div>
-                        <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                        <div class="overflow-x-auto">
                             <table class="w-full text-left text-xs excel-print-table">
                                 <thead class="bg-emerald-50/70 font-bold text-emerald-900 uppercase text-[9px] sticky top-0 border-b border-emerald-200">
                                     <tr>
@@ -1132,13 +1136,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2 text-center">Qty Awal</th>
                                         <th class="p-2 text-center">Qty Akhir</th>
                                         <th class="p-2">Asal / Kepentingan</th>
+                                        <th class="p-2">Keterangan</th>
                                         <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
                                         <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
                                         <th class="p-2 text-center no-print">Status / Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in filteredProjectLogsIn" :key="log.id" class="hover:bg-emerald-50/30">
+                                    <tr v-for="log in filteredProjectLogsIn.slice(0, 5)" :key="log.id" class="hover:bg-emerald-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -1149,6 +1154,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
                                         <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                         <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                         <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
@@ -1172,7 +1178,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </span>
                             <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">{{ filteredProjectLogsOut.length }} Records</span>
                         </div>
-                        <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                        <div class="overflow-x-auto">
                             <table class="w-full text-left text-xs excel-print-table">
                                 <thead class="bg-amber-50/70 font-bold text-amber-900 uppercase text-[9px] sticky top-0 border-b border-amber-200">
                                     <tr>
@@ -1183,12 +1189,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2 text-center">Qty Awal</th>
                                         <th class="p-2 text-center">Qty Akhir</th>
                                         <th class="p-2">Penerima / Kepentingan</th>
+                                        <th class="p-2">Keterangan</th>
                                         <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
                                         <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in filteredProjectLogsOut" :key="log.id" class="hover:bg-amber-50/30">
+                                    <tr v-for="log in filteredProjectLogsOut.slice(0, 5)" :key="log.id" class="hover:bg-amber-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -1199,6 +1206,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
                                         <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                         <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                         <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
@@ -1208,7 +1216,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         </td>
                                     </tr>
                                     <tr v-if="filteredProjectLogsOut.length === 0">
-                                        <td colspan="4" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang keluar sisa project pada periode ini.</td>
+                                        <td colspan="11" class="p-6 text-center text-slate-400 italic text-[11px]">Belum ada data barang keluar sisa project pada periode ini.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1899,7 +1907,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <input v-model="opnameSearch" @input="opnamePage = 1" type="search" placeholder="Cari barang..." class="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs uppercase w-64">
                     </div>
                     <select v-model="opnameFilterMode" @change="opnamePage = 1" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold">
-                        <option value="all">Semua Item</option>
+                        <option value="all">Semua Barang</option>
                         <option value="selisih">Hanya Ada Selisih</option>
                         <option value="match">Hanya Cocok</option>
                         <option value="unfilled">Belum Diisi</option>
@@ -2233,7 +2241,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         </span>
                         <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">{{ filteredSparepartLogsIn.length }} Masuk</span>
                     </div>
-                    <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                    <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs excel-print-table">
                             <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[9px] border-b border-slate-200 sticky top-0">
                                 <tr>
@@ -2244,6 +2252,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
                                     <th class="p-2">No. PO / Supplier</th>
+                                    <th class="p-2">Keterangan</th>
                                     <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Satuan</th>
                                     <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2 text-center">Status Approval</th>
@@ -2265,6 +2274,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <div>No. PO: {{ log.nomorPO || '-' }}</div>
                                         <div class="mt-0.5">Supplier: {{ log.supplier || '-' }}</div>
                                     </td>
+                                    <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                     <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                     <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-center">
@@ -2299,7 +2309,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         </span>
                         <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">{{ filteredSparepartLogsOut.length }} Keluar</span>
                     </div>
-                    <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                    <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs excel-print-table">
                             <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[9px] border-b border-slate-200 sticky top-0">
                                 <tr>
@@ -2309,9 +2319,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">Qty Out</th>
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
-                                    <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
-                                    <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2">Penerima / Kepentingan</th>
+                                    <th class="p-2">Keterangan</th>
                                     <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Satuan</th>
                                     <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2 text-center">Status Approval</th>
@@ -2332,6 +2341,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                     <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
+                                    <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                     <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                     <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-center">
@@ -2599,7 +2609,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         </span>
                         <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">{{ filteredProjectLogsIn.length }} Masuk</span>
                     </div>
-                    <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                    <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs excel-print-table">
                             <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[9px] border-b border-slate-200 sticky top-0">
                                 <tr>
@@ -2610,6 +2620,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
                                     <th class="p-2">Asal / Kepentingan</th>
+                                        <th class="p-2">Keterangan</th>
                                     <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
                                     <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2 text-center">Status Approval</th>
@@ -2628,6 +2639,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
+                                    <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                     <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                     <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-center">
@@ -2662,7 +2674,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         </span>
                         <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">{{ filteredProjectLogsOut.length }} Keluar</span>
                     </div>
-                    <div class="overflow-x-auto custom-scroll max-h-[280px]">
+                    <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs excel-print-table">
                             <thead class="bg-slate-50 font-bold text-slate-500 uppercase text-[9px] border-b border-slate-200 sticky top-0">
                                 <tr>
@@ -2673,6 +2685,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <th class="p-2 text-center">Qty Awal</th>
                                     <th class="p-2 text-center">Qty Akhir</th>
                                     <th class="p-2">Penerima / Kepentingan</th>
+                                    <th class="p-2">Keterangan</th>
                                     <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Satuan</th>
                                     <th v-if="sisaProjectShowPrices" class="p-2 text-right">Harga Total</th>
                                     <th class="p-2 text-center">Status Approval</th>
@@ -2691,6 +2704,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.user }} ({{ log.keperluan || '-' }})</td>
+                                    <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                     <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                     <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-center">
@@ -3958,11 +3972,29 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             approvalSisaProjectOutLogs() {
                 return this.allTransactionLogs.filter(log => String(log.gudang || '').toLowerCase() === 'sisa project' && log.type === 'OUT' && log.adjustmentType !== 'OPNAME');
             },
+            isCancelledPRLog() {
+                return (log) => {
+                    if (!log) return false;
+                    const orderId = String(log.monitoringOrderId ?? '').trim();
+                    if (orderId) {
+                        const linkedOrder = (this.monitoringItems || []).find(o => String(o.id ?? '').trim() === orderId);
+                        if (linkedOrder && String(linkedOrder.status || '').trim().toLowerCase() === 'cancel') return true;
+                    }
+                    const prKey = String(log.nomorPR || '').trim().toLowerCase();
+                    const itemKey = String(log.nama || '').trim().toLowerCase();
+                    if (!prKey) return false;
+                    return (this.monitoringItems || []).some(o =>
+                        String(o.nomorPR || '').trim().toLowerCase() === prKey &&
+                        (!itemKey || String(o.nama || '').trim().toLowerCase() === itemKey) &&
+                        String(o.status || '').trim().toLowerCase() === 'cancel'
+                    );
+                };
+            },
             approvalVisibleLogs() {
                 if (this.approvalWarehouseTab === 'Stock Opname') return [];
                 const gudang = this.approvalWarehouseTab;
                 const type = this.approvalMovementTab;
-                let list = this.allTransactionLogs.filter(log => log.gudang === gudang && log.type === type && log.adjustmentType !== 'OPNAME');
+                let list = this.allTransactionLogs.filter(log => log.gudang === gudang && log.type === type && log.adjustmentType !== 'OPNAME' && !this.isCancelledPRLog(log));
                 if (this.approvalStatusFilter === 'pending') {
                     list = list.filter(log => this.isPendingLog(log));
                 } else if (this.approvalStatusFilter === 'approved') {
@@ -3972,11 +4004,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             approvalWarehousePendingCount() {
                 if (this.approvalWarehouseTab === 'Stock Opname') return 0;
-                return this.allTransactionLogs.filter(log => log.gudang === this.approvalWarehouseTab && log.adjustmentType !== 'OPNAME' && this.isPendingLog(log)).length;
+                return this.allTransactionLogs.filter(log => log.gudang === this.approvalWarehouseTab && log.adjustmentType !== 'OPNAME' && !this.isCancelledPRLog(log) && this.isPendingLog(log)).length;
             },
             approvalWarehouseApprovedCount() {
                 if (this.approvalWarehouseTab === 'Stock Opname') return 0;
-                return this.allTransactionLogs.filter(log => log.gudang === this.approvalWarehouseTab && log.adjustmentType !== 'OPNAME' && !this.isPendingLog(log)).length;
+                return this.allTransactionLogs.filter(log => log.gudang === this.approvalWarehouseTab && log.adjustmentType !== 'OPNAME' && !this.isCancelledPRLog(log) && !this.isPendingLog(log)).length;
             },
             pendingApprovalOpname() {
                 return (this.opnameHistory || []).filter(op => String(op.approvalStatus || 'approved').toLowerCase() === 'pending');
@@ -4164,8 +4196,23 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             filteredMonitoringItems() {
                 const priorityRank = value => { const n = Number(value); return Number.isFinite(n) && n > 0 ? n : 0; };
+                const normalizeKey = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+                const hasPendingReceipt = order => {
+                    const orderId = String(order?.id ?? '');
+                    if (!orderId) return false;
+                    return (this.logs || []).some(log =>
+                        log &&
+                        log.type === 'IN' &&
+                        String(log.monitoringOrderId ?? '') === orderId &&
+                        (String(log.approvalStatus || '').toLowerCase() === 'pending' || String(log.status || '').toLowerCase().includes('menunggu'))
+                    );
+                };
                 const rows = this.monitoringItems.filter(i => {
-                    // Secara default order selesai disembunyikan, tetapi tetap dapat ditampilkan jika user memilih filter status tersebut.
+                    // Setelah barang sudah pernah dicatat sebagai penerimaan, barang tersebut
+                    // langsung dikeluarkan dari tabel Purchase Request bagian atas.
+                    // Berlaku per barang; barang lain pada Nomor PR yang sama tetap tampil.
+                    if (!this.monFilterStatus && ((Number(i.qtyReceived) || 0) > 0 || hasPendingReceipt(i))) return false;
+                    if (!this.monFilterStatus && (Number(i.qtyRemaining) || 0) <= 0) return false;
                     if (!this.monFilterStatus && i.status === 'Diterima Semua') return false;
                     const itemName = String(i.nama || '').toLowerCase();
                     const matchBarang = !this.monFilterBarang || itemName.includes(String(this.monFilterBarang || '').toLowerCase());
@@ -4184,7 +4231,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     }
                     return matchBarang && matchProject && matchStatus && matchDate;
                 });
-                return rows.slice().sort((a, b) => {
+                // Bersihkan duplikasi nama barang pada Nomor PR yang sama di tampilan atas.
+                // Jika ada beberapa record duplikat, cukup tampilkan satu record yang masih aktif.
+                const uniqueRows = [];
+                const seen = new Set();
+                rows.forEach(row => {
+                    const key = `${normalizeKey(row.nomorPR)}|${normalizeKey(row.nama)}`;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    uniqueRows.push(row);
+                });
+                return uniqueRows.slice().sort((a, b) => {
                     if (this.monSort === 'date_asc' || this.monSort === 'date_desc') {
                         const da = new Date(a.isoDate || a.id).getTime() || 0;
                         const db = new Date(b.isoDate || b.id).getTime() || 0;
@@ -6830,6 +6887,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const keperluanPR = String(this.formOrderMulti.keperluan || '').trim() || '-';
                 if (this.formOrderMulti.itemsToProcess.length === 0) return alert('Tambahkan minimal 1 item order!');
                 const normalizePR = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+                const normalizePO = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
                 const normalizeItemName = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
                 const existingPR = this.monitoringItems.find(order =>
                     normalizePR(order.nomorPR) === normalizePR(nomorPR)
@@ -6858,9 +6916,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     if (duplicateItemNames.has(itemKey)) return alert(`Barang "${item.nama}" tidak boleh dimasukkan dua kali pada Nomor Purchase Request ${nomorPR}.`);
                     duplicateItemNames.add(itemKey);
                     const duplicateExisting = this.monitoringItems.some(order =>
-                        normalizePR(order.nomorPR) === prKey && normalizeItemName(order.nama) === itemKey
+                        normalizePR(order.nomorPR) === prKey &&
+                        normalizePO(order.nomorPO) === normalizePO(nomorPO) &&
+                        normalizeItemName(order.nama) === itemKey
                     );
-                    if (duplicateExisting) return alert(`Duplikat ditolak: Nomor Purchase Request ${nomorPR} dengan barang "${item.nama}" sudah ada.`);
+                    if (duplicateExisting) return alert(`Duplikat ditolak: Nomor Purchase Request ${nomorPR}, Nomor PO ${nomorPO || '-'} dengan barang "${item.nama}" sudah ada.`);
                 }
                 if (!existingPR) {
                     this.shiftPurchaseRequestPrioritiesForInsert(prioritasPR, prKey);
@@ -6913,6 +6973,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const nomorPRBaru = String(nomorPRBaruInput || '').trim();
                 if (!nomorPRBaru) return alert('Nomor Purchase Request wajib diisi.');
 
+                const nomorPOBaruInput = prompt('Nomor Purchase Order:', order.nomorPO || '');
+                if (nomorPOBaruInput === null) return;
+                const nomorPOBaru = String(nomorPOBaruInput || '').trim().toUpperCase();
+                const supplierBaruInput = prompt('Supplier:', order.supplier || '');
+                if (supplierBaruInput === null) return;
+                const supplierBaru = String(supplierBaruInput || '').trim().toUpperCase();
+
                 const keteranganBaru = prompt('Keterangan / project:', order.keperluan || order.project || '');
                 if (keteranganBaru === null) return;
                 const prioritasBaru = prompt('Skala Prioritas (angka 1 sampai tak terhingga):', order.prioritas || '');
@@ -6941,17 +7008,26 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (qtyBaru < oldReceived) return alert('Qty order tidak boleh lebih kecil dari qty yang sudah diterima.');
 
                 order.nomorPR = nomorPRBaru.toUpperCase();
-                order.nomorPO = String(prompt('Nomor Purchase Order:', order.nomorPO || '') || order.nomorPO || '').trim().toUpperCase();
-                order.supplier = String(prompt('Supplier:', order.supplier || '') || order.supplier || '').trim().toUpperCase();
+                order.nomorPO = nomorPOBaru;
+                order.supplier = supplierBaru;
                 order.keperluan = String(keteranganBaru).trim().toUpperCase();
                 this.changePurchaseRequestPriority(order, normalizedPriority);
                 order.qtyTotal = qtyBaru;
                 order.qtyRemaining = Math.max(0, qtyBaru - oldReceived);
                 order.status = order.qtyRemaining <= 0 ? 'Diterima Semua' : (oldReceived > 0 ? 'Diterima Sebagian' : 'Pending');
                 this.monitoringHistory.forEach(h => {
-                    if (h.monitoringOrderId === order.id) {
+                    if (String(h.monitoringOrderId) === String(order.id)) {
                         h.nomorPR = order.nomorPR;
+                        h.nomorPO = order.nomorPO;
+                        h.supplier = order.supplier;
                         h.keperluan = order.keperluan;
+                    }
+                });
+                this.logs.forEach(log => {
+                    if (String(log.monitoringOrderId) === String(order.id)) {
+                        log.nomorPR = order.nomorPR;
+                        log.nomorPO = order.nomorPO;
+                        log.supplier = order.supplier;
                     }
                 });
                 // Simpan langsung supaya perubahan Purchase Order/Monitoring
@@ -7094,7 +7170,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 document.body.classList.add('printing-bast');
                 const bastPageStyle = document.createElement('style');
                 bastPageStyle.id = 'bast-page-style';
-                bastPageStyle.textContent = '@page { size: A4 portrait; margin: 8mm; }';
+                bastPageStyle.textContent = '@page { size: A4 landscape; margin: 20mm; }';
                 document.head.appendChild(bastPageStyle);
                 this.$nextTick(() => {
                     const logo = document.querySelector('#bast-print-area img');
@@ -7915,14 +7991,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 
                 // Set @page CSS dinamis berdasarkan opsi
                 const paperSizeMap = {
-                    'A4': { size: 'A4', margin: '12mm' },
-                    'F4': { size: '210mm 330mm', margin: '12mm 12mm 14mm 12mm' },
-                    'A5': { size: 'A5', margin: '8mm' }
+                    'A4': { size: 'A4', margin: '20mm' },
+                    'F4': { size: 'A4', margin: '20mm' },
+                    'A5': { size: 'A4', margin: '20mm' }
                 };
                 const spec = paperSizeMap[options.paperSize] || paperSizeMap.A4;
-                const sizeDecl = options.paperSize === 'F4'
-                    ? (options.orientation === 'landscape' ? '330mm 210mm' : '210mm 330mm')
-                    : `${spec.size} ${options.orientation}`;
+                const sizeDecl = 'A4 landscape';
                 let dynamicStyle = document.getElementById('__kartu_stock_dynamic_style');
                 if (!dynamicStyle) {
                     dynamicStyle = document.createElement('style');
@@ -8280,125 +8354,147 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             async exportLowStockExcel() {
                 if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat export Excel.');
-                if (typeof ExcelJS === 'undefined') return alert('Library Excel belum siap. Silakan refresh halaman.');
 
-                // EXPORT INI MENGIKUTI LIST "PERINGATAN STOK MENIPIS / HABIS"
-                // dan mengambil data terbaru dari lowStockItems (referensi Data Master + PR terbaru).
-                const rows = (this.lowStockItems || [])
-                    .filter(row => String(row.gudang || '').trim().toLowerCase() === 'sparepart')
-                    .map((row, index) => ({
-                        no: index + 1,
-                        nama: row.nama || '-',
-                        satuan: row.satuan || this.getMasterSatuan(row.nama, '-', '') || '-',
-                        lokasi: row.lokasi || '-',
-                        qty: Math.max(0, Math.round(Number(row.qty) || 0)),
-                        minStock: Math.max(0, Math.round(Number(row.minStock) || 0)),
-                        tglPR: row.tglPR || '-',
-                        nomorPR: row.nomorPR || '-',
-                        status: Number(row.qty) === 0 ? 'HABIS' : 'MENIPIS'
-                    }));
+                // Ambil persis data yang tampil pada kartu "Peringatan Stok".
+                // Jangan memfilter berdasarkan nilai gudang agar item Sparepart maupun Sisa Project tetap ikut.
+                const rows = (this.lowStockItems || []).map((row, index) => ({
+                    no: index + 1,
+                    nama: row.nama || '-',
+                    satuan: row.satuan || this.getMasterSatuan(row.nama, '-', '') || '-',
+                    gudang: row.gudang || '-',
+                    lokasi: row.lokasi || '-',
+                    qty: Math.max(0, Math.round(Number(row.qty) || 0)),
+                    minStock: Math.max(0, Math.round(Number(row.minStock) || 0)),
+                    tglPR: row.tglPR || '-',
+                    nomorPR: row.nomorPR || '-',
+                    status: Number(row.qty) === 0 ? 'HABIS' : 'MENIPIS'
+                }));
 
-                const wb = new ExcelJS.Workbook();
-                wb.creator = 'Agrofarm Nusa Raya';
-                wb.created = new Date();
+                if (!rows.length) return alert('Tidak ada data peringatan stok yang dapat diexport.');
 
-                const ws = wb.addWorksheet('Peringatan Stock', {
-                    pageSetup: {
-                        paperSize: 9,
-                        orientation: 'landscape',
-                        fitToPage: true,
-                        fitToWidth: 1,
-                        fitToHeight: 0,
-                        margins: { left: 0.25, right: 0.25, top: 0.35, bottom: 0.35, header: 0.1, footer: 0.1 }
+                const fileDate = String(this.getFormattedDateOnly() || new Date().toLocaleDateString('id-ID')).replace(/\//g, '-');
+
+                // Utamakan ExcelJS untuk mempertahankan format export yang sudah dibuat.
+                if (typeof ExcelJS !== 'undefined') {
+                    try {
+                        const wb = new ExcelJS.Workbook();
+                        wb.creator = 'Agrofarm Nusa Raya';
+                        wb.created = new Date();
+
+                        const ws = wb.addWorksheet('Peringatan Stock', {
+                            pageSetup: {
+                                paperSize: 9,
+                                orientation: 'landscape',
+                                fitToPage: true,
+                                fitToWidth: 1,
+                                fitToHeight: 0,
+                                margins: { left: 0.25, right: 0.25, top: 0.35, bottom: 0.35, header: 0.1, footer: 0.1 }
+                            }
+                        });
+                        ws.views = [{ showGridLines: false }];
+                        ws.columns = [
+                            { width: 7 }, { width: 34 }, { width: 15 }, { width: 18 },
+                            { width: 18 }, { width: 16 }, { width: 16 }, { width: 18 }, { width: 22 }, { width: 15 }
+                        ];
+
+                        if (typeof AGROFARM_EXCEL_LOGO_BASE64 !== 'undefined' && AGROFARM_EXCEL_LOGO_BASE64) {
+                            const logoId = wb.addImage({ base64: AGROFARM_EXCEL_LOGO_BASE64, extension: 'png' });
+                            ws.addImage(logoId, { tl: { col: 0.15, row: 0.15 }, ext: { width: 145, height: 36 } });
+                        }
+
+                        ws.mergeCells('A1:J1');
+                        ws.mergeCells('A2:J2');
+                        ws.mergeCells('A3:J3');
+                        ws.mergeCells('A4:J4');
+
+                        ws.getCell('A1').value = 'PT AGROFARM NUSA RAYA';
+                        ws.getCell('A2').value = 'Jl. Raya Ponorogo-Madiun KM 4 (JL Industri) Kertosari Babadan Ponorogo';
+                        ws.getCell('A3').value = 'LIST PERINGATAN STOCK GUDANG';
+                        ws.getCell('A4').value = `Tanggal Export: ${this.getFormattedDateOnly()} | Total Peringatan: ${rows.length}`;
+
+                        ws.getCell('A1').font = { name: 'Arial', size: 14, bold: true };
+                        ws.getCell('A2').font = { name: 'Arial', size: 9 };
+                        ws.getCell('A3').font = { name: 'Arial', size: 13, bold: true };
+                        ws.getCell('A4').font = { name: 'Arial', size: 9, italic: true };
+                        ['A1','A2','A3','A4'].forEach(cell => {
+                            ws.getCell(cell).alignment = { horizontal: 'center', vertical: 'middle' };
+                        });
+                        ws.getRow(1).height = 24;
+                        ws.getRow(2).height = 18;
+                        ws.getRow(3).height = 22;
+                        ws.getRow(4).height = 18;
+
+                        const headers = ['No', 'Nama Barang', 'Satuan', 'Gudang', 'Lokasi Rak', 'Stok Saat Ini', 'Min. Stok', 'Tanggal PR', 'Nomor PR', 'Status'];
+                        const headerRow = ws.addRow(headers);
+                        headerRow.height = 24;
+                        headerRow.eachCell(cell => {
+                            cell.font = { name: 'Arial', size: 9, bold: true };
+                            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                        });
+
+                        rows.forEach(item => {
+                            const r = ws.addRow([
+                                item.no, item.nama.toUpperCase(), item.satuan, item.gudang, item.lokasi,
+                                item.qty, item.minStock, item.tglPR, item.nomorPR, item.status
+                            ]);
+                            r.eachCell(cell => {
+                                cell.font = { name: 'Arial', size: 9 };
+                                cell.alignment = { vertical: 'middle', wrapText: true };
+                                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                            });
+                            [1,3,4,5,6,7,8,9].forEach(col => {
+                                r.getCell(col).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                            });
+                            r.getCell(10).alignment = { horizontal: 'center', vertical: 'middle' };
+                            r.getCell(10).font = item.status === 'HABIS'
+                                ? { name: 'Arial', size: 9, bold: true, color: { argb: 'FFC00000' } }
+                                : { name: 'Arial', size: 9, bold: true, color: { argb: 'FFC47F00' } };
+                        });
+
+                        ws.freezePanes = { xSplit: 0, ySplit: 5 };
+                        ws.autoFilter = { from: 'A5', to: `J${Math.max(5, ws.lastRow.number)}` };
+                        ws.printArea = `A1:J${Math.max(5, ws.lastRow.number)}`;
+
+                        const buffer = await wb.xlsx.writeBuffer();
+                        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `List_Peringatan_Stock_Gudang_${fileDate}.xlsx`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        return;
+                    } catch (err) {
+                        console.error('Export Peringatan Stok dengan ExcelJS gagal:', err);
+                        // Lanjut ke fallback XLSX di bawah agar tombol tetap dapat menghasilkan file.
                     }
-                });
-                ws.views = [{ showGridLines: false }];
-                ws.columns = [
-                    { width: 7 }, { width: 34 }, { width: 15 }, { width: 18 },
-                    { width: 16 }, { width: 16 }, { width: 18 }, { width: 22 }, { width: 15 }
-                ];
+                }
 
-                const logoId = wb.addImage({ base64: AGROFARM_EXCEL_LOGO_BASE64, extension: 'png' });
-                ws.addImage(logoId, { tl: { col: 0.15, row: 0.15 }, ext: { width: 145, height: 36 } });
-
-                ws.mergeCells('A1:I1');
-                ws.mergeCells('A2:I2');
-                ws.mergeCells('A3:I3');
-                ws.mergeCells('A4:I4');
-
-                ws.getCell('A1').value = 'PT AGROFARM NUSA RAYA';
-                ws.getCell('A2').value = 'Jl. Raya Ponorogo-Madiun KM 4 (JL Industri) Kertosari Babadan Ponorogo';
-                ws.getCell('A3').value = 'LIST PERINGATAN STOCK GUDANG SPARE PART';
-                ws.getCell('A4').value = `Tanggal Export: ${this.getFormattedDateOnly()} | Total Peringatan: ${rows.length}`;
-
-                ws.getCell('A1').font = { name: 'Arial', size: 14, bold: true };
-                ws.getCell('A2').font = { name: 'Arial', size: 9 };
-                ws.getCell('A3').font = { name: 'Arial', size: 13, bold: true };
-                ws.getCell('A4').font = { name: 'Arial', size: 9, italic: true };
-                ws.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
-                ws.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
-                ws.getCell('A3').alignment = { horizontal: 'center', vertical: 'middle' };
-                ws.getCell('A4').alignment = { horizontal: 'center', vertical: 'middle' };
-                ws.getRow(1).height = 24;
-                ws.getRow(2).height = 18;
-                ws.getRow(3).height = 22;
-                ws.getRow(4).height = 18;
-
-                const headers = ['No', 'Nama Barang', 'Satuan', 'Lokasi Rak', 'Stok Saat Ini', 'Min. Stok', 'Tanggal PR', 'Nomor PR', 'Status'];
-                const headerRow = ws.addRow(headers);
-                headerRow.height = 24;
-                headerRow.eachCell(cell => {
-                    cell.font = { name: 'Arial', size: 9, bold: true };
-                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
-                    cell.border = {
-                        top: { style: 'thin' }, left: { style: 'thin' },
-                        bottom: { style: 'thin' }, right: { style: 'thin' }
-                    };
-                });
-
-                rows.forEach(item => {
-                    const r = ws.addRow([
-                        item.no, item.nama.toUpperCase(), item.satuan, item.lokasi,
-                        item.qty, item.minStock, item.tglPR, item.nomorPR, item.status
-                    ]);
-                    r.eachCell(cell => {
-                        cell.font = { name: 'Arial', size: 9 };
-                        cell.alignment = { vertical: 'middle', wrapText: true };
-                        cell.border = {
-                            top: { style: 'thin' }, left: { style: 'thin' },
-                            bottom: { style: 'thin' }, right: { style: 'thin' }
-                        };
-                    });
-                    r.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-                    r.getCell(3).alignment = { horizontal: 'center', vertical: 'middle' };
-                    r.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
-                    r.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
-                    r.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
-                    r.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
-                    r.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
-                    r.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
-                    if (item.status === 'HABIS') {
-                        r.getCell(9).font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFC00000' } };
-                    } else {
-                        r.getCell(9).font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFC47F00' } };
-                    }
-                });
-
-                ws.freezePanes = { xSplit: 0, ySplit: 5 };
-                ws.autoFilter = { from: 'A5', to: `I${Math.max(5, ws.lastRow.number)}` };
-                ws.printArea = `A1:I${Math.max(5, ws.lastRow.number)}`;
-
-                const buffer = await wb.xlsx.writeBuffer();
-                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `List_Peringatan_Stock_Gudang_Spare_Part_${this.getFormattedDateOnly().replace(/\\//g, '-')}.xlsx`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
+                // Fallback jika ExcelJS gagal/tidak tersedia.
+                if (typeof XLSX === 'undefined') {
+                    return alert('Library Excel belum siap. Silakan refresh halaman lalu coba lagi.');
+                }
+                const fallbackRows = rows.map(item => ({
+                    'No': item.no,
+                    'Nama Barang': item.nama,
+                    'Satuan': item.satuan,
+                    'Gudang': item.gudang,
+                    'Lokasi Rak': item.lokasi,
+                    'Stok Saat Ini': item.qty,
+                    'Min. Stok': item.minStock,
+                    'Tanggal PR': item.tglPR,
+                    'Nomor PR': item.nomorPR,
+                    'Status': item.status
+                }));
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(fallbackRows);
+                ws['!cols'] = [7,34,15,18,18,16,16,18,22,15].map(wch => ({ wch }));
+                XLSX.utils.book_append_sheet(wb, ws, 'Peringatan Stock');
+                XLSX.writeFile(wb, `List_Peringatan_Stock_Gudang_${fileDate}.xlsx`);
             },
             async exportDashboardByDate() {
                 if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat export Excel.');
@@ -8488,7 +8584,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     const inLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'IN' && inRange(l)).sort(inputOrder);
                     const outLogs = this.logs.filter(l => String(l.gudang || '').toLowerCase() === gudangName.toLowerCase() && String(l.type || '').toUpperCase() === 'OUT' && inRange(l)).sort(inputOrder);
                     return `
-                        <div style="margin-top:6mm; page-break-inside:avoid;">
+                        <div style="margin-top:4mm; page-break-inside:auto; break-inside:auto;">
                             <div style="font-size:11pt; font-weight:800; border-bottom:2px solid #065f46; color:#065f46; padding-bottom:3px; margin-bottom:4px; text-transform:uppercase;">Gudang ${gudangName} &mdash; Barang Masuk (Inbound) &middot; ${inLogs.length} Transaksi</div>
                             <table style="width:100%; border-collapse:collapse; font-size:9pt; font-family:Arial, sans-serif; margin-bottom:8mm;">
                                 <thead>
@@ -8537,7 +8633,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const labelArea = document.getElementById('label-print-area');
                 labelArea.innerHTML = `
                     <div class="stock-card-print" style="font-family: Arial, sans-serif; color:#000;">
-                        <div style="display:flex; align-items:center; gap:14px; border-bottom:2px solid #000; padding-bottom:6mm; margin-bottom:6mm;">
+                        <div style="display:flex; align-items:center; gap:14px; border-bottom:2px solid #000; padding-bottom:2mm; margin-bottom:2mm;">
                             <img src="${AGROFARM_LOGO}" alt="Agrofarm" style="height:35mm; width:auto; max-width:70mm; object-fit:contain;">
                             <div style="flex:1; text-align:center;">
                                 <div style="font-size:16pt; font-weight:800; letter-spacing:.5px;">LAPORAN PERGERAKAN STOK</div>
@@ -8562,6 +8658,21 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <div style="text-align:center; width:200px;">Diketahui<br><br><br><br>____________________</div>
                         </div>
                     </div>`;
+                let reportPrintStyle = document.getElementById('__daily_log_print_dynamic_style');
+                if (!reportPrintStyle) {
+                    reportPrintStyle = document.createElement('style');
+                    reportPrintStyle.id = '__daily_log_print_dynamic_style';
+                    document.head.appendChild(reportPrintStyle);
+                }
+                reportPrintStyle.textContent = `@media print {
+                    @page { size: A4 landscape; margin: 20mm; }
+                    body.printing-label #label-print-area { display:block !important; visibility:visible !important; width:100% !important; overflow:visible !important; }
+                    body.printing-label .stock-card-print { display:block !important; visibility:visible !important; width:100% !important; max-width:none !important; overflow:visible !important; }
+                    body.printing-label .stock-card-print > div { page-break-inside:auto; break-inside:auto; }
+                    body.printing-label .stock-card-print table { page-break-inside:auto; break-inside:auto; }
+                    body.printing-label .stock-card-print table thead { display:table-header-group; }
+                    body.printing-label .stock-card-print table tr { page-break-inside:avoid; break-inside:avoid; }
+                }`;
                 document.body.classList.add('printing-label');
                 this.$nextTick(() => {
                     const logoImg = labelArea.querySelector('.stock-card-print img');
@@ -8570,6 +8681,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             window.print();
                             document.body.classList.remove('printing-label');
                             labelArea.innerHTML = '';
+                            if (reportPrintStyle) reportPrintStyle.textContent = '';
                         }, 500);
                     };
                     if (logoImg && !logoImg.complete) {
@@ -8703,8 +8815,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 let style = document.getElementById('__stock_print_dynamic_style');
                 if (!style) { style = document.createElement('style'); style.id = '__stock_print_dynamic_style'; document.head.appendChild(style); }
                 style.textContent = `@media print {
-                    @page { size: A4 portrait; margin: 10mm 11mm; }
-                    body.printing-label .stock-print-page { page-break-after: always; break-after: page; min-height: 277mm; box-sizing: border-box; padding: 2mm 0; }
+                    @page { size: A4 landscape; margin: 20mm; }
+                    body.printing-label .stock-print-page { page-break-after: always; break-after: page; min-height: 0; box-sizing: border-box; padding: 0; }
                     body.printing-label .stock-print-page:last-child { page-break-after: auto; break-after: auto; }
                     body.printing-label .stock-print-document { page-break-inside: avoid; break-inside: avoid; }
                 }`;
@@ -8745,7 +8857,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     }))
                 };
                 this.opnameSearch = '';
-                this.opnameFilterMode = 'selisih';
+                this.opnameFilterMode = 'all';
                 this.opnamePage = 1;
                 this.$nextTick(() => this.refreshIcons());
             },
@@ -9763,7 +9875,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         </div>
                     </div>`;
                 }).join('');
-                labelArea.innerHTML = `<style>@page{size:A4 portrait;margin:0;}@media print{.opname-print-page{page-break-after:always!important;break-after:page;} .opname-print-page:last-child{page-break-after:auto!important;}}
+                labelArea.innerHTML = `<style>@page{size:A4 landscape;margin:20mm;}@media print{.opname-print-page{page-break-after:always!important;break-after:page;} .opname-print-page:last-child{page-break-after:auto!important;}}
 /* Split-screen responsive: hide sidebar when window is narrow */
 @media screen and (min-width: 1101px) {
   #app > aside.agrofarm-sidebar {
@@ -9801,7 +9913,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 /* PDF / CETAK KESELURUHAN - margin agar konten tidak terpotong */
 @page {
     size: A4 landscape;
-    margin: 12mm 10mm 12mm 10mm;
+    margin: 20mm;
 }
 
 @media print {
@@ -9843,7 +9955,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
    - Keep margins so content is not clipped.
    ========================================================= */
 @media print {
-    @page { margin: 12mm 10mm 12mm 10mm; }
+    @page { size: A4 landscape; margin: 20mm; }
 
     html, body {
         width: 100% !important;
