@@ -895,7 +895,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         <i data-lucide="alert-triangle" class="w-4 h-4 text-red-600"></i>
                         <h3 class="font-black text-red-900 uppercase text-xs tracking-wider">Peringatan Stok Menipis / Habis</h3>
                     </div>
-                    <span class="text-[11px] font-bold bg-red-100 text-red-800 px-2 py-0.5 rounded border border-red-200">{{ lowStockItems.length }} Item Perlu Restock</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-bold bg-red-100 text-red-800 px-2 py-0.5 rounded border border-red-200">{{ lowStockItems.length }} Item Perlu Restock</span>
+                        <button v-if="canEdit" @click="exportLowStockExcel" class="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
+                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Export Excel
+                        </button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto max-h-52">
                     <table class="w-full text-xs">
@@ -1230,6 +1235,16 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         >
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                             Hapus Terpilih ({{ selectedMasterItems.length }})
+                        </button>
+                        <button
+                            v-if="canDeleteMaster && masterCatalog.length > 0"
+                            @click="deleteAllMaster"
+                            title="Hapus Semua Data Master"
+                            aria-label="Hapus Semua Data Master"
+                            class="bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-sm border border-rose-300 transition-all"
+                        >
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            <span>Hapus Semua</span>
                         </button>
                         <span class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-200/60">{{ filteredMasterCatalog.length }} Item Master</span>
                     </div>
@@ -3028,7 +3043,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
     <!-- MODAL 1: INPUT MONITORING ORDER -->
     <!-- REVISI 1 & 2: Ketik Manual Dulu Baru Ada Pilihan Data Master + Kepentingan Spesifik Per Barang -->
     <div v-if="showMonitoringInputModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-4xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+        <div class="bg-white rounded-2xl max-w-3xl w-full p-4 space-y-3 shadow-2xl max-h-[85vh] flex flex-col">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 class="font-bold text-slate-800 text-sm uppercase flex items-center gap-2">
                     <i data-lucide="plus-square" class="w-5 h-5 text-emerald-600"></i>
@@ -3036,8 +3051,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 </h3>
                 <button @click="showMonitoringInputModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
             </div>
-            <div class="space-y-4 overflow-y-auto custom-scroll pr-1 flex-1">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div class="space-y-3 overflow-y-auto custom-scroll pr-1 flex-1">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                     <div>
                         <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Tanggal Transaksi / Tanggal Order *</label>
                         <input v-model="formOrderMulti.tanggal" type="date" required class="w-full p-2.5 bg-emerald-50 font-extrabold text-sm border-2 border-emerald-500 rounded-lg outline-none focus:ring-2 focus:ring-emerald-200">
@@ -3067,14 +3082,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     </button>
                 </div>
                 <div class="space-y-3">
-                    <div v-for="(item, idx) in formOrderMulti.itemsToProcess" :key="idx" class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                    <div v-for="(item, idx) in formOrderMulti.itemsToProcess" :key="idx" class="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200 space-y-2">
                         <div class="flex justify-between items-center border-b border-slate-200 pb-2">
                             <span class="text-xs font-black text-emerald-800 uppercase">Item #{{ idx + 1 }}</span>
                             <button @click="removeMonitoringItemToProcess(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs flex items-center gap-1">
                                 &times; Hapus Item
                             </button>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
                             <!-- Input Nama Barang Manual dengan Saran Datalist dari Master -->
                             <div class="md:col-span-5">
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Nama Barang (Ketik / Pilih Master)</label>
@@ -3093,7 +3108,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <input :value="getMasterSatuan(item.nama, item.orderSatuan || 'Pcs')" type="text" readonly placeholder="Satuan dari Data Master" class="w-full p-2 bg-slate-100 font-semibold text-xs text-center border border-slate-300 rounded-lg uppercase outline-none">
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
                             <div>
                                 <label class="text-[9px] font-bold text-amber-700 uppercase block mb-1">Harga Satuan (Rp)</label>
                                 <input v-model.number="item.harga" type="number" min="0" step="any" placeholder="0" class="w-full p-2 bg-slate-100 font-bold text-xs border border-amber-300 rounded-lg outline-none" readonly>
@@ -3630,7 +3645,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 return this.isAuthenticated && (role === 'admin' || role === 'super_admin');
             },
             canDeleteMaster() {
-                return this.isAuthenticated && this.authRole === 'super_admin';
+                const role = String(this.authRole || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+                return this.isAuthenticated && role === 'super_admin';
             },
             canInputTransaction() {
                 return this.isAuthenticated && (this.authRole === 'admin' || this.authRole === 'super_admin');
@@ -4401,6 +4417,108 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 } finally {
                     if (event?.target) event.target.value = '';
                 }
+            },
+            deleteMaster(kode) {
+                if (!this.canDeleteMaster) return alert('Akun Viewer hanya dapat melihat data.');
+                const item = this.masterCatalog.find(i => String(i.kode) === String(kode));
+                if (!item) return;
+                if (!confirm(`Yakin ingin menghapus barang "${item.nama}"?`)) return;
+                const deletedName = String(item.nama || '').trim().toLowerCase();
+                this.masterCatalog = this.masterCatalog.filter(i => String(i.kode) !== String(kode));
+                this.spareparts = this.spareparts.filter(s => String(s.kode || '') !== String(kode) && String(s.nama || '').trim().toLowerCase() !== deletedName);
+                this.selectedMasterItems = (this.selectedMasterItems || []).filter(k => String(k) !== String(kode));
+                this.selectAllMaster = false;
+                this.normalizeMasterPage();
+            },
+            toggleSelectAllMaster() {
+                if (!this.canDeleteMaster) return;
+                this.selectAllMaster = !!this.selectAllMaster;
+                this.selectedMasterItems = this.selectAllMaster
+                    ? this.filteredMasterCatalog.map(item => item.kode)
+                    : [];
+            },
+            deleteSelectedMaster() {
+                if (!this.canDeleteMaster) return alert('Akun Viewer hanya dapat melihat data.');
+                const selected = Array.isArray(this.selectedMasterItems) ? this.selectedMasterItems : [];
+                if (!selected.length) return alert('Pilih minimal satu barang terlebih dahulu.');
+                const selectedItems = this.masterCatalog.filter(item => selected.some(k => String(k) === String(item.kode)));
+                const preview = selectedItems.slice(0, 5).map(item => item.nama).join('\n');
+                const more = selectedItems.length > 5 ? `\n... dan ${selectedItems.length - 5} barang lainnya` : '';
+                if (!confirm(`Yakin ingin menghapus ${selectedItems.length} barang?\n\n${preview}${more}`)) return;
+                const deletedNames = new Set(selectedItems.map(item => String(item.nama || '').trim().toLowerCase()));
+                this.masterCatalog = this.masterCatalog.filter(item => !selected.some(k => String(k) === String(item.kode)));
+                this.spareparts = this.spareparts.filter(stock =>
+                    !selected.some(k => String(k) === String(stock.kode)) &&
+                    !deletedNames.has(String(stock.nama || '').trim().toLowerCase())
+                );
+                this.selectedMasterItems = [];
+                this.selectAllMaster = false;
+                this.normalizeMasterPage();
+                alert(`${selectedItems.length} barang berhasil dihapus.`);
+            },
+            async deleteAllMaster() {
+                if (!this.canDeleteMaster) return alert('Hanya Super Admin yang dapat menghapus seluruh Data Master.');
+                const total = Array.isArray(this.masterCatalog) ? this.masterCatalog.length : 0;
+                if (!total) return alert('Data Master masih kosong.');
+                if (!confirm(`⚠️ PERINGATAN PENGHAPUSAN DATA MASTER\n\nAnda akan menghapus SELURUH ${total} Data Master.\n\nData Master dan data stok spare part terkait akan dihapus permanen dari sistem dan tidak dapat dikembalikan.\n\nApakah Anda benar-benar yakin ingin melanjutkan?`)) return;
+
+                const previousMasterCatalog = JSON.parse(JSON.stringify(this.masterCatalog || []));
+                const previousSpareparts = JSON.parse(JSON.stringify(this.spareparts || []));
+
+                this.masterCatalog = [];
+                this.spareparts = [];
+                this.selectedMasterItems = [];
+                this.selectAllMaster = false;
+                this.masterPage = 1;
+                this.normalizeMasterPage();
+
+                const saved = await this.saveToSupabase();
+                if (!saved) {
+                    this.masterCatalog = previousMasterCatalog;
+                    this.spareparts = previousSpareparts;
+                    this.normalizeMasterPage();
+                    return alert('Hapus Semua gagal disimpan ke database. Data Master dikembalikan seperti semula.');
+                }
+
+                alert(`${total} Data Master berhasil dihapus.`);
+            },
+            openMonitoringInputModal() {
+                if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
+                this.formOrderMulti = {
+                    tanggal: this.getISODateOnly(),
+                    nomorPR: '',
+                    pemesan: '',
+                    prioritas: '',
+                    keperluan: '',
+                    itemsToProcess: [{ nama: '', orderQty: 1, orderSatuan: 'Pcs', harga: 0, keperluan: '' }]
+                };
+                this.showMonitoringInputModal = true;
+                this.$nextTick(() => this.refreshIcons());
+            },
+            async confirmApprovalForm() {
+                if (!this.canApprove) return alert('Hanya Super Admin yang dapat menyetujui transaksi.');
+                const form = this.approvalForm || {};
+                const target = this.logs.find(x => String(x.id) === String(form.log?.id));
+                if (!target) return alert('Transaksi approval tidak ditemukan.');
+                if (!this.isPendingLog(target)) return alert('Transaksi ini sudah diproses.');
+                if (!form.tanggal) return alert('Tanggal wajib diisi.');
+                if (!form.nama) return alert('Nama barang wajib diisi.');
+                if (!Number.isFinite(Number(form.qty)) || Number(form.qty) <= 0) return alert('Qty harus lebih dari 0.');
+                if (!form.keperluan || !String(form.keperluan).trim()) return alert('Kepentingan / Keterangan wajib diisi.');
+                if (String(form.jenis || '').includes('INBOUND') && !String(form.supplier || '').trim()) return alert('Supplier / Asal Barang wajib diisi untuk transaksi masuk.');
+                if (String(form.jenis || '').includes('OUTBOUND') && !String(form.penerima || '').trim()) return alert('Nama Penerima wajib diisi untuk transaksi keluar.');
+                target.tgl = this.getFormattedDateOnly(this.getDateFromInput(form.tanggal));
+                target.isoDate = new Date(this.getDateFromInput(form.tanggal)).toISOString();
+                target.qty = Number(form.qty);
+                target.harga = Math.max(0, Number(form.harga) || 0);
+                target.totalHarga = target.harga * target.qty;
+                target.satuan = String(this.getMasterSatuan(target.nama, form.satuan || target.satuan || 'Pcs') || 'Pcs').trim().toUpperCase();
+                target.supplier = String(form.supplier || target.supplier || '').trim().toUpperCase();
+                target.penerima = String(form.penerima || target.penerima || '').trim().toUpperCase();
+                target.keperluan = String(form.keperluan || target.keperluan || '').trim().toUpperCase();
+                this.showApprovalFormModal = false;
+                this.approvalForm = { log: null, tanggal: '', nomorPR: '', gudang: '', jenis: '', nama: '', qty: 0, harga: 0, satuan: '', supplier: '', pengambil: '', penerima: '', keperluan: '' };
+                await this.approveTransaction(target);
             },
             masterSortArrow(key) {
                 if (key === 'no') return this.masterSort === 'no_asc' ? '↑' : (this.masterSort === 'no_desc' ? '↓' : '↕');
@@ -7504,6 +7622,128 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 XLSX.utils.book_append_sheet(wb, logsSheet, "Log Pergerakan");
                 XLSX.writeFile(wb, `Laporan_Inventory_Agrofarm_${this.getFormattedDateOnly().replace(/\//g, '-')}.xlsx`);
             },
+            async exportLowStockExcel() {
+                if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat export Excel.');
+                if (typeof ExcelJS === 'undefined') return alert('Library Excel belum siap. Silakan refresh halaman.');
+
+                // EXPORT INI MENGIKUTI LIST "PERINGATAN STOK MENIPIS / HABIS"
+                // dan mengambil data terbaru dari lowStockItems (referensi Data Master + PR terbaru).
+                const rows = (this.lowStockItems || [])
+                    .filter(row => String(row.gudang || '').trim().toLowerCase() === 'sparepart')
+                    .map((row, index) => ({
+                        no: index + 1,
+                        nama: row.nama || '-',
+                        satuan: row.satuan || this.getMasterSatuan(row.nama, '-', '') || '-',
+                        lokasi: row.lokasi || '-',
+                        qty: Math.max(0, Math.round(Number(row.qty) || 0)),
+                        minStock: Math.max(0, Math.round(Number(row.minStock) || 0)),
+                        tglPR: row.tglPR || '-',
+                        nomorPR: row.nomorPR || '-',
+                        status: Number(row.qty) === 0 ? 'HABIS' : 'MENIPIS'
+                    }));
+
+                const wb = new ExcelJS.Workbook();
+                wb.creator = 'Agrofarm Nusa Raya';
+                wb.created = new Date();
+
+                const ws = wb.addWorksheet('Peringatan Stock', {
+                    pageSetup: {
+                        paperSize: 9,
+                        orientation: 'landscape',
+                        fitToPage: true,
+                        fitToWidth: 1,
+                        fitToHeight: 0,
+                        margins: { left: 0.25, right: 0.25, top: 0.35, bottom: 0.35, header: 0.1, footer: 0.1 }
+                    }
+                });
+                ws.views = [{ showGridLines: false }];
+                ws.columns = [
+                    { width: 7 }, { width: 34 }, { width: 15 }, { width: 18 },
+                    { width: 16 }, { width: 16 }, { width: 18 }, { width: 22 }, { width: 15 }
+                ];
+
+                const logoId = wb.addImage({ base64: AGROFARM_EXCEL_LOGO_BASE64, extension: 'png' });
+                ws.addImage(logoId, { tl: { col: 0.15, row: 0.15 }, ext: { width: 145, height: 36 } });
+
+                ws.mergeCells('A1:I1');
+                ws.mergeCells('A2:I2');
+                ws.mergeCells('A3:I3');
+                ws.mergeCells('A4:I4');
+
+                ws.getCell('A1').value = 'PT AGROFARM NUSA RAYA';
+                ws.getCell('A2').value = 'Jl. Raya Ponorogo-Madiun KM 4 (JL Industri) Kertosari Babadan Ponorogo';
+                ws.getCell('A3').value = 'LIST PERINGATAN STOCK GUDANG SPARE PART';
+                ws.getCell('A4').value = `Tanggal Export: ${this.getFormattedDateOnly()} | Total Peringatan: ${rows.length}`;
+
+                ws.getCell('A1').font = { name: 'Arial', size: 14, bold: true };
+                ws.getCell('A2').font = { name: 'Arial', size: 9 };
+                ws.getCell('A3').font = { name: 'Arial', size: 13, bold: true };
+                ws.getCell('A4').font = { name: 'Arial', size: 9, italic: true };
+                ws.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+                ws.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
+                ws.getCell('A3').alignment = { horizontal: 'center', vertical: 'middle' };
+                ws.getCell('A4').alignment = { horizontal: 'center', vertical: 'middle' };
+                ws.getRow(1).height = 24;
+                ws.getRow(2).height = 18;
+                ws.getRow(3).height = 22;
+                ws.getRow(4).height = 18;
+
+                const headers = ['No', 'Nama Barang', 'Satuan', 'Lokasi Rak', 'Stok Saat Ini', 'Min. Stok', 'Tanggal PR', 'Nomor PR', 'Status'];
+                const headerRow = ws.addRow(headers);
+                headerRow.height = 24;
+                headerRow.eachCell(cell => {
+                    cell.font = { name: 'Arial', size: 9, bold: true };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                    cell.border = {
+                        top: { style: 'thin' }, left: { style: 'thin' },
+                        bottom: { style: 'thin' }, right: { style: 'thin' }
+                    };
+                });
+
+                rows.forEach(item => {
+                    const r = ws.addRow([
+                        item.no, item.nama.toUpperCase(), item.satuan, item.lokasi,
+                        item.qty, item.minStock, item.tglPR, item.nomorPR, item.status
+                    ]);
+                    r.eachCell(cell => {
+                        cell.font = { name: 'Arial', size: 9 };
+                        cell.alignment = { vertical: 'middle', wrapText: true };
+                        cell.border = {
+                            top: { style: 'thin' }, left: { style: 'thin' },
+                            bottom: { style: 'thin' }, right: { style: 'thin' }
+                        };
+                    });
+                    r.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+                    r.getCell(3).alignment = { horizontal: 'center', vertical: 'middle' };
+                    r.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
+                    r.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+                    r.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+                    r.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
+                    r.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
+                    r.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
+                    if (item.status === 'HABIS') {
+                        r.getCell(9).font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFC00000' } };
+                    } else {
+                        r.getCell(9).font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFC47F00' } };
+                    }
+                });
+
+                ws.freezePanes = { xSplit: 0, ySplit: 5 };
+                ws.autoFilter = { from: 'A5', to: `I${Math.max(5, ws.lastRow.number)}` };
+                ws.printArea = `A1:I${Math.max(5, ws.lastRow.number)}`;
+
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `List_Peringatan_Stock_Gudang_Spare_Part_${this.getFormattedDateOnly().replace(/\\//g, '-')}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            },
             async exportDashboardByDate() {
                 if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat export Excel.');
                 if (!this.dashFilterDateStart && !this.dashFilterDateEnd) return alert('Silakan pilih rentang tanggal terlebih dahulu!');
@@ -8812,6 +9052,63 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
         } catch (_) {}
     };
     inventoryApp.mount('#app');
+</script>
+
+<script>
+/* Icon renderer only: memastikan semua data-lucide di seluruh menu dan tabel selalu dirender. */
+(function () {
+    function renderAllLucideIcons() {
+        if (!window.lucide || typeof window.lucide.createIcons !== 'function') return;
+        try {
+            window.lucide.createIcons({
+                attrs: { 'stroke-width': 2 }
+            });
+        } catch (e) {
+            try { window.lucide.createIcons(); } catch (_) {}
+        }
+    }
+
+    function scheduleIcons() {
+        requestAnimationFrame(function () {
+            renderAllLucideIcons();
+            setTimeout(renderAllLucideIcons, 50);
+            setTimeout(renderAllLucideIcons, 250);
+        });
+    }
+
+    function startIconRenderer() {
+        scheduleIcons();
+        setTimeout(scheduleIcons, 500);
+        setTimeout(scheduleIcons, 1200);
+
+        if (window.MutationObserver) {
+            var observer = new MutationObserver(function (mutations) {
+                var needsRender = false;
+                for (var i = 0; i < mutations.length && !needsRender; i++) {
+                    var nodes = mutations[i].addedNodes || [];
+                    for (var j = 0; j < nodes.length; j++) {
+                        var node = nodes[j];
+                        if (node.nodeType !== 1) continue;
+                        if ((node.matches && node.matches('[data-lucide]')) ||
+                            (node.querySelector && node.querySelector('[data-lucide]'))) {
+                            needsRender = true;
+                            break;
+                        }
+                    }
+                }
+                if (needsRender) scheduleIcons();
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startIconRenderer);
+    } else {
+        startIconRenderer();
+    }
+    window.addEventListener('load', scheduleIcons);
+})();
 </script>
 
 <script>
