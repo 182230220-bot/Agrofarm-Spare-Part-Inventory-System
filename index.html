@@ -4041,7 +4041,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             sparepartOutDropdownOptions() {
                 const keyword = String(this.sparepartOutDropdownQuery || '').trim().toLowerCase();
                 const out = [];
-                const limit = 80;
+                const limit = keyword ? 20 : 5;
                 for (const i of (this.spareparts || [])) {
                     if ((Number(i?.qty) || 0) <= 0) continue;
                     if (!keyword || String(i?.nama || '').toLowerCase().includes(keyword)) out.push(i);
@@ -4053,7 +4053,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const keyword = String(this.masterAutocompleteQuery || '').trim().toLowerCase();
                 const key = String(this.masterDropdownKey || '');
                 const out = [];
-                const limit = 80;
+                const limit = keyword ? 20 : 5;
                 let source = this.masterCatalog || [];
                 let requirePositiveStock = false;
                 if (key.startsWith('sparepart-out-')) { source = this.spareparts || []; requirePositiveStock = true; }
@@ -4614,7 +4614,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.activeSparepartOutDropdown = idx;
                 this.sparepartOutDropdownQuery = String(item?.nama || '');
                 this.onSparepartMultiOutItemInput(item);
-                this.$nextTick(() => this.updateSparepartOutDropdownPosition(idx));
+
+                clearTimeout(this._sparepartOutDropdownRenderTimer);
+                this._sparepartOutDropdownRenderTimer = setTimeout(() => {
+                    this.$nextTick(() => this.updateSparepartOutDropdownPosition(idx));
+                }, 50);
             },
             updateSparepartOutDropdownPosition(idx) {
                 const el = this.$el.querySelector('[data-sparepart-out-input="' + idx + '"]');
@@ -4636,8 +4640,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 item.qty = Number(master.qty) || 0;
                 item.satuan = master.satuan || 'Pcs';
                 if (Number(item.outQty) > item.qty) item.outQty = item.qty || 1;
-                this.sparepartOutDropdownQuery = master.nama || '';
+                this.sparepartOutDropdownQuery = '';
                 this.activeSparepartOutDropdown = null;
+                this.masterDropdownKey = '';
+                this.masterAutocompleteQuery = '';
             },
             openMasterDropdown(key, item, event) {
                 this.masterDropdownKey = key;
@@ -4649,7 +4655,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.masterDropdownKey = key;
                 this.masterDropdownItem = item;
                 this.masterAutocompleteQuery = event?.target?.value ?? item?.nama ?? '';
-                this.$nextTick(() => this.updateMasterDropdownPosition(event?.target));
+
+                clearTimeout(this._masterDropdownRenderTimer);
+                const target = event?.target;
+                this._masterDropdownRenderTimer = setTimeout(() => {
+                    this.$nextTick(() => this.updateMasterDropdownPosition(target));
+                }, 50);
             },
             updateMasterDropdownPosition(el) {
                 if (!el) return;
@@ -8376,7 +8387,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const q = String(query || '').trim().toLowerCase();
                 const rawMaster = Vue.toRaw(this.masterCatalog || []);
                 if (!q) {
-                    this.planningAutocompleteResults = rawMaster.slice(0, 20);
+                    this.planningAutocompleteResults = rawMaster.slice(0, 5);
                     this.planningAutocompleteStatus = rawMaster.length ? 'ketik minimal 1 huruf / angka' : 'master kosong';
                     return;
                 }
@@ -9052,63 +9063,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
         } catch (_) {}
     };
     inventoryApp.mount('#app');
-</script>
-
-<script>
-/* Icon renderer only: memastikan semua data-lucide di seluruh menu dan tabel selalu dirender. */
-(function () {
-    function renderAllLucideIcons() {
-        if (!window.lucide || typeof window.lucide.createIcons !== 'function') return;
-        try {
-            window.lucide.createIcons({
-                attrs: { 'stroke-width': 2 }
-            });
-        } catch (e) {
-            try { window.lucide.createIcons(); } catch (_) {}
-        }
-    }
-
-    function scheduleIcons() {
-        requestAnimationFrame(function () {
-            renderAllLucideIcons();
-            setTimeout(renderAllLucideIcons, 50);
-            setTimeout(renderAllLucideIcons, 250);
-        });
-    }
-
-    function startIconRenderer() {
-        scheduleIcons();
-        setTimeout(scheduleIcons, 500);
-        setTimeout(scheduleIcons, 1200);
-
-        if (window.MutationObserver) {
-            var observer = new MutationObserver(function (mutations) {
-                var needsRender = false;
-                for (var i = 0; i < mutations.length && !needsRender; i++) {
-                    var nodes = mutations[i].addedNodes || [];
-                    for (var j = 0; j < nodes.length; j++) {
-                        var node = nodes[j];
-                        if (node.nodeType !== 1) continue;
-                        if ((node.matches && node.matches('[data-lucide]')) ||
-                            (node.querySelector && node.querySelector('[data-lucide]'))) {
-                            needsRender = true;
-                            break;
-                        }
-                    }
-                }
-                if (needsRender) scheduleIcons();
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-        }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', startIconRenderer);
-    } else {
-        startIconRenderer();
-    }
-    window.addEventListener('load', scheduleIcons);
-})();
 </script>
 
 <script>
