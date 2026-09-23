@@ -4301,7 +4301,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 
                 const nama = String(this.formMasterManual.nama || '').trim();
                 if (!nama) return alert('Nama Barang wajib diisi.');
-                if (!this.formMasterManual.tanggal) return alert('Tanggal Input wajib diisi.');
+
+                // Tanggal tetap editable. Jika kosong saat disimpan, gunakan hari ini.
+                const tanggalInput = String(this.formMasterManual.tanggal || '').trim() || this.getISODateOnly();
 
                 const normalize = value => String(value || '').trim().toLowerCase();
                 const existing = (this.masterCatalog || []).find(item => {
@@ -4323,7 +4325,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     minStock: Math.max(0, Math.round(Number(this.formMasterManual.minStock) || 0)),
                     currentStock: qty,
                     stockAwal: qty,
-                    tanggal: this.formMasterManual.tanggal,
+                    tanggal: tanggalInput,
                     leadTime: Math.max(0, Math.round(Number(this.formMasterManual.leadTime) || 0)),
                     avgDailyUsage: Math.max(0, Number(this.formMasterManual.avgDailyUsage) || 0),
                     satuan,
@@ -4374,24 +4376,43 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         return Math.max(0, Math.round(Number.isFinite(n) ? n : 0));
                     };
                     const parseDate = value => {
-                        if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0, 10);
+                        const today = this.getISODateOnly();
+
+                        if (value instanceof Date && !isNaN(value)) {
+                            return value.toISOString().slice(0, 10);
+                        }
+
+                        // Excel dapat menyimpan tanggal sebagai serial number.
+                        if (typeof value === 'number' && Number.isFinite(value)) {
+                            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                            const date = new Date(excelEpoch.getTime() + value * 86400000);
+                            if (!isNaN(date)) return date.toISOString().slice(0, 10);
+                        }
+
                         const raw = String(value || '').trim();
-                        if (!raw) return new Date().toISOString().slice(0, 10);
+                        if (!raw) return today;
+
                         const m = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
                         if (m) return `${m[3]}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
-                        return raw.slice(0, 10);
+
+                        const iso = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+                        if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
+
+                        return raw.slice(0, 10) || today;
                     };
 
                     const imported = rows.map((row, index) => {
                         const nama = String(findValue(row, ['namabarang','nama','item','deskripsi','namasparepart'])).trim();
-                        const kodeRaw = String(findValue(row, ['kodebarang','kode','sku','nomorsku','nomorsku'])).trim();
+                        const kodeRaw = String(findValue(row, ['kodebarang','kode','sku','nomorsku'])).trim();
                         const qty = parseQty(findValue(row, ['qtystockawal','qtystokawal','qty','stok','stock','stokawal','stockawal','stokakhir','stockakhir']));
                         const satuanRaw = String(findValue(row, ['satuanunit','satuan','unit','uom'])).trim();
                         const hargaRaw = findValue(row, ['hargasatuan','harga']);
                         const minStockRaw = findValue(row, ['bufferstok','buffer','minstock','stokminimum','minimumstok']);
                         const leadTimeRaw = findValue(row, ['leadtimedari','leadtime','leadtimedays']);
                         const lokasi = String(findValue(row, ['keteranganrak','lokasi','lokasirak','rak'])).trim();
+
                         if (!nama && !kodeRaw) return null;
+
                         return {
                             kode: (kodeRaw || `SKU-${Date.now()}-${index + 1}`).toUpperCase(),
                             nama: nama.toUpperCase(),
@@ -4399,6 +4420,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             minStock: parseQty(minStockRaw),
                             currentStock: qty,
                             stockAwal: qty,
+                            // Jika kolom tanggal tidak ada atau kosong, parseDate otomatis
+                            // mengembalikan tanggal hari ini. Jika valid, tanggal Excel dipertahankan.
                             tanggal: parseDate(findValue(row, ['tanggalinput','tanggal'])),
                             leadTime: parseQty(leadTimeRaw),
                             avgDailyUsage: Math.max(0, Number(findValue(row, ['pemakaianharian','avgdailyusage','pemakaianrataharian'])) || 0),
@@ -4409,9 +4432,58 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     }).filter(Boolean);
 
                     if (!imported.length) return alert('Tidak ada baris Data Master yang dapat dibaca dari file.');
-                    this.masterCatalog = imported;
+
+                    // Import TIDAK mengganti/reset Data Master existing.
+                    // SKU yang sama diperbarui hanya pada field yang memang berasal
+                    // dari Excel; SKU baru ditambahkan sebagai baris baru.
+                    const normalize = value => String(value || '').trim().toLowerCase();
+                    const existing = Array.isArray(this.masterCatalog) ? this.masterCatalog : [];
+                    const merged = existing.map(item => ({ ...item }));
+                    let added = 0;
+                    let updated = 0;
+
+                    imported.forEach(importedItem => {
+                        const targetIndex = importedItem.kode
+                            ? merged.findIndex(item => normalize(item.kode) === normalize(importedItem.kode))
+                            : -1;
+
+                        if (targetIndex >= 0) {
+                            // Pertahankan field existing yang tidak ada/benar di database.
+                            // Field Data Master yang ada di file Excel diperbarui dengan nilai Excel.
+                            const current = merged[targetIndex];
+                            merged[targetIndex] = {
+                                ...current,
+                                kode: importedItem.kode || current.kode,
+                                nama: importedItem.nama || current.nama,
+                                harga: importedItem.harga,
+                                minStock: importedItem.minStock,
+                                currentStock: importedItem.currentStock,
+                                stockAwal: importedItem.stockAwal,
+                                tanggal: importedItem.tanggal || this.getISODateOnly(),
+                                leadTime: importedItem.leadTime,
+                                avgDailyUsage: importedItem.avgDailyUsage,
+                                satuan: importedItem.satuan || current.satuan || 'Pcs',
+                                lokasi: importedItem.lokasi || current.lokasi || '',
+                                totalHarga: importedItem.totalHarga
+                            };
+                            updated++;
+                        } else {
+                            merged.push(importedItem);
+                            added++;
+                        }
+                    });
+
+                    this.masterCatalog = merged;
                     this.masterPage = 1;
-                    alert(`${imported.length} Data Master berhasil diimport.`);
+
+                    // Simpan state terbaru agar hasil import tidak tertimpa snapshot lama.
+                    const saved = await this.saveToSupabase();
+                    if (!saved) {
+                        alert(`Import selesai di layar (${added} baru, ${updated} diperbarui), tetapi gagal disimpan ke database.`);
+                        return;
+                    }
+
+                    alert(`Data Master berhasil diimport. ${added} data baru ditambahkan dan ${updated} data existing diperbarui tanpa menghapus data lain.`);
                 } catch (err) {
                     console.error('Import Data Master gagal:', err);
                     alert('Data Master gagal diimport. Pastikan format file Excel sesuai.');
@@ -4555,11 +4627,13 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const nama = String(this.editingMaster.nama || '').trim();
                 if (!nama) return alert('Nama Barang wajib diisi.');
                 const qty = Math.max(0, Math.round(Number(this.editingMaster.currentStock) || 0));
+                const tanggal = String(this.editingMaster.tanggal || '').trim() || this.getISODateOnly();
                 const proposed = {
                     ...this.editingMaster,
                     kode: String(this.editingMaster.kode || '').trim().toUpperCase(),
                     nama: nama.toUpperCase(),
                     currentStock: qty,
+                    tanggal,
                     stockAwal: Math.max(0, Math.round(Number(this.editingMaster.stockAwal ?? qty) || 0)),
                     minStock: Math.max(0, Math.round(Number(this.editingMaster.minStock) || 0)),
                     harga: Math.max(0, Number(this.editingMaster.harga) || 0),
@@ -5421,7 +5495,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     logs: raw(this.logs),
                     planningRequests: raw(this.planningRequests),
                     planningUsages: raw(this.planningUsages),
-                    opnameHistory: raw(this.opnameHistory)
+                    opnameHistory: raw(this.opnameHistory),
+                    // Penanda migrasi satu kali Data Master:
+                    // data existing lama sudah dipindahkan dari tanggal -> satuan.
+                    dataMasterTanggalSatuanMigrationV1: true
                 };
             },
             scheduleSupabaseSave(delay = 900) {
@@ -5543,6 +5620,42 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 // project Supabase belum mengaktifkan replication untuk inventory_state.
                 this.startSupabaseRealtimeFallback();
             },
+            migrateExistingMasterTanggalToSatuan(state) {
+                // Migrasi SATU KALI hanya untuk snapshot Data Master lama yang
+                // belum memiliki penanda migrasi. Setelah berhasil disimpan,
+                // penanda ini mencegah logic migrasi berjalan pada data baru.
+                if (!state || state.dataMasterTanggalSatuanMigrationV1 === true) {
+                    return { state, changed: false };
+                }
+
+                const needsMigrationMarker = true;
+                const today = this.getISODateOnly();
+                const source = Array.isArray(state.masterCatalog) ? state.masterCatalog : [];
+                let changed = false;
+
+                const migratedMaster = source.map(item => {
+                    const migrated = { ...item };
+                    const oldTanggal = String(item?.tanggal || '').trim();
+
+                    if (oldTanggal) {
+                        migrated.satuan = oldTanggal;
+                        migrated.tanggal = today;
+                        changed = true;
+                    } else if (!migrated.tanggal) {
+                        migrated.tanggal = today;
+                        changed = true;
+                    }
+
+                    return migrated;
+                });
+
+                if (changed || source.length === 0) {
+                    state.masterCatalog = migratedMaster;
+                }
+                state.dataMasterTanggalSatuanMigrationV1 = true;
+
+                return { state, changed: changed || needsMigrationMarker };
+            },
             async loadFromSupabase() {
                 const client = this.getSupabaseClient();
                 if (!client) {
@@ -5550,16 +5663,26 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     console.warn('Supabase belum dikonfigurasi. Isi SUPABASE_URL dan SUPABASE_PUBLISHABLE_KEY.');
                     return;
                 }
+
+                let shouldPersistMigration = false;
+
                 try {
                     const { data, error } = await client
                         .from('inventory_state')
                         .select('state,updated_at')
                         .eq('id', 'main')
                         .maybeSingle();
+
                     if (error) throw error;
+
                     if (data && data.state) {
                         this.supabaseLastUpdatedAt = data.updated_at || this.supabaseLastUpdatedAt || '';
-                        const state = data.state;
+
+                        let state = data.state;
+                        const migration = this.migrateExistingMasterTanggalToSatuan(state);
+                        state = migration.state;
+                        shouldPersistMigration = migration.changed;
+
                         this.masterCatalog = Array.isArray(state.masterCatalog) ? state.masterCatalog : [];
                         this.monitoringItems = Array.isArray(state.monitoringItems) ? state.monitoringItems : [];
                         this.monitoringHistory = Array.isArray(state.monitoringHistory) ? state.monitoringHistory : [];
@@ -5576,12 +5699,23 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         this.opnameHistory = Array.isArray(state.opnameHistory) ? state.opnameHistory : [];
                         this.syncMasterAndSparepart();
                     }
+
                     this.supabaseConnected = true;
                 } catch (err) {
                     console.error('Gagal mengambil data dari Supabase:', err);
                     alert('Data Supabase belum bisa dimuat. Cek koneksi, tabel inventory_state, dan RLS Supabase.');
                 } finally {
                     this.isHydratingFromSupabase = false;
+                }
+
+                // Jika snapshot lama belum memiliki penanda migrasi, simpan SATU KALI
+                // setelah state existing selesai dimuat. Tidak ada logic migrasi
+                // yang akan berjalan lagi pada data baru.
+                if (shouldPersistMigration && this.isAuthenticated) {
+                    const saved = await this.saveToSupabase();
+                    if (!saved) {
+                        console.warn('Migrasi Data Master berhasil diterapkan di layar, tetapi penanda migrasi belum tersimpan ke Supabase.');
+                    }
                 }
             },
             async saveToSupabase() {
