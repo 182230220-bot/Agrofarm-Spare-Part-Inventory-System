@@ -7121,12 +7121,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const namaBarang = String(item.nama || '').trim();
                 const namaKey = namaBarang.toLowerCase();
                 const gudang = this.activeTab === 'sisa_project' ? 'Sisa Project' : 'Sparepart';
-                const satuan = (masterItem && masterItem.satuan) || item.satuan || 'Pcs';
 
                 const masterItem = this.masterCatalog.find(master =>
                     String(master.nama || '').trim().toLowerCase() === namaKey ||
                     (item.kode && master.kode && String(master.kode).trim().toLowerCase() === String(item.kode).trim().toLowerCase())
                 );
+                const satuan = (masterItem && masterItem.satuan) || item.satuan || 'Pcs';
                 // Gudang Sisa Project TIDAK mengambil stock awal dari Data Master.
                 // Stock awal Sisa Project selalu berasal dari input/mutasi Gudang Sisa Project.
                 const stockAwalMaster = gudang === 'Sisa Project'
@@ -7343,7 +7343,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     const pageStyle = isLast ? '' : 'page-break-after: always;';
                     return `
                     <div class="stock-card-print" style="${pageStyle}">
-                        <div class="stock-card-heading" style="text-align:left; display:flex; align-items:center; gap:14px; border-bottom:2px solid #000; padding-bottom:6mm;">
+                        <div class="stock-card-heading" style="display:flex; align-items:center; gap:14px; border-bottom:2px solid #000; padding-bottom:6mm;">
                             <img src="${AGROFARM_LOGO}" alt="Agrofarm" style="height:35mm; width:auto; max-width:70mm; object-fit:contain;">
                             <div style="flex:1; text-align:center;">
                                 <div class="stock-card-title">KARTU STOCK BARANG</div>
@@ -9101,6 +9101,102 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
     thead { display: table-header-group !important; }
     tr { page-break-inside: avoid !important; break-inside: avoid !important; }
     img, svg { max-width: 100% !important; }
+}
+
+
+
+/* =========================================================
+   FINAL PRINT FIX — ALL PRINT TYPES
+   - Kartu Stock is explicitly printable.
+   - Print titles are centered.
+   - Keep margins so content is not clipped.
+   ========================================================= */
+@media print {
+    @page { margin: 12mm 10mm 12mm 10mm; }
+
+    html, body {
+        width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    #app > main {
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Kartu Stock / Stock report print container */
+    body.printing-label #label-print-area {
+        display: block !important;
+        visibility: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    body.printing-label .stock-card-print,
+    body.printing-label .stock-print-document {
+        display: block !important;
+        visibility: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
+    body.printing-label .stock-card-title,
+    body.printing-label .stock-print-title,
+    body.printing-label .stock-print-subtitle,
+    body.printing-label .stock-print-warehouse {
+        text-align: center !important;
+    }
+
+    body.printing-label .stock-card-heading {
+        text-align: center !important;
+    }
+
+    body.printing-label .stock-card-heading > div {
+        text-align: center !important;
+    }
+
+    body.printing-label .stock-print-header {
+        align-items: center !important;
+    }
+
+    body.printing-label .stock-print-header > div:nth-child(2) {
+        text-align: center !important;
+        flex: 1 1 auto !important;
+    }
+
+    body.printing-label table {
+        max-width: 100% !important;
+    }
+
+    /* Semua judul pada area print biasa */
+    .temporary-print-logo-header,
+    .temporary-print-logo-header * {
+        text-align: center !important;
+    }
+
+    .temporary-print-logo-header > div:first-child > div:first-child {
+        text-align: center !important;
+    }
+
+    table {
+        max-width: 100% !important;
+    }
+
+    thead { display: table-header-group !important; }
+    tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+    img { max-width: 100% !important; }
 }
 
 </style>${pages}`;
