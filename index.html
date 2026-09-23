@@ -637,6 +637,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <div v-if="bastData.kodeDept"><span class="bast-label">Kode Dept</span> : {{ bastData.kodeDept }}</div>
                             <div v-if="bastData.noPO"><span class="bast-label">No. PO</span> : {{ bastData.noPO }}</div>
                             <div v-if="bastData.noSJ"><span class="bast-label">No. SJ</span> : {{ bastData.noSJ }}</div>
+                            <div v-if="bastData.nomorPR"><span class="bast-label">No. PR</span> : {{ bastData.nomorPR }}</div>
                         </td>
                         <td style="width:50%;">
                             <div v-if="bastData.supplier"><span class="bast-label">Supplier</span> : {{ bastData.supplier }}</div>
@@ -1538,7 +1539,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <thead class="bg-emerald-50/70 font-bold text-emerald-900 uppercase text-[9px] border-b border-emerald-200 sticky top-0">
                                 <tr>
                                     <th class="p-2.5 text-center">No</th>
-                                    <th class="p-2.5 text-center">Tgl Order</th>
+                                    <th class="p-2.5 text-center">Tgl Penerimaan</th>
                                     <th class="p-2.5">Nama Barang</th>
                                     <th class="p-2.5 text-center">Satuan</th>
                                     <th class="p-2.5 text-center">Total Order</th>
@@ -1553,7 +1554,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <tr v-for="(h, idx) in monitoringHistoryIn.slice((purchaseRequestHistoryPage - 1) * purchaseRequestHistoryPageSize, purchaseRequestHistoryPage * purchaseRequestHistoryPageSize)" :key="h.id" class="hover:bg-emerald-50/30">
                                     <td class="p-2.5 text-center font-bold text-slate-400">{{ ((purchaseRequestHistoryPage - 1) * purchaseRequestHistoryPageSize) + idx + 1 }}</td>
                                     <td class="p-2.5 text-center font-mono text-slate-600 font-bold text-[10px]">
-                                        <div>{{ (monitoringItems.find(o => o.id === h.monitoringOrderId)?.tgl) || h.tgl || '-' }}</div>
+                                        <div>{{ h.tgl || '-' }}</div>
                                         <div class="text-[9px] text-emerald-700 font-black mt-1">No. PR: {{ h.nomorPR || monitoringItems.find(o => o.id === h.monitoringOrderId)?.nomorPR || '-' }}</div>
                                     </td>
                                     <td class="p-2.5 font-bold text-slate-800 uppercase">{{ h.nama }}</td>
@@ -3407,7 +3408,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             return {
                 activeTab: 'dashboard',
                 activeItem: {},
-                bastData: { noBPB: '', date: '', printDate: '', supplier: '', alamat: '', kodeSupplier: '', kodeDept: '', noPO: '', noSJ: '', nama: '', qtyReceived: 0, satuan: '', hasilAnalisa: '', createdBy: '', approvedBy: '', verifiedBy: '' },
+                bastData: { noBPB: '', date: '', printDate: '', supplier: '', alamat: '', kodeSupplier: '', kodeDept: '', noPO: '', noSJ: '', nomorPR: '', nama: '', qtyReceived: 0, satuan: '', hasilAnalisa: '', createdBy: '', approvedBy: '', verifiedBy: '' },
                 showPrices: true,
                 showPlanningPrices: true,
                 dashFilterDateStart: new Date().toISOString().slice(0, 10),
@@ -6429,6 +6430,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     kodeDept: order.kodeDept || order.departemen || '',
                     noPO: order.noPO || order.nomorPO || order.po || '',
                     noSJ: order.noSJ || order.nomorSJ || order.sj || '',
+                    nomorPR: order.nomorPR || '',
                     nama: order.nama || '',
                     qtyReceived,
                     satuan: order.satuan || this.getMasterSatuan(order.nama) || '',
