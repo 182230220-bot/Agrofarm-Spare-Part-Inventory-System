@@ -1046,6 +1046,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
                                             <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                            <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="text-rose-600 hover:text-rose-800 text-[10px] font-bold underline">Cancel</button>
                                         </td>
                                     </tr>
                                     <tr v-if="filteredSparepartLogsIn.length === 0">
@@ -1099,6 +1100,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
                                             <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                            <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="text-rose-600 hover:text-rose-800 text-[10px] font-bold underline">Cancel</button>
                                         </td>
                                     </tr>
                                     <tr v-if="filteredSparepartLogsOut.length === 0">
@@ -2286,7 +2288,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center no-print">
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
                                         <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
-                                        <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
+                                        <button v-if="canEdit && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
@@ -2352,7 +2354,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center no-print">
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
                                         <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
-                                        <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
+                                        <button v-if="canEdit && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
@@ -2651,7 +2653,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center no-print">
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
                                         <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
-                                        <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
+                                        <button v-if="canEdit && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
@@ -2717,7 +2719,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center no-print">
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
                                         <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
-                                        <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
+                                        <button v-if="canEdit && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
@@ -6203,10 +6205,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const editedDateObj = this.getDateFromInput(editedDate);
                 const editedDateIso = editedDateObj.toISOString();
                 const editedDateDisplay = this.getFormattedDateOnly(editedDateObj);
+                const dateChanged = String(log.isoDate || '') !== String(editedDateIso);
 
                 log.isoDate = editedDateIso;
                 log.tgl = editedDateDisplay;
-                const dateChanged = String(log.isoDate || '') !== String(editedDateIso);
                 if (diff === 0 && !dateChanged) return;
 
                 // Transaksi pending belum memengaruhi stok, jadi Admin hanya mengubah data pengajuan.
@@ -8805,10 +8807,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const judulGudang = isSparepart ? 'SPARE PART' : 'SISA PROJECT';
                 const showPrice = isSparepart ? this.sparepartShowPrices : this.sisaProjectShowPrices;
                 const source = isSparepart
-                    ? (Array.isArray(this.filteredMasterCatalog) ? this.filteredMasterCatalog.map(item => ({
+                    ? (Array.isArray(this.filteredSpareparts) ? this.filteredSpareparts.map(item => ({
                         ...item,
-                        // PERSIS seperti kolom Qty / Stock Awal pada tabel Data Master.
-                        qty: Math.max(0, Math.round(Number(item.stockAwal ?? item.currentStock ?? 0) || 0)),
+                        // SAMA dengan stok yang sedang ditampilkan di Gudang Spare Part / cetak stok.
+                        qty: Math.max(0, Math.round(Number(item.qty) || 0)),
                         satuan: item.satuan || 'Pcs',
                         lokasi: item.lokasi || item.lokasiRak || item.rak || ''
                     })) : [])
@@ -8837,13 +8839,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             printStockGudang(gudang) {
                 if (!this.canPrint) return alert('Akun Viewer hanya dapat melihat data dan tidak dapat mencetak.');
-                this.syncMasterAndSparepart();
                 const namaGudang = String(gudang || '').trim().toLowerCase();
                 const isSparepart = namaGudang === 'sparepart' || namaGudang === 'spare part';
                 const judulGudang = isSparepart ? 'SPARE PART' : 'SISA PROJECT';
                 const showPrice = isSparepart ? this.sparepartShowPrices : this.sisaProjectShowPrices;
+                // Untuk Spare Part, gunakan saldo yang sama persis dengan tabel Gudang Spare Part.
+                // Jangan mengambil ulang stok dari Data Master saat proses cetak agar saldo cetak tidak berbeda.
                 const source = isSparepart
-                    ? (this.spareparts || []).map(s => ({...s, qty: Math.max(0, Math.round(Number(s.qty) || 0)), harga: Math.max(0, Number(s.harga) || 0), satuan: s.satuan || 'PCS', lokasi: s.lokasi || ''}))
+                    ? (this.filteredSpareparts || []).map(s => ({...s, qty: Math.max(0, Math.round(Number(s.qty) || 0)), harga: Math.max(0, Number(s.harga) || 0), satuan: s.satuan || 'PCS', lokasi: s.lokasi || ''}))
                     : (this.sisaProjects || []).map(item => {
                         const master = (this.masterCatalog || []).find(m =>
                             (item.kode && m.kode && String(item.kode).trim().toLowerCase() === String(m.kode).trim().toLowerCase()) ||
