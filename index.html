@@ -1073,10 +1073,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <th class="p-2 text-center">Qty</th>
                                         <th class="p-2 text-center">Qty Awal</th>
                                         <th class="p-2 text-center">Qty Akhir</th>
+                                        <th class="p-2">Penerima / Kepentingan</th>
+                                        <th class="p-2">Keterangan</th>
                                         <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Satuan</th>
                                         <th v-if="sparepartShowPrices" class="p-2 text-right">Harga Total</th>
-                                        <th class="p-2">Penerima / Kepentingan</th>
-                                    <th class="p-2">Keterangan</th>
                                         <th class="p-2 text-center no-print">Status / Aksi</th>
                                     </tr>
                                 </thead>
@@ -1091,10 +1091,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <td class="p-2 text-center font-bold text-amber-700 bg-amber-50/50 rounded">-{{ log.qty }}</td>
                                         <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
                                         <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
-                                        <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
-                                        <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
+                                        <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
+                                        <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
                                             <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
@@ -1102,7 +1102,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         </td>
                                     </tr>
                                     <tr v-if="filteredSparepartLogsOut.length === 0">
-                                        <td colspan="6" class="p-6 text-center text-slate-400 italic text-[11px]">-</td>
+                                        <td colspan="11" class="p-6 text-center text-slate-400 italic text-[11px]">-</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2286,6 +2286,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center no-print">
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
                                         <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                        <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
@@ -2338,8 +2339,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center font-bold text-amber-600">-{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
-                                    <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
-                                    <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                     <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
@@ -2353,6 +2352,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center no-print">
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
                                         <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                        <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
@@ -2651,6 +2651,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center no-print">
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
                                         <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                        <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
@@ -2716,6 +2717,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2 text-center no-print">
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
                                         <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                        <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
                                 </tr>
@@ -5672,6 +5674,59 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     alert(err?.message || 'Transaksi gagal disetujui.');
                 }
             },
+            async cancelTransaction(log) {
+                if (!log) return;
+                if (!this.canEdit) return alert('Hanya Super Admin yang dapat membatalkan transaksi yang sudah disetujui.');
+                if (this.isPendingLog(log)) {
+                    log.status = 'Cancelled';
+                    log.approvalStatus = 'cancelled';
+                    log.isCancelled = true;
+                    log.cancelledAt = new Date().toISOString();
+                    log.cancelledBy = this.authUser?.email || this.authUser?.id || 'Super Admin';
+                    this.scheduleSupabaseSave();
+                    return alert('Transaksi pending berhasil dibatalkan.');
+                }
+                if (log.isCancelled || ['cancel','cancelled','canceled'].includes(String(log.status || log.approvalStatus || '').trim().toLowerCase())) return;
+                if (!confirm(`Batalkan transaksi ${log.type === 'IN' ? 'Inbound' : 'Outbound'} ${log.nama} sebanyak ${log.qty}?\n\nStok dan perhitungan saldo akan dikembalikan.`)) return;
+
+                const qty = Number(log.qty) || 0;
+                const normalize = v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+                const list = log.gudang === 'Sparepart' ? this.spareparts : this.sisaProjects;
+                let stockItem = list.find(s => (log.barcode && String(s.barcode || '') === String(log.barcode)) || normalize(s.nama) === normalize(log.nama));
+                if (!stockItem) return alert(`Barang ${log.nama} tidak ditemukan di stok.`);
+
+                // IN dibatalkan = stok dikurangi kembali; OUT dibatalkan = stok dikembalikan.
+                if (log.type === 'IN') {
+                    if ((Number(stockItem.qty) || 0) < qty) return alert('Transaksi inbound tidak dapat dibatalkan karena stok saat ini sudah lebih kecil dari qty transaksi.');
+                    stockItem.qty = (Number(stockItem.qty) || 0) - qty;
+                } else {
+                    stockItem.qty = (Number(stockItem.qty) || 0) + qty;
+                }
+                stockItem.totalHarga = this.getMasterHarga(stockItem.nama, stockItem.harga) * (Number(stockItem.qty) || 0);
+                if (log.gudang === 'Sparepart') this.syncMasterStockForSparepart(stockItem);
+
+                // Jika inbound berasal dari Purchase Request, kembalikan qty diterima ke order.
+                if (log.type === 'IN' && log.monitoringOrderId) {
+                    const order = this.monitoringItems.find(o => String(o.id) === String(log.monitoringOrderId));
+                    if (order) {
+                        order.qtyReceived = Math.max(0, (Number(order.qtyReceived) || 0) - qty);
+                        order.qtyRemaining = Math.max(0, (Number(order.qtyTotal) || 0) - order.qtyReceived);
+                        order.status = order.qtyRemaining <= 0 ? 'Diterima Semua' : order.qtyReceived > 0 ? 'Diterima Sebagian' : 'Pending';
+                        this.monitoringHistory.forEach(h => { if (String(h.monitoringOrderId) === String(order.id)) h.status = order.status; });
+                    }
+                }
+
+                log.status = 'Cancelled';
+                log.approvalStatus = 'cancelled';
+                log.isCancelled = true;
+                log.originalQty = qty;
+                log.cancelledAt = new Date().toISOString();
+                log.cancelledBy = this.authUser?.email || this.authUser?.id || 'Super Admin';
+                this.syncWarehouseLogBalances();
+                const saved = await this.saveToSupabase();
+                if (!saved) return alert('Pembatalan gagal disimpan ke server.');
+                alert('Transaksi berhasil dibatalkan dan stok sudah disesuaikan.');
+            },
             async unapproveTransaction(log) {
                 const deviceOk = await this.touchDeviceSession();
                 if (!deviceOk) return;
@@ -6127,19 +6182,43 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     : log;
 
                 const oldQty = Number(log.qty) || 0;
+
+                // Pilih tanggal baru terlebih dahulu. Tanggal internal tetap ISO,
+                // sedangkan tanggal yang ditampilkan tetap DD/MM/YYYY.
+                const existingDate = log.isoDate
+                    ? this.getISODateOnly(new Date(log.isoDate))
+                    : (() => {
+                        const raw = String(log.tgl || '').trim();
+                        const m = raw.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+                        return m ? `${m[3]}-${m[2]}-${m[1]}` : this.getISODateOnly();
+                    })();
+                const editedDate = await this.pickTransactionDate(existingDate, `Edit Tanggal Transaksi - ${log.nama}`);
+                if (!editedDate) return;
+
                 const newQtyInput = prompt(`Adjust Qty untuk ${log.nama} (${log.type}):`, oldQty);
                 if (newQtyInput === null || isNaN(newQtyInput) || Number(newQtyInput) <= 0) return;
 
                 const newQty = Number(newQtyInput);
                 const diff = newQty - oldQty;
-                if (diff === 0) return;
+                const editedDateObj = this.getDateFromInput(editedDate);
+                const editedDateIso = editedDateObj.toISOString();
+                const editedDateDisplay = this.getFormattedDateOnly(editedDateObj);
+
+                log.isoDate = editedDateIso;
+                log.tgl = editedDateDisplay;
+                const dateChanged = String(log.isoDate || '') !== String(editedDateIso);
+                if (diff === 0 && !dateChanged) return;
 
                 // Transaksi pending belum memengaruhi stok, jadi Admin hanya mengubah data pengajuan.
                 if (isPending) {
                     log.qty = newQty;
                     if (log.monitoringHistoryId != null) {
                         const mh = this.monitoringHistory.find(h => h.id === log.monitoringHistoryId);
-                        if (mh) mh.qty = newQty;
+                        if (mh) {
+                            mh.qty = newQty;
+                            mh.isoDate = editedDateIso;
+                            mh.tgl = editedDateDisplay;
+                        }
                     }
                     log.editedAt = `edited tanggal ${this.getFormattedDateOnly()}`;
                     alert('Data transaksi yang belum disetujui berhasil diedit. Stok belum berubah.');
@@ -6147,7 +6226,22 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     return;
                 }
 
-                const dateStr = this.getFormattedDateOnly();
+                const dateStr = editedDateDisplay;
+                if (diff === 0) {
+                    log.editedAt = `edited tanggal ${dateStr}`;
+                    if (linkedLog && linkedLog !== log) {
+                        linkedLog.isoDate = editedDateIso;
+                        linkedLog.tgl = editedDateDisplay;
+                        linkedLog.editedAt = `edited tanggal ${dateStr}`;
+                    }
+                    if (log.monitoringHistoryId != null) {
+                        const mh = this.monitoringHistory.find(h => String(h.id) === String(log.monitoringHistoryId));
+                        if (mh) { mh.isoDate = editedDateIso; mh.tgl = editedDateDisplay; mh.editedAt = `edited tanggal ${dateStr}`; }
+                    }
+                    this.scheduleSupabaseSave();
+                    alert('Tanggal transaksi berhasil diubah.');
+                    return;
+                }
                 const receiptLog = linkedLog && linkedLog.type === 'IN' ? linkedLog : null;
                 const isMonitoringReceipt = log.type === 'IN' && (
                     isMonitoringHistory ||
@@ -6222,13 +6316,19 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 
                     // 2. Ubah record yang sedang diedit.
                     log.qty = newQty;
+                    log.isoDate = editedDateIso;
+                    log.tgl = editedDateDisplay;
                     log.editedAt = `edited tanggal ${dateStr}`;
                     if (receiptLog && receiptLog !== log) {
                         receiptLog.qty = newQty;
+                        receiptLog.isoDate = editedDateIso;
+                        receiptLog.tgl = editedDateDisplay;
                         receiptLog.editedAt = `edited tanggal ${dateStr}`;
                     }
                     if (historyItem) {
                         historyItem.qty = newQty;
+                        historyItem.isoDate = editedDateIso;
+                        historyItem.tgl = editedDateDisplay;
                         historyItem.editedAt = `edited tanggal ${dateStr}`;
                     }
 
@@ -6644,7 +6744,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     { gudang: 'Sparepart', stocks: this.spareparts || [] },
                     { gudang: 'Sisa Project', stocks: this.sisaProjects || [] }
                 ];
-                const isApproved = log => !this.isPendingLog(log) && String(log?.adjustmentType || '').toUpperCase() !== 'OPNAME';
+                const isApproved = log => !this.isPendingLog(log) && String(log?.adjustmentType || '').toUpperCase() !== 'OPNAME' && !['cancel', 'cancelled', 'canceled'].includes(String(log?.status || log?.approvalStatus || '').trim().toLowerCase()) && log?.isCancelled !== true && !log?.cancelledAt;
                 const sortLogs = (a, b) => new Date(a.createdAt || a.inputAt || a.isoDate || a.id || 0).getTime() - new Date(b.createdAt || b.inputAt || b.isoDate || b.id || 0).getTime();
 
                 // KUNCI PERBAIKAN:
