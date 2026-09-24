@@ -3346,7 +3346,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Harga Satuan (Rp)</label>
-                                <input v-model.number="item.harga" type="number" min="0" step="any" class="w-full p-1.5 bg-white font-bold text-xs text-right border border-emerald-300 rounded-md">
+                                <input v-model.number="item.harga" @mousedown.stop @click.stop type="number" min="0" step="any" class="w-full p-1.5 bg-white font-bold text-xs text-right border border-emerald-300 rounded-md">
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Satuan</label>
@@ -3382,19 +3382,19 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Transaksi / Tanggal Pengeluaran *</label>
-                        <input v-model="formSparepartMultiOut.tanggal" type="date" required class="w-full p-2.5 bg-amber-50 border-2 border-amber-500 rounded-xl font-extrabold text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
+                        <input v-model="formSparepartMultiOut.tanggal" @mousedown.stop @click.stop type="date" required class="w-full p-2.5 bg-amber-50 border-2 border-amber-500 rounded-xl font-extrabold text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nomor Purchase Request</label>
-                        <input v-model="formSparepartMultiOut.nomorPR" type="text" placeholder="Nomor PR (jika ada)" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                        <input v-model="formSparepartMultiOut.nomorPR" @mousedown.stop @click.stop type="text" placeholder="Nomor PR (jika ada)" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Penerima *</label>
-                        <input v-model="formSparepartMultiOut.penerima" type="text" placeholder="Nama penerima barang" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                        <input v-model="formSparepartMultiOut.penerima" @mousedown.stop @click.stop type="text" placeholder="Nama penerima barang" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Kepentingan / Keterangan *</label>
-                        <input v-model="formSparepartMultiOut.keperluan" type="text" placeholder="Maintenance / Produksi" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                        <input v-model="formSparepartMultiOut.keperluan" @mousedown.stop @click.stop type="text" placeholder="Maintenance / Produksi" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
                     </div>
                 </div>
 
@@ -3411,7 +3411,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             <div class="relative flex-1 mr-2">
                                 <div class="relative flex-1">
                                     <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-amber-500 pointer-events-none"></i>
-                                    <input v-model="item.nama" @focus="openSparepartOutDropdown(idx, item)" @click.stop="openSparepartOutDropdown(idx, item)" @input="updateSparepartOutDropdown(idx, item)" :data-sparepart-out-input="idx" type="text" autocomplete="off" spellcheck="false" placeholder="Ketik untuk cari barang dari stok sparepart..." class="w-full pl-8 pr-2 py-2 font-bold text-xs uppercase bg-white border-2 border-amber-300 rounded-md cursor-text outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
+                                    <input v-model="item.nama" @mousedown.stop @focus="openSparepartOutDropdown(idx, item)" @click.stop="openSparepartOutDropdown(idx, item)" @input.stop="updateSparepartOutDropdown(idx, item)" :data-sparepart-out-input="idx" type="text" autocomplete="off" spellcheck="false" placeholder="Ketik untuk cari barang dari stok sparepart..." class="w-full pl-8 pr-2 py-2 font-bold text-xs uppercase bg-white border-2 border-amber-300 rounded-md cursor-text outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
                                     <!-- Dropdown ditampilkan via Teleport agar TIDAK terpotong oleh overflow-y-auto modal -->
                                 </div>
                             </div>
@@ -3424,7 +3424,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Qty Keluar</label>
-                                <input v-model.number="item.outQty" type="number" min="1" :max="item.qty" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-amber-300 rounded-md">
+                                <input v-model.number="item.outQty" @mousedown.stop @click.stop type="number" min="1" :max="item.qty" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-amber-300 rounded-md">
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Harga Satuan (Rp)</label>
@@ -3545,23 +3545,23 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Tanggal Transaksi / Tanggal Pengeluaran *</label>
-                        <input v-model="formSisaProjectMultiOut.tanggal" type="date" required class="w-full p-2.5 bg-amber-50 border-2 border-amber-500 rounded-xl font-extrabold text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
+                        <input v-model="formSisaProjectMultiOut.tanggal" @mousedown.stop @click.stop type="date" required class="w-full p-2.5 bg-amber-50 border-2 border-amber-500 rounded-xl font-extrabold text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-200">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nomor Purchase Request</label>
-                        <input v-model="formSisaProjectMultiOut.nomorPR" type="text" placeholder="Nomor PR (jika ada)" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                        <input v-model="formSisaProjectMultiOut.nomorPR" @mousedown.stop @click.stop type="text" placeholder="Nomor PR (jika ada)" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Yang Menyerahkan *</label>
-                        <input v-model="formSisaProjectMultiOut.penyerah" type="text" placeholder="Nama yang menyerahkan barang" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                        <input v-model="formSisaProjectMultiOut.penyerah" @mousedown.stop @click.stop type="text" placeholder="Nama yang menyerahkan barang" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Nama Penerima *</label>
-                        <input v-model="formSisaProjectMultiOut.penerima" type="text" placeholder="Nama penerima barang" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                        <input v-model="formSisaProjectMultiOut.penerima" @mousedown.stop @click.stop type="text" placeholder="Nama penerima barang" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Kepentingan / Project *</label>
-                        <input v-model="formSisaProjectMultiOut.keperluan" type="text" placeholder="Kepentingan / nama project" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
+                        <input v-model="formSisaProjectMultiOut.keperluan" @mousedown.stop @click.stop type="text" placeholder="Kepentingan / nama project" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 outline-none uppercase focus:border-amber-500">
                     </div>
                 </div>
 
@@ -3576,7 +3576,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     <div v-for="(item, idx) in formSisaProjectMultiOut.selectedItems" :key="idx" class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 space-y-2">
                         <div class="flex justify-between items-center">
                             <div class="relative flex-1 mr-2">
-                                <input v-model="item.nama" @focus="openMasterDropdown('sisa-out-' + idx, item, $event)" @blur="scheduleCloseMasterDropdown('sisa-out-' + idx)" @input="updateMasterDropdown('sisa-out-' + idx, item, $event); onSisaProjectMultiOutItemInput(item)" :data-master-dropdown-input="'sisa-out-' + idx" type="text" autocomplete="off" spellcheck="false" placeholder="Ketik untuk cari / pilih barang..." class="w-full font-bold text-xs uppercase bg-white p-1.5 border-2 border-amber-300 rounded-md">
+                                <input v-model="item.nama" @mousedown.stop @focus="openMasterDropdown('sisa-out-' + idx, item, $event)" @blur="scheduleCloseMasterDropdown('sisa-out-' + idx)" @input.stop="updateMasterDropdown('sisa-out-' + idx, item, $event); onSisaProjectMultiOutItemInput(item)" :data-master-dropdown-input="'sisa-out-' + idx" type="text" autocomplete="off" spellcheck="false" placeholder="Ketik untuk cari / pilih barang..." class="w-full font-bold text-xs uppercase bg-white p-1.5 border-2 border-amber-300 rounded-md">
                             </div>
                             <button @click="removeSisaProjectOutItem(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-xs">&times; Hapus</button>
                         </div>
@@ -3587,7 +3587,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Qty Keluar</label>
-                                <input v-model.number="item.outQty" type="number" min="1" :max="item.qty" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-amber-300 rounded-md">
+                                <input v-model.number="item.outQty" @mousedown.stop @click.stop type="number" min="1" :max="item.qty" class="w-full p-1.5 bg-white font-bold text-xs text-center border border-amber-300 rounded-md">
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Satuan</label>
@@ -3595,7 +3595,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Harga Satuan (Rp)</label>
-                                <input v-model.number="item.harga" type="number" min="0" step="any" class="w-full p-1.5 bg-white font-bold text-xs text-right border border-amber-300 rounded-md">
+                                <input v-model.number="item.harga" @mousedown.stop @click.stop type="number" min="0" step="any" class="w-full p-1.5 bg-white font-bold text-xs text-right border border-amber-300 rounded-md">
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase block">Lokasi Rak</label>
@@ -5680,13 +5680,26 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (!log) return;
                 if (!this.canEdit) return alert('Hanya Super Admin yang dapat membatalkan transaksi yang sudah disetujui.');
                 if (this.isPendingLog(log)) {
+                    const previousStatus = log.status;
+                    const previousApprovalStatus = log.approvalStatus;
+                    const previousIsCancelled = log.isCancelled;
+                    const previousCancelledAt = log.cancelledAt;
+                    const previousCancelledBy = log.cancelledBy;
                     log.status = 'Cancelled';
                     log.approvalStatus = 'cancelled';
                     log.isCancelled = true;
                     log.cancelledAt = new Date().toISOString();
                     log.cancelledBy = this.authUser?.email || this.authUser?.id || 'Super Admin';
-                    this.scheduleSupabaseSave();
-                    return alert('Transaksi pending berhasil dibatalkan.');
+                    const savedPendingCancel = await this.saveToSupabase();
+                    if (!savedPendingCancel) {
+                        log.status = previousStatus;
+                        log.approvalStatus = previousApprovalStatus;
+                        if (previousIsCancelled === undefined) delete log.isCancelled; else log.isCancelled = previousIsCancelled;
+                        if (previousCancelledAt === undefined) delete log.cancelledAt; else log.cancelledAt = previousCancelledAt;
+                        if (previousCancelledBy === undefined) delete log.cancelledBy; else log.cancelledBy = previousCancelledBy;
+                        return alert('Pembatalan gagal disimpan ke Supabase. Perubahan dibatalkan.');
+                    }
+                    return alert('Transaksi pending berhasil dibatalkan dan langsung disimpan ke Supabase.');
                 }
                 if (log.isCancelled || ['cancel','cancelled','canceled'].includes(String(log.status || log.approvalStatus || '').trim().toLowerCase())) return;
                 if (!confirm(`Batalkan transaksi ${log.type === 'IN' ? 'Inbound' : 'Outbound'} ${log.nama} sebanyak ${log.qty}?\n\nStok dan perhitungan saldo akan dikembalikan.`)) return;
@@ -6040,6 +6053,63 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     this.isHydratingFromSupabase = false;
                 }
             },
+            async saveEditedLogToSupabase(log, expectedIso, expectedDisplay) {
+                const saved = await this.saveToSupabase();
+                if (!saved) return false;
+
+                // Verifikasi bahwa tanggal yang baru benar-benar sudah menjadi state
+                // yang tersimpan di Supabase. Ini mencegah snapshot lama menimpa
+                // hasil edit ketika halaman/realtime melakukan sinkronisasi.
+                const client = this.getSupabaseClient();
+                if (!client || !log) return saved;
+
+                const matchesDate = state => {
+                    const logs = Array.isArray(state?.logs) ? state.logs : [];
+                    const histories = Array.isArray(state?.monitoringHistory) ? state.monitoringHistory : [];
+                    const target = [...logs, ...histories].find(x => String(x?.id) === String(log.id));
+                    if (!target) return false;
+                    return String(target.isoDate || '') === String(expectedIso || '') &&
+                           String(target.tgl || '') === String(expectedDisplay || '');
+                };
+
+                try {
+                    const { data, error } = await client
+                        .from('inventory_state')
+                        .select('state,updated_at')
+                        .eq('id', 'main')
+                        .maybeSingle();
+                    if (error) throw error;
+
+                    if (matchesDate(data?.state)) {
+                        this.supabaseLastUpdatedAt = data.updated_at || this.supabaseLastUpdatedAt || '';
+                        this.supabaseLocalDirty = false;
+                        return true;
+                    }
+
+                    // Jika state yang terbaca belum memuat edit tanggal, tulis ulang
+                    // state terbaru sekali lagi lalu verifikasi kembali.
+                    this.supabaseLocalDirty = true;
+                    const retrySaved = await this.saveToSupabase();
+                    if (!retrySaved) return false;
+
+                    const { data: verifyData, error: verifyError } = await client
+                        .from('inventory_state')
+                        .select('state,updated_at')
+                        .eq('id', 'main')
+                        .maybeSingle();
+                    if (verifyError) throw verifyError;
+
+                    const verified = matchesDate(verifyData?.state);
+                    if (verified) {
+                        this.supabaseLastUpdatedAt = verifyData.updated_at || this.supabaseLastUpdatedAt || '';
+                        this.supabaseLocalDirty = false;
+                    }
+                    return verified;
+                } catch (err) {
+                    console.error('Verifikasi edit tanggal ke Supabase gagal:', err);
+                    return false;
+                }
+            },
             async saveToSupabase() {
                 if (this.isHydratingFromSupabase) return false;
                 // Verifikasi role + sesi perangkat setiap kali state akan ditulis.
@@ -6223,8 +6293,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         }
                     }
                     log.editedAt = `edited tanggal ${this.getFormattedDateOnly()}`;
-                    alert('Data transaksi yang belum disetujui berhasil diedit. Stok belum berubah.');
-                    this.scheduleSupabaseSave();
+                    const savedPendingEdit = await this.saveEditedLogToSupabase(log, editedDateIso, editedDateDisplay);
+                    if (!savedPendingEdit) return alert('Edit transaksi gagal disimpan ke Supabase.');
+                    alert('Data transaksi yang belum disetujui berhasil diedit dan langsung disimpan ke Supabase. Stok belum berubah.');
                     return;
                 }
 
@@ -6240,8 +6311,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         const mh = this.monitoringHistory.find(h => String(h.id) === String(log.monitoringHistoryId));
                         if (mh) { mh.isoDate = editedDateIso; mh.tgl = editedDateDisplay; mh.editedAt = `edited tanggal ${dateStr}`; }
                     }
-                    this.scheduleSupabaseSave();
-                    alert('Tanggal transaksi berhasil diubah.');
+                    const savedDateEdit = await this.saveEditedLogToSupabase(log, editedDateIso, editedDateDisplay);
+                    if (!savedDateEdit) return alert('Perubahan tanggal gagal disimpan ke Supabase.');
+                    alert('Tanggal transaksi berhasil diubah dan langsung disimpan ke Supabase.');
                     return;
                 }
                 const receiptLog = linkedLog && linkedLog.type === 'IN' ? linkedLog : null;
@@ -6391,7 +6463,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     );
                     if (masterItem) masterItem.currentStock = Number(stockItem.qty) || 0;
 
-                    alert('Qty penerimaan berhasil diubah. Monitoring, History, Sparepart, Master Data, Qty Awal, Qty Akhir, dan Total Stok sudah otomatis disesuaikan.');
+                    const savedMonitoringEdit = await this.saveEditedLogToSupabase(log, editedDateIso, editedDateDisplay);
+                    if (!savedMonitoringEdit) return alert('Edit penerimaan gagal disimpan ke Supabase.');
+                    alert('Qty penerimaan berhasil diubah dan langsung disimpan ke Supabase. Monitoring, History, Sparepart, Master Data, Qty Awal, Qty Akhir, dan Total Stok sudah otomatis disesuaikan.');
                     return;
                 }
 
@@ -6443,7 +6517,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 }
                 // Simpan langsung agar perubahan stok Purchase Order/Gudang Sisa Project
                 // segera masuk ke Supabase dan terlihat di Dashboard/perangkat lain.
-                await this.saveToSupabase();
+                const savedNormalEdit = dateChanged
+                    ? await this.saveEditedLogToSupabase(log, editedDateIso, editedDateDisplay)
+                    : await this.saveToSupabase();
+                if (!savedNormalEdit) return alert('Edit log gagal disimpan ke Supabase.');
                 alert('Log berhasil di-adjust dan saldo transaksi setelahnya sudah otomatis disesuaikan!');
             },
             resetDashFilter() {
@@ -7411,7 +7488,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.showSparepartMultiOutModal = false;
                 this.closeMasterDropdown();
                 this.formSparepartMultiOut = { user: '', tanggal: this.getISODateOnly(), nomorPR: '', penerima: '', keperluan: '', selectedItems: [this.createSparepartMultiOutItem()] };
-                alert('Pengeluaran barang dicatat dan menunggu persetujuan Super Admin. Stok belum berubah.');
+                const savedSparepartOut = await this.saveToSupabase();
+                if (!savedSparepartOut) return alert('Pengeluaran Spare Part sudah muncul di layar, tetapi gagal disimpan ke Supabase.');
+                alert('Pengeluaran barang dicatat, langsung disimpan ke Supabase, dan menunggu persetujuan Super Admin. Stok belum berubah.');
             },
             openSisaProjectMultiInModal() {
                 if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
@@ -7515,7 +7594,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     });
                 });
                 this.showSisaProjectMultiInModal = false;
-                alert('Barang Sisa Project dicatat dan menunggu persetujuan Super Admin. Stok belum berubah.');
+                const savedSisaProjectIn = await this.saveToSupabase();
+                if (!savedSisaProjectIn) return alert('Barang Sisa Project sudah muncul di layar, tetapi gagal disimpan ke Supabase.');
+                alert('Barang Sisa Project dicatat, langsung disimpan ke Supabase, dan menunggu persetujuan Super Admin. Stok belum berubah.');
             },
             openSisaProjectMultiOutModal() {
                 if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
@@ -7620,8 +7701,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.showSisaProjectMultiOutModal = false;
                 this.closeMasterDropdown();
                 this.formSisaProjectMultiOut = { user: '', tanggal: this.getISODateOnly(), nomorPR: '', penyerah: '', penerima: '', keperluan: '', selectedItems: [this.createSisaProjectMultiOutItem()] };
-                await this.saveToSupabase();
-                alert('Pengeluaran Sisa Project dicatat dan menunggu persetujuan Super Admin. Stok belum berubah.');
+                const savedSisaProjectOut = await this.saveToSupabase();
+                if (!savedSisaProjectOut) return alert('Pengeluaran Sisa Project sudah muncul di layar, tetapi gagal disimpan ke Supabase.');
+                alert('Pengeluaran Sisa Project dicatat, langsung disimpan ke Supabase, dan menunggu persetujuan Super Admin. Stok belum berubah.');
             },
             openSingleOutModal(item) {
                 if (!this.canInputTransaction) return alert('Akun Viewer hanya dapat melihat data.');
@@ -8807,10 +8889,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const judulGudang = isSparepart ? 'SPARE PART' : 'SISA PROJECT';
                 const showPrice = isSparepart ? this.sparepartShowPrices : this.sisaProjectShowPrices;
                 const source = isSparepart
-                    ? (Array.isArray(this.filteredSpareparts) ? this.filteredSpareparts.map(item => ({
+                    ? (Array.isArray(this.filteredMasterCatalog) ? this.filteredMasterCatalog.map(item => ({
                         ...item,
-                        // SAMA dengan stok yang sedang ditampilkan di Gudang Spare Part / cetak stok.
-                        qty: Math.max(0, Math.round(Number(item.qty) || 0)),
+                        // PERSIS seperti kolom Qty / Stock Awal pada tabel Data Master.
+                        qty: Math.max(0, Math.round(Number(item.stockAwal ?? item.currentStock ?? 0) || 0)),
                         satuan: item.satuan || 'Pcs',
                         lokasi: item.lokasi || item.lokasiRak || item.rak || ''
                     })) : [])
