@@ -1028,25 +1028,25 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in paginatedDashboardSparepartIn" :key="log.id" :class="isCancelledLog(log) ? 'bg-rose-50/70' : 'hover:bg-emerald-50/30'">
+                                    <tr v-for="log in paginatedDashboardSparepartIn" :key="log.id" class="hover:bg-emerald-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                         </td>
                                         <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
                                         <td class="p-2 text-center font-bold text-slate-700">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
-                                        <td class="p-2 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">+{{ isCancelledLog(log) ? 0 : log.qty }}</td>
+                                        <td class="p-2 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">+{{ log.qty }}</td>
                                         <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
                                         <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase"><div>No. PO: {{ log.nomorPO || '-' }}</div><div class="mt-0.5">Supplier: {{ log.supplier || '-' }}</div></td>
-                                        <td class="p-2 text-[10px] text-slate-600 uppercase"><span v-if="isCancelledLog(log)" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200 text-[9px] font-black whitespace-nowrap">🚫 DIBATALKAN</span><div v-if="isCancelledLog(log)" class="mt-1 text-rose-700 font-bold">{{ log.keterangan || log.keperluan || 'Transaksi dibatalkan' }}</div><span v-else>{{ log.keterangan || log.keperluan || '-' }}</span></td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                         <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                         <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
-                                            <span v-if="isCancelledLog(log)" class="text-[9px] font-black text-rose-700 block">🚫 DIBATALKAN</span><span v-else :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
+                                            <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
-                                            <button v-if="!isCancelledLog(log) && ((isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit))" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
-                                            <button v-if="canEdit && !isPendingLog(log) && !isCancelledLog(log)" @click="cancelTransaction(log)" class="text-rose-600 hover:text-rose-800 text-[10px] font-bold underline">Cancel</button>
+                                            <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                            <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="text-rose-600 hover:text-rose-800 text-[10px] font-bold underline">Cancel</button>
                                         </td>
                                     </tr>
                                     <tr v-if="filteredSparepartLogsIn.length === 0">
@@ -1090,25 +1090,25 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in paginatedDashboardSparepartOut" :key="log.id" :class="isCancelledLog(log) ? 'bg-rose-50/70' : 'hover:bg-amber-50/30'">
+                                    <tr v-for="log in paginatedDashboardSparepartOut" :key="log.id" class="hover:bg-amber-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                         </td>
                                         <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
                                         <td class="p-2 text-center font-bold text-slate-700">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
-                                        <td class="p-2 text-center font-bold text-amber-700 bg-amber-50/50 rounded">-{{ isCancelledLog(log) ? 0 : log.qty }}</td>
+                                        <td class="p-2 text-center font-bold text-amber-700 bg-amber-50/50 rounded">-{{ log.qty }}</td>
                                         <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
                                         <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
-                                        <td class="p-2 text-[10px] text-slate-600 uppercase"><span v-if="isCancelledLog(log)" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200 text-[9px] font-black whitespace-nowrap">🚫 DIBATALKAN</span><div v-if="isCancelledLog(log)" class="mt-1 text-rose-700 font-bold">{{ log.keterangan || log.keperluan || 'Transaksi dibatalkan' }}</div><span v-else>{{ log.keterangan || log.keperluan || '-' }}</span></td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                         <td v-if="sparepartShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                         <td v-if="sparepartShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
-                                            <span v-if="isCancelledLog(log)" class="text-[9px] font-black text-rose-700 block">🚫 DIBATALKAN</span><span v-else :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
+                                            <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
-                                            <button v-if="!isCancelledLog(log) && ((isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit))" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
-                                            <button v-if="canEdit && !isPendingLog(log) && !isCancelledLog(log)" @click="cancelTransaction(log)" class="text-rose-600 hover:text-rose-800 text-[10px] font-bold underline">Cancel</button>
+                                            <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                            <button v-if="canEdit && !isPendingLog(log) && !log.isCancelled" @click="cancelTransaction(log)" class="text-rose-600 hover:text-rose-800 text-[10px] font-bold underline">Cancel</button>
                                         </td>
                                     </tr>
                                     <tr v-if="filteredSparepartLogsOut.length === 0">
@@ -1161,24 +1161,24 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in paginatedDashboardSisaProjectIn" :key="log.id" :class="isCancelledLog(log) ? 'bg-rose-50/70' : 'hover:bg-emerald-50/30'">
+                                    <tr v-for="log in paginatedDashboardSisaProjectIn" :key="log.id" class="hover:bg-emerald-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                         </td>
                                         <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
                                         <td class="p-2 text-center font-bold text-slate-700">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
-                                        <td class="p-2 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">+{{ isCancelledLog(log) ? 0 : log.qty }}</td>
+                                        <td class="p-2 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">+{{ log.qty }}</td>
                                         <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
                                         <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
-                                        <td class="p-2 text-[10px] text-slate-600 uppercase"><span v-if="isCancelledLog(log)" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200 text-[9px] font-black whitespace-nowrap">🚫 DIBATALKAN</span><div v-if="isCancelledLog(log)" class="mt-1 text-rose-700 font-bold">{{ log.keterangan || log.keperluan || 'Transaksi dibatalkan' }}</div><span v-else>{{ log.keterangan || log.keperluan || '-' }}</span></td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                         <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                         <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
-                                            <span v-if="isCancelledLog(log)" class="text-[9px] font-black text-rose-700 block">🚫 DIBATALKAN</span><span v-else :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
+                                            <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
-                                            <button v-if="!isCancelledLog(log) && ((isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit))" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                            <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
                                         </td>
                                     </tr>
                                     <tr v-if="filteredProjectLogsIn.length === 0">
@@ -1221,24 +1221,24 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in paginatedDashboardSisaProjectOut" :key="log.id" :class="isCancelledLog(log) ? 'bg-rose-50/70' : 'hover:bg-amber-50/30'">
+                                    <tr v-for="log in paginatedDashboardSisaProjectOut" :key="log.id" class="hover:bg-amber-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                         </td>
                                         <td class="p-2 font-bold text-slate-800 uppercase">{{ log.nama }}</td>
                                         <td class="p-2 text-center font-bold text-slate-700">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
-                                        <td class="p-2 text-center font-bold text-amber-700 bg-amber-50/50 rounded">-{{ isCancelledLog(log) ? 0 : log.qty }}</td>
+                                        <td class="p-2 text-center font-bold text-amber-700 bg-amber-50/50 rounded">-{{ log.qty }}</td>
                                         <td class="p-2 text-center">{{ log.qtyAwal ?? '-' }}</td>
                                         <td class="p-2 text-center font-bold">{{ log.qtyAkhir ?? '-' }}</td>
                                         <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
-                                        <td class="p-2 text-[10px] text-slate-600 uppercase"><span v-if="isCancelledLog(log)" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200 text-[9px] font-black whitespace-nowrap">🚫 DIBATALKAN</span><div v-if="isCancelledLog(log)" class="mt-1 text-rose-700 font-bold">{{ log.keterangan || log.keperluan || 'Transaksi dibatalkan' }}</div><span v-else>{{ log.keterangan || log.keperluan || '-' }}</span></td>
+                                        <td class="p-2 text-[10px] text-slate-600 uppercase">{{ log.keterangan || log.keperluan || '-' }}</td>
                                         <td v-if="sisaProjectShowPrices" class="p-2 text-right font-bold whitespace-nowrap">Rp {{ formatRupiah(log.harga != null ? log.harga : getMasterHarga(log.nama)) }}</td>
                                         <td v-if="sisaProjectShowPrices" class="p-2 text-right font-black whitespace-nowrap">Rp {{ formatRupiah((Number(log.harga != null ? log.harga : getMasterHarga(log.nama)) || 0) * (Number(log.qty) || 0)) }}</td>
                                         <td class="p-2 text-center no-print">
-                                            <span v-if="isCancelledLog(log)" class="text-[9px] font-black text-rose-700 block">🚫 DIBATALKAN</span><span v-else :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
+                                            <span :class="isPendingLog(log) ? 'text-amber-600' : 'text-emerald-600'" class="text-[9px] font-bold block">{{ approvalLabel(log) }}</span>
                                             <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="text-emerald-700 hover:text-emerald-900 text-[10px] font-bold underline">Setujui</button>
-                                            <button v-if="!isCancelledLog(log) && ((isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit))" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
+                                            <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="text-amber-600 hover:text-amber-800 text-[10px] font-bold underline">Edit</button>
                                         </td>
                                     </tr>
                                     <tr v-if="filteredProjectLogsOut.length === 0">
@@ -1669,7 +1669,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="(h, idx) in paginatedPurchaseRequestHistory" :key="h.id" class="hover:bg-emerald-50/30">
+                                <tr v-for="(h, idx) in paginatedPurchaseRequestHistory" :key="h.id" :class="isCancelledLog(h) ? 'bg-rose-50/70' : 'hover:bg-emerald-50/30'">
                                     <td class="p-2.5 text-center font-bold text-slate-400">{{ purchaseRequestHistoryPageStart + idx }}</td>
                                     <td class="p-2.5 text-center font-mono text-slate-600 font-bold text-[10px]">
                                         <div>{{ h.tgl || '-' }}</div>
@@ -1685,15 +1685,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     <td class="p-2.5 font-extrabold text-xs text-emerald-900 uppercase">{{ h.keperluan || h.project || '-' }}</td>
                                     <td class="p-2.5 text-center no-print align-middle">
                                         <div class="pr-history-actions flex flex-wrap justify-center items-center gap-1.5 max-w-[180px] mx-auto">
-                                            <button v-if="h.qty > 0 && canPrint" @click="printBAST(h)" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-[9px] uppercase shadow-sm whitespace-nowrap">BAST</button>
-                                            <button v-if="h.qty > 0 && canEdit" @click="cancelPurchaseReceipt(h)" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-[9px] uppercase shadow-sm whitespace-nowrap">Cancel</button>
+                                            <button v-if="h.qty > 0 && !isCancelledLog(h) && canPrint" @click="printBAST(h)" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-[9px] uppercase shadow-sm whitespace-nowrap">BAST</button>
+                                            <button v-if="h.qty > 0 && !isCancelledLog(h) && canEdit" @click="cancelPurchaseReceipt(h)" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1.5 rounded-lg font-bold text-[9px] uppercase shadow-sm whitespace-nowrap">Cancel</button>
                                             <button v-if="(isPendingLog(h) && canInputTransaction) || (!isPendingLog(h) && canEdit)" @click="editLog(h)" class="bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 px-2.5 py-1.5 rounded-lg font-bold text-[9px] uppercase whitespace-nowrap">Edit</button>
                                         </div>
                                     </td>
                                     <td class="p-2.5 text-center align-middle">
                                         <div class="pr-history-status flex flex-col items-center justify-center gap-1.5 min-w-[125px]">
-                                            <span :class="h.status === 'Diterima Semua' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : (h.status === 'Diterima Sebagian' ? 'bg-blue-100 text-blue-800 border-blue-200' : (h.status === 'Cancel Penerimaan' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-amber-100 text-amber-800 border-amber-200'))" class="w-full px-2 py-1 text-[9px] font-bold rounded border uppercase whitespace-nowrap">{{ h.status || 'Pending' }}</span>
-                                            <span class="w-full px-2 py-1 text-[8px] font-bold rounded border whitespace-nowrap" :class="String(h.approvalStatus || 'approved').toLowerCase() === 'pending' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'">{{ String(h.approvalStatus || 'approved').toLowerCase() === 'pending' ? 'Belum Disetujui' : 'Sudah Disetujui' }}</span>
+                                            <span v-if="isCancelledLog(h)" class="w-full px-2 py-1 text-[9px] font-black rounded border bg-rose-100 text-rose-800 border-rose-200 uppercase whitespace-nowrap">🚫 DIBATALKAN</span>
+                                            <span v-else :class="h.status === 'Diterima Semua' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : (h.status === 'Diterima Sebagian' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-amber-100 text-amber-800 border-amber-200')" class="w-full px-2 py-1 text-[9px] font-bold rounded border uppercase whitespace-nowrap">{{ h.status || 'Pending' }}</span>
+                                            <span v-if="!isCancelledLog(h)" class="w-full px-2 py-1 text-[8px] font-bold rounded border whitespace-nowrap" :class="String(h.approvalStatus || 'approved').toLowerCase() === 'pending' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'">{{ String(h.approvalStatus || 'approved').toLowerCase() === 'pending' ? 'Belum Disetujui' : 'Sudah Disetujui' }}</span>
+                                            <span v-else class="w-full px-2 py-1 text-[8px] font-bold rounded border bg-slate-100 text-slate-600 border-slate-200 whitespace-nowrap">Tidak memengaruhi stok</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -2301,7 +2303,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
                                      <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
-                                    <td class="p-2 text-center font-bold text-emerald-600">+{{ isCancelledLog(log) ? 0 : log.qty }}</td>
+                                    <td class="p-2 text-center font-bold text-emerald-600">+{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">
@@ -2322,7 +2324,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <i data-lucide="ban" class="w-3 h-3"></i> DIBATALKAN
                                         </span>
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
-                                        <button v-if="!isCancelledLog(log) && ((isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit))" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                        <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
                                         <button v-if="canEdit && !isCancelledLog(log)" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
@@ -2373,7 +2375,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
                                      <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
-                                    <td class="p-2 text-center font-bold text-amber-600">-{{ isCancelledLog(log) ? 0 : log.qty }}</td>
+                                    <td class="p-2 text-center font-bold text-amber-600">-{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.penerima || log.user || '-' }} ({{ log.keperluan || '-' }})</td>
@@ -2391,7 +2393,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <i data-lucide="ban" class="w-3 h-3"></i> DIBATALKAN
                                         </span>
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
-                                        <button v-if="!isCancelledLog(log) && ((isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit))" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                        <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
                                         <button v-if="canEdit && !isCancelledLog(log)" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
@@ -2674,7 +2676,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
                                      <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
-                                    <td class="p-2 text-center font-bold text-emerald-600">+{{ isCancelledLog(log) ? 0 : log.qty }}</td>
+                                    <td class="p-2 text-center font-bold text-emerald-600">+{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-emerald-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.supplier || log.keperluan || '-' }}</td>
@@ -2692,7 +2694,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <i data-lucide="ban" class="w-3 h-3"></i> DIBATALKAN
                                         </span>
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
-                                        <button v-if="!isCancelledLog(log) && ((isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit))" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                        <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
                                         <button v-if="canEdit && !isCancelledLog(log)" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
@@ -2743,7 +2745,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                         <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
                                     </td>
                                      <td class="p-2 text-center font-bold text-slate-700 uppercase">{{ getMasterSatuan(log.nama, log.satuan || 'Pcs', log.kode || log.barcode || '') }}</td>
-                                    <td class="p-2 text-center font-bold text-amber-600">-{{ isCancelledLog(log) ? 0 : log.qty }}</td>
+                                    <td class="p-2 text-center font-bold text-amber-600">-{{ log.qty }}</td>
                                     <td class="p-2 text-center font-semibold text-slate-500">{{ log.qtyAwal ?? '-' }}</td>
                                     <td class="p-2 text-center font-extrabold text-amber-700">{{ log.qtyAkhir ?? '-' }}</td>
                                     <td class="p-2 text-slate-500 text-[10px] uppercase">{{ log.user }} ({{ log.keperluan || '-' }})</td>
@@ -2761,7 +2763,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                             <i data-lucide="ban" class="w-3 h-3"></i> DIBATALKAN
                                         </span>
                                         <button v-if="canApprove && isPendingLog(log)" @click="approveTransaction(log)" class="block mx-auto text-emerald-700 hover:text-emerald-900 font-black text-[10px] underline">Setujui</button>
-                                        <button v-if="!isCancelledLog(log) && ((isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit))" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
+                                        <button v-if="(isPendingLog(log) && canInputTransaction) || (!isPendingLog(log) && canEdit)" @click="editLog(log)" class="block mx-auto text-amber-600 hover:text-amber-800 font-bold text-[10px] underline">Edit</button>
                                         <button v-if="canEdit && !isCancelledLog(log)" @click="cancelTransaction(log)" class="block mx-auto text-rose-600 hover:text-rose-800 font-bold text-[10px] underline">Cancel</button>
                                         <span v-if="!isPendingLog(log)" class="text-[9px] text-emerald-600 font-bold">✓ Approved</span>
                                     </td>
@@ -4026,7 +4028,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     if (cancelTimestamp) return true;
 
                     const normalizeCancel = v => String(v ?? '').trim().toLowerCase().replace(/[ _-]+/g, '');
-                    const cancelledValues = new Set(['cancel', 'cancelled', 'canceled', 'dibatalkan', 'canceltransaction', 'cancelledtransaction', 'canceledtransaction']);
+                    const cancelledValues = new Set(['cancel', 'cancelled', 'canceled', 'dibatalkan', 'canceltransaction', 'cancelledtransaction', 'canceledtransaction', 'cancelpenerimaan']);
                     const statuses = [
                         log.status, log.approvalStatus, log.approval_status, log.transactionStatus,
                         log.transaction_status, log.actionStatus, log.action_status, log.state
@@ -4544,7 +4546,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     return sum + (harga * (Number(log.qty) || 0));
                 }, 0);
             },
-            // Dashboard sengaja memakai sumber log yang sama dengan halaman Log Masuk/Keluar, termasuk transaksi yang dibatalkan.
             filteredSparepartLogsIn() {
                 const useSparepartFilter = this.activeTab === 'sparepart';
                 const q = String(useSparepartFilter ? this.spLogBarang : (this.dashSearchBarang || '')).trim().toLowerCase();
@@ -7547,29 +7548,90 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             async cancelPurchaseReceipt(history) {
                 if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data.');
-                if (!history || Number(history.qty) <= 0) return;
-                if (!confirm(`Batalkan penerimaan ${history.nama} sebanyak ${history.qty} ${history.satuan || ''}? Qty penerimaan akan menjadi 0 dan sisa PR dikembalikan.`)) return;
-                const qtyOld = Math.max(0, Number(history.qty) || 0);
-                const order = this.monitoringItems.find(o => String(o.id) === String(history.monitoringOrderId));
-                const log = this.logs.find(l => String(l.id) === String(history.monitoringLogId) || String(l.monitoringHistoryId) === String(history.id));
-                const approved = String(history.approvalStatus || '').toLowerCase() !== 'pending' && !this.isPendingLog(history);
+                if (!history) return;
+
+                // History PR pada tabel adalah object tampilan/salinan. Selalu ambil
+                // record asli dari monitoringHistory agar Cancel benar-benar tersimpan.
+                const originalHistory = this.monitoringHistory.find(h => String(h.id) === String(history.id));
+                if (!originalHistory) return alert('Riwayat penerimaan tidak ditemukan. Silakan refresh data terlebih dahulu.');
+                if (this.isCancelledLog(originalHistory) || Number(originalHistory.qty) <= 0) return;
+
+                const qtyOld = Math.max(0, Number(originalHistory.qty) || 0);
+                if (!confirm(`Batalkan penerimaan ${originalHistory.nama} sebanyak ${qtyOld} ${originalHistory.satuan || ''}? Qty penerimaan akan menjadi 0 dan sisa PR dikembalikan.`)) return;
+
+                const order = this.monitoringItems.find(o => String(o.id) === String(originalHistory.monitoringOrderId));
+                const log = this.logs.find(l =>
+                    String(l.id) === String(originalHistory.monitoringLogId) ||
+                    String(l.monitoringHistoryId) === String(originalHistory.id)
+                );
+                const stock = this.spareparts.find(s =>
+                    String(s.nama || '').trim().toLowerCase() === String(originalHistory.nama || '').trim().toLowerCase()
+                );
+                const approved = String(originalHistory.approvalStatus || '').toLowerCase() !== 'pending' && !this.isPendingLog(originalHistory);
+
+                // Snapshot agar jika penyimpanan server gagal, perubahan lokal tidak
+                // terlihat sebagai berhasil.
+                const historyBefore = JSON.parse(JSON.stringify(originalHistory));
+                const logBefore = log ? JSON.parse(JSON.stringify(log)) : null;
+                const orderBefore = order ? JSON.parse(JSON.stringify(order)) : null;
+                const stockBefore = stock ? JSON.parse(JSON.stringify(stock)) : null;
+
                 if (approved && log && qtyOld > 0) {
-                    const stock = this.spareparts.find(s => String(s.nama||'').trim().toLowerCase() === String(history.nama||'').trim().toLowerCase());
-                    if (stock && (Number(stock.qty)||0) < qtyOld) return alert('Cancel tidak dapat dilakukan karena stok Sparepart saat ini lebih kecil dari qty penerimaan yang akan dibatalkan.');
-                    if (stock) { stock.qty = Math.max(0,(Number(stock.qty)||0)-qtyOld); stock.totalHarga = (Number(stock.harga)||0)*stock.qty; }
+                    if (stock && (Number(stock.qty) || 0) < qtyOld) {
+                        return alert('Cancel tidak dapat dilakukan karena stok Sparepart saat ini lebih kecil dari qty penerimaan yang akan dibatalkan.');
+                    }
+                    if (stock) {
+                        stock.qty = Math.max(0, (Number(stock.qty) || 0) - qtyOld);
+                        stock.totalHarga = (Number(stock.harga) || 0) * stock.qty;
+                    }
                 }
-                history.qty = 0; history.totalHarga = 0; history.status = 'Cancel Penerimaan'; history.approvalStatus = 'approved'; history.cancelledAt = new Date().toISOString();
-                if (log) { log.qty = 0; log.totalHarga = 0; log.qtyAkhir = log.qtyAwal; log.keperluan = `${log.keperluan || 'Penerimaan Monitoring'} [CANCEL]`; log.cancelledAt = new Date().toISOString(); }
+
+                // Pola Cancel disamakan dengan histori gudang: histori tetap ada,
+                // tetapi qty transaksi menjadi 0 dan diberi penanda pembatalan.
+                originalHistory.qty = 0;
+                originalHistory.totalHarga = 0;
+                originalHistory.status = 'Cancel Penerimaan';
+                originalHistory.approvalStatus = 'approved';
+                originalHistory.isCancelled = true;
+                originalHistory.cancelledAt = new Date().toISOString();
+                originalHistory.cancelledBy = this.authUser?.email || this.authUser?.id || 'Super Admin';
+
+                if (log) {
+                    log.qty = 0;
+                    log.totalHarga = 0;
+                    log.qtyAkhir = log.qtyAwal;
+                    log.keperluan = `${log.keperluan || 'Penerimaan Monitoring'} [CANCEL]`;
+                    log.status = 'Cancelled';
+                    log.approvalStatus = 'approved';
+                    log.isCancelled = true;
+                    log.cancelledAt = originalHistory.cancelledAt;
+                    log.cancelledBy = originalHistory.cancelledBy;
+                }
+
                 if (order) {
-                    order.qtyReceived = Math.max(0,(Number(order.qtyReceived)||0)-qtyOld);
-                    order.qtyRemaining = Math.max(0,(Number(order.qtyTotal)||0)-order.qtyReceived);
+                    order.qtyReceived = Math.max(0, (Number(order.qtyReceived) || 0) - qtyOld);
+                    order.qtyRemaining = Math.max(0, (Number(order.qtyTotal) || 0) - order.qtyReceived);
                     order.status = order.qtyRemaining <= 0 ? 'Diterima Semua' : order.qtyReceived > 0 ? 'Diterima Sebagian' : 'Pending';
-                    this.monitoringHistory.forEach(h => { if (String(h.monitoringOrderId)===String(order.id) && Number(h.qty)>0) h.status = order.status; });
+                    this.monitoringHistory.forEach(h => {
+                        if (String(h.monitoringOrderId) === String(order.id) && Number(h.qty) > 0) h.status = order.status;
+                    });
                 }
-                this.recalculateWarehouseLogChain('Sparepart', history.nama);
-                this.syncMasterStockForSparepart(this.spareparts.find(s => String(s.nama||'').trim().toLowerCase()===String(history.nama||'').trim().toLowerCase()));
-                await this.saveToSupabase();
-                alert(`Penerimaan ${history.nama} dibatalkan. Qty penerimaan menjadi 0 dan sisa PR dikembalikan.`);
+
+                this.recalculateWarehouseLogChain('Sparepart', originalHistory.nama);
+                this.syncMasterStockForSparepart(stock);
+
+                const saved = await this.saveToSupabase();
+                if (!saved) {
+                    Object.assign(originalHistory, historyBefore);
+                    if (log && logBefore) Object.assign(log, logBefore);
+                    if (order && orderBefore) Object.assign(order, orderBefore);
+                    if (stock && stockBefore) Object.assign(stock, stockBefore);
+                    this.recalculateWarehouseLogChain('Sparepart', originalHistory.nama);
+                    this.syncMasterStockForSparepart(stock);
+                    return alert('Pembatalan History PR gagal disimpan ke Supabase. Perubahan dibatalkan.');
+                }
+
+                alert(`Penerimaan ${originalHistory.nama} dibatalkan. Qty penerimaan menjadi 0 dan sisa PR dikembalikan.`);
             },
             async cancelOrder(order) {
                 if (!this.canEdit) return alert('Akun Viewer hanya dapat melihat data.');
