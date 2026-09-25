@@ -1402,7 +1402,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                 <td class="p-3.5 font-bold text-slate-800 uppercase">{{ item.nama }}</td>
                                 <td class="p-3.5 text-center font-bold text-slate-700 uppercase">{{ item.satuan || 'Pcs' }}</td>
                                 <td class="p-3.5 text-center font-mono text-slate-600">{{ item.tanggal || '-' }}</td>
-                                <td class="p-3.5 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">{{ Math.max(0, Math.round(Number(item.stockAwal ?? item.currentStock ?? 0) || 0)) }}</td>
+                                <td class="p-3.5 text-center font-bold text-emerald-700 bg-emerald-50/50 rounded">{{ Math.max(0, Math.round(Number(item.currentStock ?? item.stockAwal ?? 0) || 0)) }}</td>
                                 <td class="p-3.5 text-right font-bold text-slate-700 whitespace-nowrap">Rp {{ formatRupiah(item.harga || 0) }}</td>
                                 <td class="p-3.5 text-center font-bold text-slate-700">{{ Math.max(0, Math.round(Number(item.minStock) || 0)) }}</td>
                                 <td class="p-3.5 text-center">
@@ -3710,6 +3710,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
         data() {
             return {
                 activeTab: 'dashboard',
+                stockHistoryReconciliationVersion: 0,
                 activeItem: {},
                 bastData: { noBPB: '', date: '', printDate: '', supplier: '', alamat: '', kodeSupplier: '', kodeDept: '', noPO: '', noSJ: '', nomorPR: '', nama: '', qtyReceived: 0, satuan: '', hasilAnalisa: '', createdBy: '', approvedBy: '', verifiedBy: '' },
                 showPrices: true,
@@ -5792,18 +5793,37 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             },
             async cancelTransaction(log) {
                 if (!log) return;
-                if (!this.canEdit) return alert('Hanya Super Admin yang dapat membatalkan transaksi yang sudah disetujui.');
+                if (!this.canEdit) return alert('Hanya Admin dan Super Admin yang dapat membatalkan transaksi.');
+
+                // Ambil snapshot TERBARU dari server sebelum membatalkan. Karena seluruh
+                // aplikasi memakai satu row inventory_state, ini mencegah Admin A melakukan
+                // cancel lalu tertimpa state lama milik Admin B.
+                const targetId = log.id;
+                try {
+                    await this.refreshFromSupabaseRealtime('', true);
+                    const latestLog = this.logs.find(x => String(x.id) === String(targetId));
+                    if (!latestLog) return alert('Transaksi sudah berubah atau tidak ditemukan pada data terbaru. Silakan refresh lalu coba lagi.');
+                    log = latestLog;
+                } catch (err) {
+                    console.error('Gagal mengambil data terbaru sebelum cancel:', err);
+                    return alert('Data terbaru dari Supabase gagal dimuat. Pembatalan dibatalkan agar data tidak tertimpa.');
+                }
                 if (this.isPendingLog(log)) {
                     const previousStatus = log.status;
                     const previousApprovalStatus = log.approvalStatus;
                     const previousIsCancelled = log.isCancelled;
                     const previousCancelledAt = log.cancelledAt;
                     const previousCancelledBy = log.cancelledBy;
+                    const previousQty = log.qty;
+                    const previousOriginalQty = log.originalQty;
                     log.status = 'Cancelled';
                     log.approvalStatus = 'cancelled';
                     log.isCancelled = true;
                     log.cancelledAt = new Date().toISOString();
                     log.cancelledBy = this.authUser?.email || this.authUser?.id || 'Super Admin';
+                    log.originalQty = Number(previousOriginalQty ?? previousQty) || 0;
+                    log.qty = 0;
+                    log.qtyAkhir = log.qtyAwal ?? log.qtyAkhir ?? 0;
                     const savedPendingCancel = await this.saveToSupabase();
                     if (!savedPendingCancel) {
                         log.status = previousStatus;
@@ -5811,6 +5831,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         if (previousIsCancelled === undefined) delete log.isCancelled; else log.isCancelled = previousIsCancelled;
                         if (previousCancelledAt === undefined) delete log.cancelledAt; else log.cancelledAt = previousCancelledAt;
                         if (previousCancelledBy === undefined) delete log.cancelledBy; else log.cancelledBy = previousCancelledBy;
+                        if (previousQty === undefined) delete log.qty; else log.qty = previousQty;
+                        if (previousOriginalQty === undefined) delete log.originalQty; else log.originalQty = previousOriginalQty;
                         return alert('Pembatalan gagal disimpan ke Supabase. Perubahan dibatalkan.');
                     }
                     return alert('Transaksi pending berhasil dibatalkan dan langsung disimpan ke Supabase.');
@@ -5849,6 +5871,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 log.approvalStatus = 'cancelled';
                 log.isCancelled = true;
                 log.originalQty = qty;
+                // Transaksi yang dibatalkan tetap disimpan sebagai histori, tetapi qty transaksi
+                // dibuat 0 agar tidak terlihat sebagai barang yang masih keluar/masuk.
+                log.qty = 0;
+                log.qtyAkhir = log.qtyAwal ?? log.qtyAkhir ?? 0;
+                log.totalHarga = 0;
                 log.cancelledAt = new Date().toISOString();
                 log.cancelledBy = this.authUser?.email || this.authUser?.id || 'Super Admin';
                 this.syncWarehouseLogBalances();
@@ -6000,7 +6027,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     logs: raw(this.logs),
                     planningRequests: raw(this.planningRequests),
                     planningUsages: raw(this.planningUsages),
-                    opnameHistory: raw(this.opnameHistory)
+                    opnameHistory: raw(this.opnameHistory),
+                    stockHistoryReconciliationVersion: Number(this.stockHistoryReconciliationVersion) || 0
                 };
             },
             scheduleSupabaseSave(delay = 300) {
@@ -6031,14 +6059,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 clearTimeout(this.supabaseRealtimeTimer);
                 this.supabaseRealtimeTimer = null;
             },
-            async refreshFromSupabaseRealtime(updatedAt = '') {
+            async refreshFromSupabaseRealtime(updatedAt = '', force = false) {
                 const client = this.getSupabaseClient();
                 if (!client || this.isHydratingFromSupabase) return;
                 // Jangan pernah menimpa perubahan yang baru dibuat user ketika
                 // penyimpanan lokal masih menunggu/berjalan.
-                if (this.supabaseLocalDirty || this.supabaseSaveInProgress || this.supabaseSaveTimer) return;
+                if (!force && (this.supabaseLocalDirty || this.supabaseSaveInProgress || this.supabaseSaveTimer)) return;
                 // Hindari memuat ulang state yang sama atau menimpa perubahan lokal yang baru disimpan.
-                if (updatedAt && this.supabaseLastUpdatedAt && String(updatedAt) <= String(this.supabaseLastUpdatedAt)) return;
+                if (!force && updatedAt && this.supabaseLastUpdatedAt && String(updatedAt) <= String(this.supabaseLastUpdatedAt)) return;
                 try {
                     const { data, error } = await client
                         .from('inventory_state')
@@ -6047,7 +6075,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         .maybeSingle();
                     if (error) throw error;
                     if (!data?.state) return;
-                    if (data.updated_at && this.supabaseLastUpdatedAt && String(data.updated_at) <= String(this.supabaseLastUpdatedAt)) return;
+                    if (!force && data.updated_at && this.supabaseLastUpdatedAt && String(data.updated_at) <= String(this.supabaseLastUpdatedAt)) return;
 
                     const state = data.state;
                     this.isHydratingFromSupabase = true;
@@ -6063,10 +6091,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     this.planningCacheBuilding = false;
                     this.planningAutocompleteResults = [];
                     this.opnameHistory = Array.isArray(state.opnameHistory) ? state.opnameHistory : [];
+                    this.stockHistoryReconciliationVersion = Number(state.stockHistoryReconciliationVersion) || 0;
                     this.supabaseLastUpdatedAt = data.updated_at || this.supabaseLastUpdatedAt || '';
                     this.normalizeInventoryDataTypes();
                     this.syncMasterAndSparepart();
-                    this.syncWarehouseLogBalances();
+                    const needsStockHistoryRepair = Number(this.stockHistoryReconciliationVersion || 0) < 1;
+                    if (needsStockHistoryRepair) {
+                        this.rebuildStockHistoryFromBeginning();
+                        await this.saveToSupabase();
+                    } else {
+                        this.syncWarehouseLogBalances();
+                    }
                     this.supabaseConnected = true;
                     this.$nextTick(() => this.refreshIcons());
                 } catch (err) {
@@ -6155,9 +6190,16 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                         this.planningCacheBuilding = false;
                         this.planningAutocompleteResults = [];
                         this.opnameHistory = Array.isArray(state.opnameHistory) ? state.opnameHistory : [];
+                        this.stockHistoryReconciliationVersion = Number(state.stockHistoryReconciliationVersion) || 0;
                         this.normalizeInventoryDataTypes();
                         this.syncMasterAndSparepart();
-                        this.syncWarehouseLogBalances();
+                        const needsStockHistoryRepair = Number(this.stockHistoryReconciliationVersion || 0) < 1;
+                        if (needsStockHistoryRepair) {
+                            this.rebuildStockHistoryFromBeginning();
+                            await this.saveToSupabase();
+                        } else {
+                            this.syncWarehouseLogBalances();
+                        }
                     }
                     this.supabaseConnected = true;
                 } catch (err) {
@@ -6364,6 +6406,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             async editLog(log) {
                 if (!log) return;
                 const isPending = this.isPendingLog(log);
+                if (this.isCancelledLog(log)) return alert('Transaksi yang sudah dibatalkan tidak dapat diedit.');
                 if (isPending && !this.canInputTransaction) return alert('Hanya Admin dan Super Admin yang dapat mengedit transaksi yang belum disetujui.');
                 if (!isPending && !this.canEdit) return alert('Transaksi yang sudah disetujui hanya dapat diedit oleh Super Admin.');
                 const isMonitoringHistory = this.monitoringHistory.some(h => h.id === log.id);
@@ -6902,6 +6945,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     const totalKeluar = this.logs
                         .filter(log =>
                             log.type === 'OUT' &&
+                            !this.isPendingLog(log) &&
+                            !this.isCancelledLog(log) &&
                             String(log.nama || '').trim().toLowerCase() === String(nama || '').trim().toLowerCase() &&
                             (!log.isoDate || new Date(log.isoDate).getTime() >= batas)
                         )
@@ -6939,6 +6984,125 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 master.totalHarga = Math.max(0, Number(master.harga) || 0) * qty;
                 return master;
             },
+            // ================================================================
+            // REKONSILIASI HISTORI STOK V1
+            // Menghitung ulang saldo dari transaksi PALING AWAL, bukan mempercayai
+            // qtyAwal/qtyAkhir lama yang mungkin sudah salah. Transaksi pending/cancel
+            // tidak mengubah saldo. Stock Opname yang sudah approved tetap dihitung
+            // sebagai mutasi IN/OUT karena memang merupakan penyesuaian stok.
+            // ================================================================
+            rebuildStockHistoryFromBeginning() {
+                const normalize = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+                const roundQty = value => Math.max(0, Math.round(Number(value) || 0));
+                const isPending = log => this.isPendingLog(log);
+                const isCancelled = log => this.isCancelledLog(log);
+                const isActiveMutation = log => !!log && !isPending(log) && !isCancelled(log);
+                const typeOf = log => String(log?.type || '').trim().toUpperCase();
+                const sortLogs = (a, b) => {
+                    const da = new Date(a?.isoDate || a?.tgl || 0).getTime() || 0;
+                    const db = new Date(b?.isoDate || b?.tgl || 0).getTime() || 0;
+                    if (da !== db) return da - db;
+                    const ca = new Date(a?.createdAt || a?.inputAt || 0).getTime() || 0;
+                    const cb = new Date(b?.createdAt || b?.inputAt || 0).getTime() || 0;
+                    if (ca !== cb) return ca - cb;
+                    const ia = Number(a?.id) || 0;
+                    const ib = Number(b?.id) || 0;
+                    return ia - ib;
+                };
+                const identityKeys = item => {
+                    const keys = [];
+                    const barcode = normalize(item?.barcode);
+                    const kode = normalize(item?.kode || item?.sku);
+                    const nama = normalize(item?.nama);
+                    if (barcode) keys.push(`barcode:${barcode}`);
+                    if (kode) keys.push(`kode:${kode}`);
+                    if (nama) keys.push(`nama:${nama}`);
+                    return keys;
+                };
+                const matchStock = (stock, log) => {
+                    const stockKeys = new Set(identityKeys(stock));
+                    return identityKeys(log).some(k => stockKeys.has(k));
+                };
+
+                const reconcileWarehouse = (gudang, stocks) => {
+                    const warehouseLogs = (this.logs || [])
+                        .filter(l => normalize(l?.gudang) === normalize(gudang))
+                        .sort(sortLogs);
+
+                    (stocks || []).forEach(stock => {
+                        if (!stock || typeof stock !== 'object') return;
+
+                        const itemLogs = warehouseLogs.filter(log => matchStock(stock, log));
+                        const master = normalize(gudang) === 'sparepart'
+                            ? (this.masterCatalog || []).find(m => matchStock(m, stock))
+                            : null;
+
+                        // Baseline resmi: stok awal Data Master. Untuk Sisa Project,
+                        // gunakan stockAwal yang tersimpan pada item. Jika field tersebut
+                        // memang belum pernah ada, gunakan saldo awal transaksi pertama.
+                        let opening;
+                        if (master && master.stockAwal !== undefined && master.stockAwal !== null && String(master.stockAwal).trim() !== '') {
+                            opening = roundQty(master.stockAwal);
+                        } else if (stock.stockAwal !== undefined && stock.stockAwal !== null && String(stock.stockAwal).trim() !== '') {
+                            opening = roundQty(stock.stockAwal);
+                        } else {
+                            const firstWithBalance = itemLogs.find(l => Number.isFinite(Number(l?.qtyAwal)));
+                            opening = firstWithBalance ? roundQty(firstWithBalance.qtyAwal) : 0;
+                        }
+
+                        stock.stockAwal = opening;
+                        if (master) master.stockAwal = opening;
+
+                        let running = opening;
+                        itemLogs.forEach(log => {
+                            const before = running;
+                            const originalQty = roundQty(log.originalQty ?? log.qty);
+
+                            // Transaksi yang sudah dibatalkan tetap ada sebagai histori, tetapi
+                            // qty-nya harus 0 dan sama sekali tidak boleh memengaruhi saldo.
+                            if (isCancelled(log)) {
+                                log.qtyAwal = before;
+                                log.qtyAkhir = before;
+                                log.qty = 0;
+                            } else {
+                                const qty = roundQty(log.qty);
+                                log.qtyAwal = before;
+
+                                if (isActiveMutation(log) && (typeOf(log) === 'IN' || typeOf(log) === 'OUT')) {
+                                    running = typeOf(log) === 'OUT'
+                                        ? before - qty
+                                        : before + qty;
+                                    // Stok fisik tidak boleh menjadi negatif. Jika histori lama
+                                    // pernah mengeluarkan lebih besar dari saldo, tahan di 0 agar
+                                    // error lama tidak diteruskan ke transaksi berikutnya.
+                                    running = Math.max(0, Math.round(running));
+                                }
+
+                                log.qtyAkhir = running;
+                                log.qty = qty;
+                                if (originalQty > 0 && log.originalQty !== undefined) log.originalQty = originalQty;
+                            }
+                        });
+
+                        stock.qty = running;
+                        stock.totalHarga = this.getMasterHarga(stock.nama, stock.harga) * running;
+
+                        if (master) {
+                            master.currentStock = running;
+                            master.totalHarga = (Number(master.harga) || 0) * running;
+                        }
+                    });
+                };
+
+                reconcileWarehouse('Sparepart', this.spareparts || []);
+                reconcileWarehouse('Sisa Project', this.sisaProjects || []);
+
+                // Pastikan item Master yang tidak mempunyai log tetap mempunyai currentStock
+                // yang sama dengan item gudang jika pasangan itemnya tersedia.
+                (this.spareparts || []).forEach(stock => this.syncMasterStockForSparepart(stock));
+                this.stockHistoryReconciliationVersion = 1;
+                return true;
+            },
             // Mengambil saldo TERKINI gudang. Data Master hanya menjadi referensi
             // identitas/metadata; setelah transaksi berjalan, saldo gudang berasal dari
             // record spareparts/sisaProjects yang sudah diperbarui oleh approval.
@@ -6948,22 +7112,28 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     { gudang: 'Sparepart', stocks: this.spareparts || [] },
                     { gudang: 'Sisa Project', stocks: this.sisaProjects || [] }
                 ];
-                const isApproved = log => !this.isPendingLog(log) && String(log?.adjustmentType || '').toUpperCase() !== 'OPNAME' && !['cancel', 'cancelled', 'canceled'].includes(String(log?.status || log?.approvalStatus || '').trim().toLowerCase()) && log?.isCancelled !== true && !log?.cancelledAt;
-                const sortLogs = (a, b) => new Date(a.createdAt || a.inputAt || a.isoDate || a.id || 0).getTime() - new Date(b.createdAt || b.inputAt || b.isoDate || b.id || 0).getTime();
-
-                // KUNCI PERBAIKAN:
-                // Log lama tidak selalu menyimpan barcode (contoh: penerimaan dari Purchase Request).
-                // Kalau stok mempunyai barcode tetapi log tidak, log tetap harus dicocokkan
-                // ke barang berdasarkan nama. Jangan membuat key barcode untuk stok saja karena
-                // akibatnya log tersebut tidak pernah masuk ke grup sinkronisasi.
+                const activeApproved = log => {
+                    if (!log || this.isPendingLog(log)) return false;
+                    return !this.isCancelledLog(log);
+                };
+                const sortLogs = (a, b) => {
+                    const ta = new Date(a.isoDate || a.tgl || a.createdAt || a.id || 0).getTime() || 0;
+                    const tb = new Date(b.isoDate || b.tgl || b.createdAt || b.id || 0).getTime() || 0;
+                    if (ta !== tb) return ta - tb;
+                    const ca = new Date(a.createdAt || a.inputAt || a.id || 0).getTime() || 0;
+                    const cb = new Date(b.createdAt || b.inputAt || b.id || 0).getTime() || 0;
+                    return ca - cb;
+                };
                 const getKeys = (gudang, x) => {
                     const barcode = normalize(x?.barcode);
+                    const kode = normalize(x?.kode);
                     const nama = normalize(x?.nama);
                     const keys = [];
                     if (barcode) keys.push(`barcode:${barcode}`);
+                    if (kode) keys.push(`kode:${kode}`);
                     if (gudang === 'Sisa Project') {
-                        const sisaKey = `sisa:${nama}|${normalize(x?.supplier || x?.asal)}|${normalize(x?.keperluan || x?.project)}`;
-                        if (nama) keys.push(sisaKey);
+                        if (nama) keys.push(`nama:${nama}|${normalize(x?.supplier || x?.asal)}|${normalize(x?.keperluan || x?.project)}`);
+                        if (nama) keys.push(`nama:${nama}`);
                     } else if (nama) {
                         keys.push(`nama:${nama}`);
                     }
@@ -6971,48 +7141,62 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 };
 
                 configs.forEach(({ gudang, stocks }) => {
-                    // Satu stok boleh mempunyai lebih dari satu alias:
-                    // barcode DAN nama. Ini membuat log lama tanpa barcode tetap ditemukan.
                     const stockMap = new Map();
                     stocks.forEach(item => {
-                        const qty = Math.max(0, Number(item.qty) || 0);
-                        getKeys(gudang, item).forEach(key => {
-                            if (!stockMap.has(key)) stockMap.set(key, qty);
-                        });
+                        const qty = Math.max(0, Math.round(Number(item.qty) || 0));
+                        getKeys(gudang, item).forEach(key => { if (!stockMap.has(key)) stockMap.set(key, qty); });
                     });
 
                     const groups = new Map();
-                    (this.logs || [])
-                        .filter(log => String(log.gudang || '').toLowerCase() === gudang.toLowerCase() && isApproved(log))
-                        .forEach(log => {
-                            // Pilih key yang benar-benar ada di stok. Untuk log lama tanpa barcode,
-                            // fallback otomatis ke key nama/sisa-project.
-                            const keys = getKeys(gudang, log);
-                            const key = keys.find(k => stockMap.has(k));
-                            if (!key) return;
-                            if (!groups.has(key)) groups.set(key, []);
-                            groups.get(key).push(log);
-                        });
-
-                    groups.forEach((logs, key) => {
-                        const ordered = logs.slice().sort(sortLogs);
-                        const currentStock = stockMap.get(key);
-                        const netMovement = ordered.reduce((sum, log) => {
-                            const qty = Math.max(0, Number(log.qty) || 0);
-                            return sum + (String(log.type || '').toUpperCase() === 'OUT' ? -qty : qty);
-                        }, 0);
-
-                        // Saldo akhir gudang yang tersimpan adalah sumber kebenaran.
-                        // Dari saldo akhir + seluruh pergerakan, hitung mundur saldo awal,
-                        // lalu hitung maju lagi untuk setiap log.
-                        let running = Math.max(0, currentStock - netMovement);
-                        ordered.forEach(log => {
-                            const qty = Math.max(0, Number(log.qty) || 0);
-                            log.qtyAwal = Math.max(0, Math.round(running));
-                            running = String(log.type || '').toUpperCase() === 'OUT' ? running - qty : running + qty;
-                            log.qtyAkhir = Math.max(0, Math.round(running));
-                        });
+                    (this.logs || []).filter(log =>
+                        String(log.gudang || '').toLowerCase() === gudang.toLowerCase() && activeApproved(log)
+                    ).forEach(log => {
+                        const key = getKeys(gudang, log).find(k => stockMap.has(k));
+                        if (!key) return;
+                        if (!groups.has(key)) groups.set(key, []);
+                        groups.get(key).push(log);
                     });
+
+                    stocks.forEach(item => {
+                        const keys = getKeys(gudang, item);
+                        const key = keys.find(k => groups.has(k));
+                        const ordered = key ? groups.get(key).slice().sort(sortLogs) : [];
+                        const currentQty = Math.max(0, Math.round(Number(item.qty) || 0));
+                        if (!ordered.length) {
+                            // Tidak ada mutasi aktif. Pertahankan stok aktual yang sudah tersimpan.
+                            item.qty = currentQty;
+                            item.totalHarga = this.getMasterHarga(item.nama, item.harga) * currentQty;
+                            return;
+                        }
+
+                        // Baseline historis harus berasal dari Stok Awal resmi,
+                        // bukan dari saldo lama yang mungkin sudah rusak.
+                        const master = gudang === 'Sparepart'
+                            ? (this.masterCatalog || []).find(m => getKeys(gudang, m).some(k => getKeys(gudang, item).includes(k)))
+                            : null;
+                        let opening = master && master.stockAwal !== undefined
+                            ? Number(master.stockAwal)
+                            : (item.stockAwal !== undefined ? Number(item.stockAwal) : Number(ordered[0].qtyAwal));
+                        if (!Number.isFinite(opening)) opening = 0;
+                        opening = Math.max(0, Math.round(opening));
+                        item._warehouseOpeningStock = opening;
+
+                        let running = Math.max(0, Math.round(opening));
+                        ordered.forEach(log => {
+                            const qty = Math.max(0, Math.round(Number(log.qty) || 0));
+                            log.qtyAwal = running;
+                            running = String(log.type || '').toUpperCase() === 'OUT'
+                                ? running - qty
+                                : running + qty;
+                            if (running < 0) running = 0;
+                            log.qtyAkhir = running;
+                        });
+
+                        item.qty = Math.max(0, Math.round(running));
+                        item.totalHarga = this.getMasterHarga(item.nama, item.harga) * item.qty;
+                    });
+
+                    if (gudang === 'Sparepart') stocks.forEach(item => this.syncMasterStockForSparepart(item));
                 });
             },
             getLatestWarehouseStock(gudang, nama, barcode = '') {
@@ -8202,7 +8386,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 const allLogs = this.logs
                     .filter(log =>
                         String(log.gudang || '').trim().toLowerCase() === gudang.toLowerCase() &&
-                        String(log.nama || '').trim().toLowerCase() === namaKey
+                        String(log.nama || '').trim().toLowerCase() === namaKey &&
+                        !this.isPendingLog(log) &&
+                        !this.isCancelledLog(log) &&
+                        String(log.adjustmentType || '').toUpperCase() !== 'OPNAME'
                     )
                     .map((log, index) => ({ log, index }))
                     .sort((a, b) => {
@@ -9035,7 +9222,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     ? (Array.isArray(this.filteredMasterCatalog) ? this.filteredMasterCatalog.map(item => ({
                         ...item,
                         // PERSIS seperti kolom Qty / Stock Awal pada tabel Data Master.
-                        qty: Math.max(0, Math.round(Number(item.stockAwal ?? item.currentStock ?? 0) || 0)),
+                        qty: Math.max(0, Math.round(Number(item.currentStock ?? item.stockAwal ?? 0) || 0)),
                         satuan: item.satuan || 'Pcs',
                         lokasi: item.lokasi || item.lokasiRak || item.rak || ''
                     })) : [])
