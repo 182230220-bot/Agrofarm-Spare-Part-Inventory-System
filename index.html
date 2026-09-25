@@ -1028,7 +1028,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in filteredSparepartLogsIn.slice(0, 5)" :key="log.id" class="hover:bg-emerald-50/30">
+                                    <tr v-for="log in paginatedDashboardSparepartIn" :key="log.id" class="hover:bg-emerald-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -1054,6 +1054,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </tbody>
                             </table>
+                        <div v-if="filteredSparepartLogsIn.length > 0" class="flex items-center justify-between gap-2 pt-2">
+                            <span class="text-[9px] font-semibold text-slate-500">Menampilkan {{ ((dashboardSparepartInPage - 1) * dashboardPageSize) + 1 }}–{{ Math.min(dashboardSparepartInPage * dashboardPageSize, filteredSparepartLogsIn.length) }} dari {{ filteredSparepartLogsIn.length }} data</span>
+                            <div class="flex items-center gap-1">
+                                <button @click="dashboardSparepartInPage = Math.max(1, dashboardSparepartInPage - 1)" :disabled="dashboardSparepartInPage <= 1" class="px-2 py-1 rounded border border-slate-200 text-[9px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Prev</button>
+                                <span class="px-2 py-1 text-[9px] font-bold text-slate-700">{{ dashboardSparepartInPage }} / {{ dashboardSparepartInPageCount }}</span>
+                                <button @click="dashboardSparepartInPage = Math.min(dashboardSparepartInPageCount, dashboardSparepartInPage + 1)" :disabled="dashboardSparepartInPage >= dashboardSparepartInPageCount" class="px-2 py-1 rounded border border-slate-200 text-[9px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+                            </div>
+                        </div>
                 
                         </div>
                     </div>
@@ -1082,7 +1090,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in filteredSparepartLogsOut.slice(0, 5)" :key="log.id" class="hover:bg-amber-50/30">
+                                    <tr v-for="log in paginatedDashboardSparepartOut" :key="log.id" class="hover:bg-amber-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -1108,6 +1116,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </tbody>
                             </table>
+                        <div v-if="filteredSparepartLogsOut.length > 0" class="flex items-center justify-between gap-2 pt-2">
+                            <span class="text-[9px] font-semibold text-slate-500">Menampilkan {{ ((dashboardSparepartOutPage - 1) * dashboardPageSize) + 1 }}–{{ Math.min(dashboardSparepartOutPage * dashboardPageSize, filteredSparepartLogsOut.length) }} dari {{ filteredSparepartLogsOut.length }} data</span>
+                            <div class="flex items-center gap-1">
+                                <button @click="dashboardSparepartOutPage = Math.max(1, dashboardSparepartOutPage - 1)" :disabled="dashboardSparepartOutPage <= 1" class="px-2 py-1 rounded border border-slate-200 text-[9px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Prev</button>
+                                <span class="px-2 py-1 text-[9px] font-bold text-slate-700">{{ dashboardSparepartOutPage }} / {{ dashboardSparepartOutPageCount }}</span>
+                                <button @click="dashboardSparepartOutPage = Math.min(dashboardSparepartOutPageCount, dashboardSparepartOutPage + 1)" :disabled="dashboardSparepartOutPage >= dashboardSparepartOutPageCount" class="px-2 py-1 rounded border border-slate-200 text-[9px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+                            </div>
+                        </div>
                 
                         </div>
                     </div>
@@ -1145,7 +1161,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in filteredProjectLogsIn.slice(0, 5)" :key="log.id" class="hover:bg-emerald-50/30">
+                                    <tr v-for="log in paginatedDashboardSisaProjectIn" :key="log.id" class="hover:bg-emerald-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -1170,6 +1186,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </tbody>
                             </table>
+                        <div v-if="filteredProjectLogsIn.length > 0" class="flex items-center justify-between gap-2 pt-2">
+                            <span class="text-[9px] font-semibold text-slate-500">Menampilkan {{ ((dashboardSisaProjectInPage - 1) * dashboardPageSize) + 1 }}–{{ Math.min(dashboardSisaProjectInPage * dashboardPageSize, filteredProjectLogsIn.length) }} dari {{ filteredProjectLogsIn.length }} data</span>
+                            <div class="flex items-center gap-1">
+                                <button @click="dashboardSisaProjectInPage = Math.max(1, dashboardSisaProjectInPage - 1)" :disabled="dashboardSisaProjectInPage <= 1" class="px-2 py-1 rounded border border-slate-200 text-[9px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Prev</button>
+                                <span class="px-2 py-1 text-[9px] font-bold text-slate-700">{{ dashboardSisaProjectInPage }} / {{ dashboardSisaProjectInPageCount }}</span>
+                                <button @click="dashboardSisaProjectInPage = Math.min(dashboardSisaProjectInPageCount, dashboardSisaProjectInPage + 1)" :disabled="dashboardSisaProjectInPage >= dashboardSisaProjectInPageCount" class="px-2 py-1 rounded border border-slate-200 text-[9px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+                            </div>
+                        </div>
                 
                         </div>
                     </div>
@@ -1197,7 +1221,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="log in filteredProjectLogsOut.slice(0, 5)" :key="log.id" class="hover:bg-amber-50/30">
+                                    <tr v-for="log in paginatedDashboardSisaProjectOut" :key="log.id" class="hover:bg-amber-50/30">
                                         <td class="p-2 text-slate-500 text-[10px] font-mono">
                                             {{ log.tgl }}
                                             <span v-if="log.editedAt" class="block text-[8px] text-amber-600 font-bold italic">{{ log.editedAt }}</span>
@@ -1222,6 +1246,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                                     </tr>
                                 </tbody>
                             </table>
+                        <div v-if="filteredProjectLogsOut.length > 0" class="flex items-center justify-between gap-2 pt-2">
+                            <span class="text-[9px] font-semibold text-slate-500">Menampilkan {{ ((dashboardSisaProjectOutPage - 1) * dashboardPageSize) + 1 }}–{{ Math.min(dashboardSisaProjectOutPage * dashboardPageSize, filteredProjectLogsOut.length) }} dari {{ filteredProjectLogsOut.length }} data</span>
+                            <div class="flex items-center gap-1">
+                                <button @click="dashboardSisaProjectOutPage = Math.max(1, dashboardSisaProjectOutPage - 1)" :disabled="dashboardSisaProjectOutPage <= 1" class="px-2 py-1 rounded border border-slate-200 text-[9px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Prev</button>
+                                <span class="px-2 py-1 text-[9px] font-bold text-slate-700">{{ dashboardSisaProjectOutPage }} / {{ dashboardSisaProjectOutPageCount }}</span>
+                                <button @click="dashboardSisaProjectOutPage = Math.min(dashboardSisaProjectOutPageCount, dashboardSisaProjectOutPage + 1)" :disabled="dashboardSisaProjectOutPage >= dashboardSisaProjectOutPageCount" class="px-2 py-1 rounded border border-slate-200 text-[9px] font-bold text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+                            </div>
+                        </div>
                 
                         </div>
                     </div>
@@ -3731,6 +3763,11 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 sparepartLogOutPage: 1,
                 sisaProjectLogInPage: 1,
                 sisaProjectLogOutPage: 1,
+                dashboardSparepartInPage: 1,
+                dashboardSparepartOutPage: 1,
+                dashboardSisaProjectInPage: 1,
+                dashboardSisaProjectOutPage: 1,
+                dashboardPageSize: 5,
                 logPageSize: 5,
                 formSisaProjectMultiIn: { supplier: '', nomorPR: '', penyerah: '', penerima: '', keperluan: '', tanggal: '', itemsToProcess: [] },
                 formSisaProjectMultiOut: { user: '', tanggal: '', nomorPR: '', penyerah: '', penerima: '', keperluan: '', selectedItems: [] },
@@ -3868,7 +3905,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 supabaseSaveTimer: null,
                 supabaseSavePromise: null,
                 supabaseSaveInProgress: false,
-                supabaseSaveQueued: false
+                supabaseSaveQueued: false,
+                supabaseSaveRetryCount: 0
             }
         },
         watch: {
@@ -3890,6 +3928,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             planningDateEnd() { this.planningRequestPage = 1; this.planningUsedStockCacheKey = ''; },
             planningWarehouseFilter() { this.planningRequestPage = 1; },
             approvalWarehouseTab() { this.approvalPage = 1; },
+            dashFilterDateStart() { this.dashboardSparepartInPage = 1; this.dashboardSparepartOutPage = 1; this.dashboardSisaProjectInPage = 1; this.dashboardSisaProjectOutPage = 1; },
+            dashFilterDateEnd() { this.dashboardSparepartInPage = 1; this.dashboardSparepartOutPage = 1; this.dashboardSisaProjectInPage = 1; this.dashboardSisaProjectOutPage = 1; },
+            dashSearchBarang() { this.dashboardSparepartInPage = 1; this.dashboardSparepartOutPage = 1; this.dashboardSisaProjectInPage = 1; this.dashboardSisaProjectOutPage = 1; },
             spLogDateStart() { this.sparepartLogInPage = 1; this.sparepartLogOutPage = 1; },
             spLogDateEnd() { this.sparepartLogInPage = 1; this.sparepartLogOutPage = 1; },
             spLogBarang() { this.sparepartLogInPage = 1; this.sparepartLogOutPage = 1; },
@@ -4518,6 +4559,26 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     useSisaFilter ? this.spjLogHargaMax : ''
                 ).filter(log => !q || String(log.nama || '').toLowerCase().includes(q));
             },
+            paginatedDashboardSparepartIn() {
+                const start = (this.dashboardSparepartInPage - 1) * this.dashboardPageSize;
+                return this.filteredSparepartLogsIn.slice(start, start + this.dashboardPageSize);
+            },
+            paginatedDashboardSparepartOut() {
+                const start = (this.dashboardSparepartOutPage - 1) * this.dashboardPageSize;
+                return this.filteredSparepartLogsOut.slice(start, start + this.dashboardPageSize);
+            },
+            paginatedDashboardSisaProjectIn() {
+                const start = (this.dashboardSisaProjectInPage - 1) * this.dashboardPageSize;
+                return this.filteredProjectLogsIn.slice(start, start + this.dashboardPageSize);
+            },
+            paginatedDashboardSisaProjectOut() {
+                const start = (this.dashboardSisaProjectOutPage - 1) * this.dashboardPageSize;
+                return this.filteredProjectLogsOut.slice(start, start + this.dashboardPageSize);
+            },
+            dashboardSparepartInPageCount() { return Math.max(1, Math.ceil(this.filteredSparepartLogsIn.length / this.dashboardPageSize)); },
+            dashboardSparepartOutPageCount() { return Math.max(1, Math.ceil(this.filteredSparepartLogsOut.length / this.dashboardPageSize)); },
+            dashboardSisaProjectInPageCount() { return Math.max(1, Math.ceil(this.filteredProjectLogsIn.length / this.dashboardPageSize)); },
+            dashboardSisaProjectOutPageCount() { return Math.max(1, Math.ceil(this.filteredProjectLogsOut.length / this.dashboardPageSize)); },
             paginatedSparepartLogsIn() {
                 const start = (this.sparepartLogInPage - 1) * this.logPageSize;
                 return this.filteredSparepartLogsIn.slice(start, start + this.logPageSize);
@@ -5902,7 +5963,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     opnameHistory: raw(this.opnameHistory)
                 };
             },
-            scheduleSupabaseSave(delay = 900) {
+            scheduleSupabaseSave(delay = 300) {
                 if (this.isHydratingFromSupabase) return;
                 // Tandai perubahan lokal agar realtime tidak menimpa input baru
                 // dengan snapshot database yang masih lama.
@@ -6167,10 +6228,17 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     this.supabaseLastUpdatedAt = updatedAt;
                     this.supabaseConnected = true;
                     this.supabaseLocalDirty = false;
+                    this.supabaseSaveRetryCount = 0;
                     saved = true;
                 } catch (err) {
                     this.supabaseConnected = false;
                     console.error('Gagal menyimpan data ke Supabase:', err);
+                    // Jangan biarkan input yang sudah muncul di layar hilang hanya karena
+                    // satu request penyimpanan gagal sesaat. Coba ulang maksimal 3 kali.
+                    if (this.supabaseSaveRetryCount < 3 && this.supabaseLocalDirty) {
+                        this.supabaseSaveRetryCount += 1;
+                        this.scheduleSupabaseSave(1500);
+                    }
                 } finally {
                     this.supabaseSaveInProgress = false;
 
@@ -6541,6 +6609,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 this.dashFilterDateStart = today;
                 this.dashFilterDateEnd = today;
                 this.dashSearchBarang = '';
+                this.dashboardSparepartInPage = 1;
+                this.dashboardSparepartOutPage = 1;
+                this.dashboardSisaProjectInPage = 1;
+                this.dashboardSisaProjectOutPage = 1;
             },
             formatRupiah(value) {
                 const num = Number(value) || 0;
@@ -8344,7 +8416,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (typeof ExcelJS === 'undefined') return alert('Library Excel belum siap. Silakan refresh halaman.');
                 const start=this.spLogDateStart, end=this.spLogDateEnd || this.spLogDateStart, barangFilter=this.spLogBarang||'', keperluanFilter=this.spLogKeperluan||'';
                 const inRange=l=>{const d=new Date(l.isoDate||l.id);if(start&&d<new Date(start))return false;if(end){const e=new Date(end);e.setHours(23,59,59,999);if(d>e)return false;}if(barangFilter&&!String(l.nama||'').toLowerCase().includes(barangFilter.toLowerCase()))return false;if(keperluanFilter){const h=String(l.supplier||l.keperluan||l.user||'').toLowerCase();if(!h.includes(keperluanFilter.toLowerCase()))return false;}return true;};
-                const logs=this.logs.filter(l=>String(l.gudang||'').trim().toLowerCase()==='sparepart'&&inRange(l)); const inputOrder=(a,b)=>{const ta=new Date(a.createdAt||a.inputAt||a.id||a.isoDate||0).getTime();const tb=new Date(b.createdAt||b.inputAt||b.id||b.isoDate||0).getTime();return ta-tb;}; const ins=logs.filter(l=>String(l.type||'').toUpperCase()==='IN').sort(inputOrder); const outs=logs.filter(l=>String(l.type||'').toUpperCase()==='OUT').sort(inputOrder);
+                const logs=this.logs.filter(l=>String(l.gudang||'').trim().toLowerCase()==='sparepart'&&!l.isCancelled&&!l.cancelledAt&&!['cancel','cancelled','canceled'].includes(String(l.status||l.approvalStatus||'').trim().toLowerCase())&&inRange(l)); const inputOrder=(a,b)=>{const ta=new Date(a.createdAt||a.inputAt||a.id||a.isoDate||0).getTime();const tb=new Date(b.createdAt||b.inputAt||b.id||b.isoDate||0).getTime();return ta-tb;}; const ins=logs.filter(l=>String(l.type||'').toUpperCase()==='IN').sort(inputOrder); const outs=logs.filter(l=>String(l.type||'').toUpperCase()==='OUT').sort(inputOrder);
                 const wb=new ExcelJS.Workbook(); wb.creator='Agrofarm Nusa Raya'; wb.created=new Date(); const ws=wb.addWorksheet('Laporan Sparepart',{pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.25,right:.25,top:.35,bottom:.35,header:.1,footer:.1}}}); ws.views=[{showGridLines:false}]; ws.columns=[{width:6},{width:14},{width:34},{width:13},{width:13},{width:13},{width:13},{width:32}];
                 const logoId=wb.addImage({base64:AGROFARM_EXCEL_LOGO_BASE64,extension:'png'}); ws.addImage(logoId,{tl:{col:.15,row:.2},ext:{width:145,height:36}}); ws.mergeCells('A1:G1');ws.mergeCells('A2:G2');ws.mergeCells('H1:H3');
                 ws.getCell('A1').value='LAPORAN PERGERAKAN STOK';ws.getCell('A2').value='AGROFARM NUSA RAYA — Sistem Inventory Spare Part';ws.getCell('H1').value=`Tanggal Cetak\n${start||'(awal)'} s/d ${end||'(akhir)'}\nDicetak: ${this.getFormattedDateOnly()}`;ws.getCell('A1').font={name:'Arial',size:16,bold:true};ws.getCell('A2').font={name:'Arial',size:10,bold:true};ws.getCell('H1').font={name:'Arial',size:9,bold:true};ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};ws.getCell('A2').alignment={horizontal:'center',vertical:'middle'};ws.getCell('H1').alignment={horizontal:'right',vertical:'middle',wrapText:true};
@@ -8545,7 +8617,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 });
                 const monSheet = XLSX.utils.json_to_sheet(purchaseRequestRows);
                 XLSX.utils.book_append_sheet(wb, monSheet, "Purchase Request");
-                const logsSheet = XLSX.utils.json_to_sheet(this.logs);
+                const activeLogsForExport = (this.logs || []).filter(l => !l.isCancelled && !l.cancelledAt && !['cancel','cancelled','canceled'].includes(String(l.status || l.approvalStatus || '').trim().toLowerCase()));
+                const logsSheet = XLSX.utils.json_to_sheet(activeLogsForExport);
                 XLSX.utils.book_append_sheet(wb, logsSheet, "Log Pergerakan");
                 XLSX.writeFile(wb, `Laporan_Inventory_Agrofarm_${this.getFormattedDateOnly().replace(/\//g, '-')}.xlsx`);
             },
@@ -8708,7 +8781,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 ws.getCell('A1').value='LAPORAN PERGERAKAN STOK';ws.getCell('A2').value='AGROFARM NUSA RAYA — Sistem Inventory Spare Part';ws.getCell('H1').value=`Tanggal Cetak\n${rangeText}\nDicetak: ${this.escapeHtml(printedDate)}`;
                 ws.getCell('A1').font={name:'Arial',size:16,bold:true};ws.getCell('A2').font={name:'Arial',size:10,bold:true};ws.getCell('H1').font={name:'Arial',size:9,bold:true};ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'};ws.getCell('A2').alignment={horizontal:'center',vertical:'middle'};ws.getCell('H1').alignment={horizontal:'right',vertical:'middle',wrapText:true};
                 const border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}; const style=c=>{c.font={name:'Arial',size:9};c.border=border;c.alignment={vertical:'middle',wrapText:true};}; const info=(l,v)=>{const r=ws.addRow([l,v]);ws.mergeCells(`B${r.number}:I${r.number}`);style(r.getCell(1));style(r.getCell(2));r.getCell(1).font={name:'Arial',size:9,bold:true};}; info('Cakupan','Semua Gudang');info('Periode',rangeText);ws.addRow([]);
-                const section=g=>{const inputOrder=(a,b)=>{const ta=new Date(a.createdAt||a.inputAt||a.id||a.isoDate||0).getTime();const tb=new Date(b.createdAt||b.inputAt||b.id||b.isoDate||0).getTime();return ta-tb;};const ins=this.logs.filter(l=>String(l.gudang||'').toLowerCase()===g.toLowerCase()&&String(l.type||'').toUpperCase()==='IN'&&inRange(l)).sort(inputOrder);const outs=this.logs.filter(l=>String(l.gudang||'').toLowerCase()===g.toLowerCase()&&String(l.type||'').toUpperCase()==='OUT'&&inRange(l)).sort((a,b)=>{const ta=new Date(a.createdAt||a.inputAt||a.id||a.isoDate||0).getTime();const tb=new Date(b.createdAt||b.inputAt||b.id||b.isoDate||0).getTime();return ta-tb;});
+                const section=g=>{const inputOrder=(a,b)=>{const ta=new Date(a.createdAt||a.inputAt||a.id||a.isoDate||0).getTime();const tb=new Date(b.createdAt||b.inputAt||b.id||b.isoDate||0).getTime();return ta-tb;};const isActiveLog=l=>!l.isCancelled&&!l.cancelledAt&&!['cancel','cancelled','canceled'].includes(String(l.status||l.approvalStatus||'').trim().toLowerCase());const ins=this.logs.filter(l=>isActiveLog(l)&&String(l.gudang||'').toLowerCase()===g.toLowerCase()&&String(l.type||'').toUpperCase()==='IN'&&inRange(l)).sort(inputOrder);const outs=this.logs.filter(l=>isActiveLog(l)&&String(l.gudang||'').toLowerCase()===g.toLowerCase()&&String(l.type||'').toUpperCase()==='OUT'&&inRange(l)).sort((a,b)=>{const ta=new Date(a.createdAt||a.inputAt||a.id||a.isoDate||0).getTime();const tb=new Date(b.createdAt||b.inputAt||b.id||b.isoDate||0).getTime();return ta-tb;});
                     let title=ws.addRow([`GUDANG ${g.toUpperCase()} — BARANG MASUK (INBOUND)`,`${ins.length} TRANSAKSI`]);ws.mergeCells(`A${title.number}:J${title.number}`);title.getCell(1).font={name:'Arial',size:11,bold:true};
                     let h=ws.addRow(['No','Tanggal','Nama Barang','Satuan','Qty Masuk','Qty Awal','Qty Akhir','Supplier / Kepentingan','Harga Satuan','Harga Total']);h.eachCell(c=>{style(c);c.font={name:'Arial',size:9,bold:true};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};});
                     if(!ins.length){const e=ws.addRow(['','','Tidak ada data barang masuk pada periode ini.']);ws.mergeCells(`C${e.number}:G${e.number}`);e.getCell(3).alignment={horizontal:'center'};} ins.forEach((l,i)=>{const q=Number(l.qty)||0;const hrg=Number(l.harga!=null?l.harga:this.getMasterHarga(l.nama))||0;const r=ws.addRow([i+1,l.tgl||'-',l.nama||'-',(this.getMasterSatuan(l.nama, l.satuan || 'Pcs', l.kode || l.barcode || '') || 'Pcs'),q,l.qtyAwal??'-',l.qtyAkhir??'-',l.supplier||l.keperluan||'-',hrg,hrg*q]);r.eachCell(style);r.getCell(9).numFmt='#,##0';r.getCell(10).numFmt='#,##0';});
