@@ -4360,25 +4360,22 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             filteredMonitoringItems() {
                 const priorityRank = value => { const n = Number(value); return Number.isFinite(n) && n > 0 ? n : 0; };
                 const normalizeKey = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
-                // Bangun Set sekali per evaluasi computed. Sebelumnya setiap baris PR
-                // menjalankan logs.some(...), sehingga halaman PR terasa berat ketika
-                // histori/log sudah banyak. Logika filter tetap sama.
-                const pendingReceiptOrderIds = new Set(
-                    (this.logs || [])
-                        .filter(log => log && log.type === 'IN' &&
-                            (String(log.approvalStatus || '').toLowerCase() === 'pending' ||
-                             String(log.status || '').toLowerCase().includes('menunggu')))
-                        .map(log => String(log.monitoringOrderId ?? ''))
-                        .filter(Boolean)
+                // Jika History PR menunjukkan penerimaan masih sebagian, PR tersebut harus
+                // tetap muncul di tabel atas agar sisa barang dapat diterima sampai selesai.
+                // Gunakan Set agar pengecekan tetap ringan dan tidak menjalankan find/some
+                // berulang untuk setiap baris PR.
+                const partialHistoryOrderIds = new Set(
+                    (this.monitoringHistory || [])
+                        .filter(h => h && h.type === 'IN' && h.status === 'Diterima Sebagian' && h.monitoringOrderId)
+                        .map(h => String(h.monitoringOrderId))
                 );
                 const rows = this.monitoringItems.filter(i => {
-                    const hasPendingReceipt = pendingReceiptOrderIds.has(String(i?.id ?? ''));
-                    // Setelah barang sudah pernah dicatat sebagai penerimaan, barang tersebut
-                    // langsung dikeluarkan dari tabel Purchase Request bagian atas.
-                    // Berlaku per barang; barang lain pada Nomor PR yang sama tetap tampil.
-                    if (!this.monFilterStatus && ((Number(i.qtyReceived) || 0) > 0 || hasPendingReceipt)) return false;
-                    if (!this.monFilterStatus && (Number(i.qtyRemaining) || 0) <= 0) return false;
-                    if (!this.monFilterStatus && i.status === 'Diterima Semua') return false;
+                    const hasPartialHistory = partialHistoryOrderIds.has(String(i?.id ?? ''));
+                    // PR tetap tampil jika masih ada sisa qty ATAU History PR menunjukkan
+                    // bahwa penerimaannya baru sebagian. PR yang sudah diterima semua dan
+                    // tidak memiliki riwayat penerimaan sebagian tetap tidak ditampilkan.
+                    if (!this.monFilterStatus && (Number(i.qtyRemaining) || 0) <= 0 && !hasPartialHistory) return false;
+                    if (!this.monFilterStatus && i.status === 'Diterima Semua' && !hasPartialHistory) return false;
                     const itemName = String(i.nama || '').toLowerCase();
                     const matchBarang = !this.monFilterBarang || itemName.includes(String(this.monFilterBarang || '').toLowerCase());
                     const itemKepentingan = String(i.keperluan || i.project || '').toLowerCase();
@@ -4733,7 +4730,9 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                     const qty = gudang === 'Sparepart'
                         ? Math.max(0, Math.round(Number(stock.currentStock ?? stock.stockAwal) || 0))
                         : Math.max(0, Math.round(Number(stock.qty) || 0));
-                    if (min <= 0 || qty > min) return;
+                    // Peringatan hanya muncul jika stok saat ini BENAR-BENAR di bawah stok minimal.
+                    // Jika stok sama dengan stok minimal, tidak perlu masuk dashboard.
+                    if (min <= 0 || qty >= min) return;
                     const pr = latestPRByName.get(String(stock.nama || '').trim().toLowerCase());
                     rows.push({
                         gudang,
