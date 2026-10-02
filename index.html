@@ -4022,6 +4022,12 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
                 if (newTab !== 'planning_request' && newTab !== 'planning_usage') {
                     this.planningViewReady = false;
                 }
+                // Stock Opname perlu diinisialisasi saat menu pertama kali dibuka.
+                // Sebelumnya opnameDraft.items masih kosong, sehingga template Excel
+                // ikut kosong dan filter "Semua Barang" tidak memiliki data untuk ditampilkan.
+                if (newTab === 'opname' && (!this.opnameDraft.items || this.opnameDraft.items.length === 0)) {
+                    this.initOpnameDraft(this.opnameDraft.gudang || 'Sparepart');
+                }
             }
         },
         computed: {
@@ -10604,7 +10610,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initMobileSidebar);
     } else {
-        initMobileSidebar();
+        initMobileSidebar();a
     }
 })();
 </script>
